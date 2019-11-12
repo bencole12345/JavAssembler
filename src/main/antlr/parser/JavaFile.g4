@@ -47,7 +47,11 @@ variableDeclaration
     ;
 
 variableAssignment
-    : IDENTIFIER EQUALS expr
+    : IDENTIFIER op=(EQUALS
+        | PLUS_EQUALS
+        | MINUS_EQUALS
+        | MULTIPLY_EQUALS
+        | DIVIDE_EQUALS) expr
     ;
 
 variableDeclarationAndAssignment
@@ -58,10 +62,15 @@ expr
     : value                                         # ValueExpr
     | functionCall                                  # FunctionCallExpr
     | LPAREN expr RPAREN                            # ParenthesesExpr
-    | MINUS expr                                    # NegateExpr
+    | op=(MINUS|INCREMENT|DECREMENT) expr           # UnaryPrefixExpr
+    | expr op=(INCREMENT|DECREMENT)                 # UnaryPostfixExpr
     | expr op=(MULTIPLY|DIVIDE) expr                # InfixExpr
     | expr op=(PLUS|MINUS) expr                     # InfixExpr
-    | expr op=(INCREMENT|DECREMENT)                 # PostfixExpr
+    | expr op=(EQUAL_TO
+                | LESS_THAN
+                | LESS_THAN_EQUAL_TO
+                | GREATER_THAN
+                | GREATER_THAN_EQUAL_TO) expr       # InfixExpr
     | expr QUESTION_MARK expr COLON expr SEMICOLON  # BinarySelectorExpr
     | IDENTIFIER                                    # VariableNameExpr
     ;

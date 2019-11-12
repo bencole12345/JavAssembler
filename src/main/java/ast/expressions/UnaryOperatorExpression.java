@@ -1,11 +1,15 @@
 package ast.expressions;
 
+// TODO: Decide whether NEGATE should be separate from the rest since
+// the others all require a change of state.
 public class UnaryOperatorExpression extends Expression {
 
     public enum Operation {
         NEGATE,
-        INCREMENT,
-        DECREMENT
+        PRE_INCREMENT,
+        PRE_DECREMENT,
+        POST_INCREMENT,
+        POST_DECREMENT
     }
 
     private Expression expression;

@@ -11,10 +11,11 @@ DIVIDE: '/' ;
 NOT: '!' ;
 INCREMENT: '++' ;
 DECREMENT: '--' ;
-ADD_EQUALS: '+=' ;
+PLUS_EQUALS: '+=' ;
 MINUS_EQUALS: '-=' ;
 MULTIPLY_EQUALS: '*=' ;
 DIVIDE_EQUALS: '/=' ;
+EQUAL_TO: '==' ;
 LESS_THAN: '<' ;
 LESS_THAN_EQUAL_TO: '<=' ;
 GREATER_THAN: '>' ;
@@ -61,9 +62,10 @@ BOOLEAN: 'boolean' ;
 FLOAT: 'float' ;
 DOUBLE: 'double' ;
 
-SIGNED_INTEGER: MINUS? INTEGER ;
-INTEGER: [0-9]+ ;
-DECIMAL: [0-9] DOT [0-9] ;
+fragment DIGITS: [0-9]+ ;
+
+SIGNED_INTEGER: MINUS? DIGITS ;
+DECIMAL: DIGITS DOT DIGITS ;
 
 IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]* ;
 

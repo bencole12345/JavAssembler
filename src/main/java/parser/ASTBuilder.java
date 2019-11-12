@@ -134,6 +134,25 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     public Assignment visitVariableAssignment(JavaFileParser.VariableAssignmentContext ctx) {
         String name = ctx.IDENTIFIER().toString();
         Expression expression = (Expression) visit(ctx.expr());
+        BinaryOperatorExpression.Operation bop = null;
+        switch (ctx.op.getType()) {
+            case JavaFileParser.PLUS_EQUALS:
+                bop = BinaryOperatorExpression.Operation.ADD;
+                break;
+            case JavaFileParser.MINUS_EQUALS:
+                bop = BinaryOperatorExpression.Operation.SUBTRACT;
+                break;
+            case JavaFileParser.MULTIPLY_EQUALS:
+                bop = BinaryOperatorExpression.Operation.MULTIPLY;
+                break;
+            case JavaFileParser.DIVIDE_EQUALS:
+                bop = BinaryOperatorExpression.Operation.DIVIDE;
+            // No case for JavaFileParser.EQUALS
+        }
+        if (bop != null) {
+            VariableNameExpression varNameExpr = new VariableNameExpression(name);
+            expression = new BinaryOperatorExpression(varNameExpr, expression, bop);
+        }
         return new Assignment(name, expression);
     }
 
@@ -161,9 +180,34 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public UnaryOperatorExpression visitNegateExpr(JavaFileParser.NegateExprContext ctx) {
+    public UnaryOperatorExpression visitUnaryPostfixExpr(JavaFileParser.UnaryPostfixExprContext ctx) {
         Expression expression = (Expression) visit(ctx.expr());
-        return new UnaryOperatorExpression(expression, UnaryOperatorExpression.Operation.NEGATE);
+        UnaryOperatorExpression.Operation op = null;
+        switch (ctx.op.getType()) {
+            case JavaFileParser.INCREMENT:
+                op = UnaryOperatorExpression.Operation.POST_INCREMENT;
+                break;
+            case JavaFileParser.DECREMENT:
+                op = UnaryOperatorExpression.Operation.POST_DECREMENT;
+        }
+        return new UnaryOperatorExpression(expression, op);
+    }
+
+    @Override
+    public UnaryOperatorExpression visitUnaryPrefixExpr(JavaFileParser.UnaryPrefixExprContext ctx) {
+        Expression expression = (Expression) visit(ctx.expr());
+        UnaryOperatorExpression.Operation op = null;
+        switch (ctx.op.getType()) {
+            case JavaFileParser.MINUS:
+                op = UnaryOperatorExpression.Operation.NEGATE;
+                break;
+            case JavaFileParser.INCREMENT:
+                op = UnaryOperatorExpression.Operation.PRE_INCREMENT;
+                break;
+            case JavaFileParser.DECREMENT:
+                op = UnaryOperatorExpression.Operation.PRE_DECREMENT;
+        }
+        return new UnaryOperatorExpression(expression, op);
     }
 
     @Override
@@ -183,22 +227,23 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 break;
             case JavaFileParser.MINUS:
                 op = BinaryOperatorExpression.Operation.SUBTRACT;
+                break;
+            case JavaFileParser.EQUAL_TO:
+                op = BinaryOperatorExpression.Operation.EQUAL_TO;
+                break;
+            case JavaFileParser.LESS_THAN:
+                op = BinaryOperatorExpression.Operation.LESS_THAN;
+                break;
+            case JavaFileParser.LESS_THAN_EQUAL_TO:
+                op = BinaryOperatorExpression.Operation.LESS_THAN_OR_EQUAL_TO;
+                break;
+            case JavaFileParser.GREATER_THAN:
+                op = BinaryOperatorExpression.Operation.GREATER_THAN;
+                break;
+            case JavaFileParser.GREATER_THAN_EQUAL_TO:
+                op = BinaryOperatorExpression.Operation.GREATER_THAN_OR_EQUAL_TO;
         }
         return new BinaryOperatorExpression(left, right, op);
-    }
-
-    @Override
-    public UnaryOperatorExpression visitPostfixExpr(JavaFileParser.PostfixExprContext ctx) {
-        UnaryOperatorExpression.Operation op = null;
-        switch (ctx.op.getType()) {
-            case JavaFileParser.INCREMENT:
-                op = UnaryOperatorExpression.Operation.INCREMENT;
-                break;
-            case JavaFileParser.DECREMENT:
-                op = UnaryOperatorExpression.Operation.DECREMENT;
-        }
-        Expression expression = (Expression) visit(ctx.expr());
-        return new UnaryOperatorExpression(expression, op);
     }
 
     @Override
@@ -356,6 +401,29 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         Statement updater = (Statement) visit(ctx.statement(1));
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
         return new ForLoop(initialiser, condition, updater, codeBlock);
+    }
+
+    // TODO: Think about how to handle this
+    // Remember that, normally, a DeclarationAndAssignment is split into two statements.
+    // Really, we want this declaration to be added to the code block belonging to that for loop.
+    @Override
+    public DeclarationAndAssignment visitForLoopDeclareAndAssign(JavaFileParser.ForLoopDeclareAndAssignContext ctx) {
+        return (DeclarationAndAssignment) visit(ctx.variableDeclarationAndAssignment());
+    }
+
+    @Override
+    public Assignment visitForLoopAssignOnly(JavaFileParser.ForLoopAssignOnlyContext ctx) {
+        return (Assignment) visit(ctx.variableAssignment());
+    }
+
+    @Override
+    public Expression visitForLoopCondition(JavaFileParser.ForLoopConditionContext ctx) {
+        return (Expression) visit(ctx.expr());
+    }
+
+    @Override
+    public Expression visitForLoopUpdater(JavaFileParser.ForLoopUpdaterContext ctx) {
+        return (Expression) visit(ctx.expr());
     }
 
     @Override
