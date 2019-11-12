@@ -14,10 +14,10 @@ public class ForLoop extends Statement {
 
     private Statement initialiser;
     private Expression condition;
-    private Statement updater;
+    private Expression updater;
     private CodeBlock codeBlock;
 
-    public ForLoop(Statement initialiser, Expression condition, Statement updater, CodeBlock codeBlock) {
+    public ForLoop(Statement initialiser, Expression condition, Expression updater, CodeBlock codeBlock) {
         this.initialiser = initialiser;
         this.condition = condition;
         this.updater = updater;
@@ -32,7 +32,7 @@ public class ForLoop extends Statement {
         return condition;
     }
 
-    public Statement getUpdater() {
+    public Expression getUpdater() {
         return updater;
     }
 

@@ -108,10 +108,22 @@ whileLoop
     ;
 
 forLoop
-    : FOR LPAREN
-            statement SEMICOLON
-            expr SEMICOLON
-            statement RPAREN codeBlock
+    : FOR LPAREN forLoopInitialiser? SEMICOLON
+      forLoopCondition? SEMICOLON
+      forLoopUpdater? RPAREN codeBlock
+    ;
+
+forLoopInitialiser
+    : variableDeclarationAndAssignment      # ForLoopDeclareAndAssign
+    | variableAssignment                    # ForLoopAssignOnly
+    ;
+
+forLoopCondition
+    : expr
+    ;
+
+forLoopUpdater
+    : expr
     ;
 
 accessModifier

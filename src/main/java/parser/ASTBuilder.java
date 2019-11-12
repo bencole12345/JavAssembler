@@ -396,9 +396,12 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public ForLoop visitForLoop(JavaFileParser.ForLoopContext ctx) {
-        Statement initialiser = (Statement) visit(ctx.statement(0));
-        Expression condition = (Expression) visit(ctx.expr());
-        Statement updater = (Statement) visit(ctx.statement(1));
+        Statement initialiser = (ctx.forLoopInitialiser() != null)
+                ? (Statement) visit(ctx.forLoopInitialiser()) : null;
+        Expression condition = (ctx.forLoopCondition() != null)
+                ? (Expression) visit(ctx.forLoopCondition()) : null;
+        Expression updater = (ctx.forLoopUpdater() != null)
+                ? (Expression) visit(ctx.forLoopUpdater()) : null;
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
         return new ForLoop(initialiser, condition, updater, codeBlock);
     }

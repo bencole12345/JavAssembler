@@ -2,6 +2,7 @@ package ast.structure;
 
 import ast.ASTNode;
 
+// TODO: Investigate making this a straight-up enum
 public class AccessModifier implements ASTNode {
 
     public enum AccessModifierType {
