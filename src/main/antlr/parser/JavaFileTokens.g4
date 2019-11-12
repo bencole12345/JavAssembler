@@ -3,11 +3,6 @@ lexer grammar JavaFileTokens;
 // TODO: Handle comments
 // TODO: Handle string literals
 
-INTEGER: [0-9]+ ;
-SIGNED_INTEGER: INTEGER | MINUS INTEGER ;
-DECIMAL: [0-9] DOT [0-9] ;
-IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]* ;
-
 EQUALS: '=' ;
 PLUS: '+' ;
 MINUS: '-' ;
@@ -66,4 +61,10 @@ BOOLEAN: 'boolean' ;
 FLOAT: 'float' ;
 DOUBLE: 'double' ;
 
-WS: [ \t]+ -> skip ;
+SIGNED_INTEGER: MINUS? INTEGER ;
+INTEGER: [0-9]+ ;
+DECIMAL: [0-9] DOT [0-9] ;
+
+IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]* ;
+
+WS: [ \t\r\n]+ -> skip ;

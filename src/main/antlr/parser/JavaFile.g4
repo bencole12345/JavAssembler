@@ -16,7 +16,7 @@ imports
     ;
 
 classDefinition
-    : visibility=(PUBLIC|PROTECTED)?  // TODO: Change to accessModifier
+    : accessModifier?
             CLASS IDENTIFIER
             LBRACE classItem* RBRACE
     ;
@@ -31,9 +31,9 @@ classAttributeDeclaration
     ;
 
 statement
-    : variableDeclaration SEMICOLON                # DeclarationStatement
+    : variableDeclarationAndAssignment SEMICOLON   # DeclarationAssignmentStatement
     | variableAssignment SEMICOLON                 # AssignmentStatement
-    | variableDeclarationAndAssignment SEMICOLON   # DeclarationAssignmentStatement
+    | variableDeclaration SEMICOLON                # DeclarationStatement
     | RETURN expr SEMICOLON                        # ReturnStatement
     | ifStatement                                  # IfStatementWrap
     | whileLoop                                    # WhileLoopWrap
@@ -43,7 +43,7 @@ statement
     ;
 
 variableDeclaration
-    : type IDENTIFIER SEMICOLON
+    : type IDENTIFIER
     ;
 
 variableAssignment
@@ -55,7 +55,8 @@ variableDeclarationAndAssignment
     ;
 
 expr
-    : functionCall                                  # FunctionCallExpr
+    : value                                         # ValueExpr
+    | functionCall                                  # FunctionCallExpr
     | LPAREN expr RPAREN                            # ParenthesesExpr
     | MINUS expr                                    # NegateExpr
     | expr op=(MULTIPLY|DIVIDE) expr                # InfixExpr
@@ -63,7 +64,6 @@ expr
     | expr op=(INCREMENT|DECREMENT)                 # PostfixExpr
     | expr QUESTION_MARK expr COLON expr SEMICOLON  # BinarySelectorExpr
     | IDENTIFIER                                    # VariableNameExpr
-    | value                                         # ValueExpr
     ;
 
 functionCall
@@ -110,8 +110,8 @@ accessModifier
     ;
 
 type
-    : primitiveType=(INT|SHORT|LONG|BYTE|CHAR|BOOLEAN|FLOAT|DOUBLE)     # PrimitiveType
-    | nonPrimitiveType=IDENTIFIER                                       # NonPrimitiveType
+    : primitiveType=(INT|SHORT|LONG|BYTE|CHAR|BOOLEAN|FLOAT|DOUBLE|VOID)    # PrimitiveType
+    | nonPrimitiveType=IDENTIFIER                                           # NonPrimitiveType
     ;
 
 value

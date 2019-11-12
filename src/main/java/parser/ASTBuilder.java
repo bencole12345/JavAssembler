@@ -32,15 +32,10 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public JavaClass visitClassDefinition(JavaFileParser.ClassDefinitionContext ctx) {
-        AccessModifier visibility = new AccessModifier(AccessModifier.AccessModifierType.DEFAULT);
+        AccessModifier visibility = (ctx.accessModifier() != null)
+                ? (AccessModifier) visit(ctx.accessModifier())
+                : new AccessModifier(AccessModifier.AccessModifierType.DEFAULT);
         // TODO: check that getType() does what you think it does here
-        switch (ctx.visibility.getType()) {
-            case JavaFileParser.PUBLIC:
-                visibility = new AccessModifier(AccessModifier.AccessModifierType.PUBLIC);
-                break;
-            case JavaFileParser.PROTECTED:
-                visibility = new AccessModifier(AccessModifier.AccessModifierType.PROTECTED);
-        }
         String className = ctx.IDENTIFIER().toString();
         VariableDeclarationGroup attributeDeclarations = new VariableDeclarationGroup();
         List<ClassMethod> methods = new ArrayList<>();
@@ -255,6 +250,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             modifier = (AccessModifier) visit(ctx.accessModifier());
         }
         boolean isStatic = ctx.STATIC() != null;
+        // TODO: Investigate this, sometimes it's null (eg for void)
         Type returnType = (Type) visit(ctx.type());
         String methodName = ctx.IDENTIFIER().toString();
         MethodParameterList params = (MethodParameterList) visit(ctx.methodParams());
