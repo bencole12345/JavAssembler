@@ -110,8 +110,9 @@ accessModifier
     ;
 
 type
-    : primitiveType=(INT|SHORT|LONG|BYTE|CHAR|BOOLEAN|FLOAT|DOUBLE|VOID)    # PrimitiveType
-    | nonPrimitiveType=IDENTIFIER                                           # NonPrimitiveType
+    : VOID                                                             # VoidType
+    | primitiveType=(INT|SHORT|LONG|BYTE|CHAR|BOOLEAN|FLOAT|DOUBLE)    # PrimitiveType
+    | nonPrimitiveType=IDENTIFIER                                      # NonPrimitiveType
     ;
 
 value

@@ -6,6 +6,7 @@ import ast.structure.*;
 import ast.types.NonPrimitiveType;
 import ast.types.PrimitiveType;
 import ast.types.Type;
+import ast.types.VoidType;
 
 import java.util.*;
 
@@ -371,6 +372,11 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 modifierType = AccessModifier.AccessModifierType.PROTECTED;
         }
         return new AccessModifier(modifierType);
+    }
+
+    @Override
+    public VoidType visitVoidType(JavaFileParser.VoidTypeContext ctx) {
+        return new VoidType();
     }
 
     @Override
