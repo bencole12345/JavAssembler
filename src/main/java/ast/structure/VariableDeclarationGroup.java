@@ -1,5 +1,7 @@
 package ast.structure;
 
+import ast.statements.VariableDeclaration;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;

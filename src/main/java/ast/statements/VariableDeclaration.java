@@ -1,4 +1,4 @@
-package ast.structure;
+package ast.statements;
 
 import ast.ASTNode;
 import ast.types.Type;

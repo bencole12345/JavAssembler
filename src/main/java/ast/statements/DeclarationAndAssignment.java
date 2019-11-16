@@ -1,4 +1,4 @@
-package ast.structure;
+package ast.statements;
 
 import ast.expressions.Expression;
 import ast.types.Type;

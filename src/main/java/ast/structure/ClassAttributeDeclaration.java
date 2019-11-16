@@ -1,5 +1,6 @@
 package ast.structure;
 
+import ast.statements.VariableDeclaration;
 import ast.types.Type;
 
 public class ClassAttributeDeclaration extends VariableDeclaration {

@@ -2,6 +2,9 @@ package parser;
 
 import ast.ASTNode;
 import ast.expressions.*;
+import ast.operations.BinaryOp;
+import ast.operations.IncrementOp;
+import ast.statements.*;
 import ast.structure.*;
 import ast.types.NonPrimitiveType;
 import ast.types.PrimitiveType;
@@ -134,19 +137,19 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     public Assignment visitVariableAssignment(JavaFileParser.VariableAssignmentContext ctx) {
         String name = ctx.IDENTIFIER().toString();
         Expression expression = (Expression) visit(ctx.expr());
-        BinaryOperatorExpression.Operation bop = null;
+        BinaryOp bop = null;
         switch (ctx.op.getType()) {
             case JavaFileParser.PLUS_EQUALS:
-                bop = BinaryOperatorExpression.Operation.ADD;
+                bop = BinaryOp.ADD;
                 break;
             case JavaFileParser.MINUS_EQUALS:
-                bop = BinaryOperatorExpression.Operation.SUBTRACT;
+                bop = BinaryOp.SUBTRACT;
                 break;
             case JavaFileParser.MULTIPLY_EQUALS:
-                bop = BinaryOperatorExpression.Operation.MULTIPLY;
+                bop = BinaryOp.MULTIPLY;
                 break;
             case JavaFileParser.DIVIDE_EQUALS:
-                bop = BinaryOperatorExpression.Operation.DIVIDE;
+                bop = BinaryOp.DIVIDE;
             // No case for JavaFileParser.EQUALS
         }
         if (bop != null) {
@@ -194,34 +197,34 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     public BinaryOperatorExpression visitInfixExpr(JavaFileParser.InfixExprContext ctx) {
         Expression left = (Expression) visit(ctx.expr(0));
         Expression right = (Expression) visit(ctx.expr(1));
-        BinaryOperatorExpression.Operation op = null;
+        BinaryOp op = null;
         switch (ctx.op.getType()) {
             case JavaFileParser.MULTIPLY:
-                op = BinaryOperatorExpression.Operation.MULTIPLY;
+                op = BinaryOp.MULTIPLY;
                 break;
             case JavaFileParser.DIVIDE:
-                op = BinaryOperatorExpression.Operation.DIVIDE;
+                op = BinaryOp.DIVIDE;
                 break;
             case JavaFileParser.PLUS:
-                op = BinaryOperatorExpression.Operation.ADD;
+                op = BinaryOp.ADD;
                 break;
             case JavaFileParser.MINUS:
-                op = BinaryOperatorExpression.Operation.SUBTRACT;
+                op = BinaryOp.SUBTRACT;
                 break;
             case JavaFileParser.EQUAL_TO:
-                op = BinaryOperatorExpression.Operation.EQUAL_TO;
+                op = BinaryOp.EQUAL_TO;
                 break;
             case JavaFileParser.LESS_THAN:
-                op = BinaryOperatorExpression.Operation.LESS_THAN;
+                op = BinaryOp.LESS_THAN;
                 break;
             case JavaFileParser.LESS_THAN_EQUAL_TO:
-                op = BinaryOperatorExpression.Operation.LESS_THAN_OR_EQUAL_TO;
+                op = BinaryOp.LESS_THAN_OR_EQUAL_TO;
                 break;
             case JavaFileParser.GREATER_THAN:
-                op = BinaryOperatorExpression.Operation.GREATER_THAN;
+                op = BinaryOp.GREATER_THAN;
                 break;
             case JavaFileParser.GREATER_THAN_EQUAL_TO:
-                op = BinaryOperatorExpression.Operation.GREATER_THAN_OR_EQUAL_TO;
+                op = BinaryOp.GREATER_THAN_OR_EQUAL_TO;
         }
         return new BinaryOperatorExpression(left, right, op);
     }
@@ -229,13 +232,13 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     @Override
     public VariableIncrementExpression visitPreIncrementExpr(JavaFileParser.PreIncrementExprContext ctx) {
         String variableName = ctx.IDENTIFIER().toString();
-        VariableIncrementExpression.IncrementType op = null;
+        IncrementOp op = null;
         switch (ctx.op.getType()) {
             case JavaFileParser.INCREMENT:
-                op = VariableIncrementExpression.IncrementType.PRE_INCREMENT;
+                op = IncrementOp.PRE_INCREMENT;
                 break;
             case JavaFileParser.DECREMENT:
-                op = VariableIncrementExpression.IncrementType.PRE_DECREMENT;
+                op = IncrementOp.PRE_DECREMENT;
         }
         VariableNameExpression expression = new VariableNameExpression(variableName);
         return new VariableIncrementExpression(expression, op);
@@ -244,13 +247,13 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     @Override
     public VariableIncrementExpression visitPostIncrementExpr(JavaFileParser.PostIncrementExprContext ctx) {
         String variableName = ctx.IDENTIFIER().toString();
-        VariableIncrementExpression.IncrementType op = null;
+        IncrementOp op = null;
         switch (ctx.op.getType()) {
             case JavaFileParser.INCREMENT:
-                op = VariableIncrementExpression.IncrementType.POST_INCREMENT;
+                op = IncrementOp.POST_INCREMENT;
                 break;
             case JavaFileParser.DECREMENT:
-                op = VariableIncrementExpression.IncrementType.POST_DECREMENT;
+                op = IncrementOp.POST_DECREMENT;
         }
         VariableNameExpression expression = new VariableNameExpression(variableName);
         return new VariableIncrementExpression(expression, op);

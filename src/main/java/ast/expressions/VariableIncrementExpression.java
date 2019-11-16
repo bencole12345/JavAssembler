@@ -1,29 +1,23 @@
 package ast.expressions;
 
-import ast.structure.Statement;
+import ast.operations.IncrementOp;
+import ast.statements.Statement;
 
 public class VariableIncrementExpression implements Expression, Statement {
 
-    public enum IncrementType {
-        PRE_INCREMENT,
-        PRE_DECREMENT,
-        POST_INCREMENT,
-        POST_DECREMENT
-    }
-
     private VariableNameExpression variableNameExpression;
-    private IncrementType incrementType;
+    private IncrementOp incrementOp;
 
-    public VariableIncrementExpression(VariableNameExpression variableNameExpression, IncrementType incrementType) {
+    public VariableIncrementExpression(VariableNameExpression variableNameExpression, IncrementOp incrementOp) {
         this.variableNameExpression = variableNameExpression;
-        this.incrementType = incrementType;
+        this.incrementOp = incrementOp;
     }
 
     public VariableNameExpression getVariableNameExpression() {
         return variableNameExpression;
     }
 
-    public IncrementType getIncrementType() {
-        return incrementType;
+    public IncrementOp getIncrementOp() {
+        return incrementOp;
     }
 }

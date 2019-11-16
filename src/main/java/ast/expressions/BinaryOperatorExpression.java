@@ -1,24 +1,14 @@
 package ast.expressions;
 
-public class BinaryOperatorExpression implements Expression {
+import ast.operations.BinaryOp;
 
-    public enum Operation {
-        ADD,
-        SUBTRACT,
-        MULTIPLY,
-        DIVIDE,
-        EQUAL_TO,
-        LESS_THAN,
-        LESS_THAN_OR_EQUAL_TO,
-        GREATER_THAN,
-        GREATER_THAN_OR_EQUAL_TO
-    }
+public class BinaryOperatorExpression implements Expression {
 
     private Expression left;
     private Expression right;
-    private Operation op;
+    private BinaryOp op;
 
-    public BinaryOperatorExpression(Expression left, Expression right, Operation op) {
+    public BinaryOperatorExpression(Expression left, Expression right, BinaryOp op) {
         this.left = left;
         this.right = right;
         this.op = op;
@@ -32,7 +22,7 @@ public class BinaryOperatorExpression implements Expression {
         return right;
     }
 
-    public Operation getOp() {
+    public BinaryOp getOp() {
         return op;
     }
 }

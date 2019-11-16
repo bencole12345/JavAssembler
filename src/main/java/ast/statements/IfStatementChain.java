@@ -1,6 +1,7 @@
-package ast.structure;
+package ast.statements;
 
 import ast.expressions.Expression;
+import ast.structure.CodeBlock;
 
 import java.util.List;
 

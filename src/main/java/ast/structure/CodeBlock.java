@@ -1,6 +1,7 @@
 package ast.structure;
 
 import ast.ASTNode;
+import ast.statements.Statement;
 import ast.types.Type;
 
 import java.util.List;
