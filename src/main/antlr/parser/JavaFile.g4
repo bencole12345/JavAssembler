@@ -98,7 +98,7 @@ codeBlock
     ;
 
 ifStatement
-    : IF LPAREN expr LPAREN codeBlock ELSE ifStatement   # IfElseIf
+    : IF LPAREN expr RPAREN codeBlock ELSE ifStatement   # IfElseIf
     | IF LPAREN expr RPAREN codeBlock ELSE codeBlock     # IfElse
     | IF LPAREN expr RPAREN codeBlock                    # If
     ;

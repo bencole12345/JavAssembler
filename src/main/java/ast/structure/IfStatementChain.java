@@ -1,6 +1,5 @@
 package ast.structure;
 
-import ast.ASTNode;
 import ast.expressions.Expression;
 
 import java.util.List;
@@ -10,7 +9,7 @@ import java.util.List;
  *
  * Optionally includes an extra else block without a condition.
  */
-public class IfStatementChain implements ASTNode {
+public class IfStatementChain extends Statement {
 
     /**
      * The ith condition expression should be the Boolean expression for the ith code block.
