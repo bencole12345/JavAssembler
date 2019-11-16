@@ -2,7 +2,7 @@ package ast.expressions;
 
 import java.util.List;
 
-public class ExpressionList extends Expression {
+public class ExpressionList implements Expression {
 
     private List<Expression> expressionList;
 

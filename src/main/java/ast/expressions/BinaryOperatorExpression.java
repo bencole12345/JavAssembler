@@ -1,6 +1,6 @@
 package ast.expressions;
 
-public class BinaryOperatorExpression extends Expression {
+public class BinaryOperatorExpression implements Expression {
 
     public enum Operation {
         ADD,

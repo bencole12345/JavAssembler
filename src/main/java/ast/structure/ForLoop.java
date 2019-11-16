@@ -2,7 +2,7 @@ package ast.structure;
 
 import ast.expressions.Expression;
 
-public class ForLoop extends Statement {
+public class ForLoop implements Statement {
 
     // TODO: Consider very carefully how to handle scoping with regards to the loop variable
     // Eg if we have

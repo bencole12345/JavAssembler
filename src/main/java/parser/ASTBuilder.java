@@ -180,34 +180,14 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public UnaryOperatorExpression visitUnaryPostfixExpr(JavaFileParser.UnaryPostfixExprContext ctx) {
+    public NegateExpression visitNegateExpr(JavaFileParser.NegateExprContext ctx) {
         Expression expression = (Expression) visit(ctx.expr());
-        UnaryOperatorExpression.Operation op = null;
-        switch (ctx.op.getType()) {
-            case JavaFileParser.INCREMENT:
-                op = UnaryOperatorExpression.Operation.POST_INCREMENT;
-                break;
-            case JavaFileParser.DECREMENT:
-                op = UnaryOperatorExpression.Operation.POST_DECREMENT;
-        }
-        return new UnaryOperatorExpression(expression, op);
+        return new NegateExpression(expression);
     }
 
     @Override
-    public UnaryOperatorExpression visitUnaryPrefixExpr(JavaFileParser.UnaryPrefixExprContext ctx) {
-        Expression expression = (Expression) visit(ctx.expr());
-        UnaryOperatorExpression.Operation op = null;
-        switch (ctx.op.getType()) {
-            case JavaFileParser.MINUS:
-                op = UnaryOperatorExpression.Operation.NEGATE;
-                break;
-            case JavaFileParser.INCREMENT:
-                op = UnaryOperatorExpression.Operation.PRE_INCREMENT;
-                break;
-            case JavaFileParser.DECREMENT:
-                op = UnaryOperatorExpression.Operation.PRE_DECREMENT;
-        }
-        return new UnaryOperatorExpression(expression, op);
+    public ASTNode visitIncrementExpr(JavaFileParser.IncrementExprContext ctx) {
+        return super.visitIncrementExpr(ctx);
     }
 
     @Override
@@ -244,6 +224,36 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 op = BinaryOperatorExpression.Operation.GREATER_THAN_OR_EQUAL_TO;
         }
         return new BinaryOperatorExpression(left, right, op);
+    }
+
+    @Override
+    public VariableIncrementExpression visitPreIncrementExpr(JavaFileParser.PreIncrementExprContext ctx) {
+        String variableName = ctx.IDENTIFIER().toString();
+        VariableIncrementExpression.IncrementType op = null;
+        switch (ctx.op.getType()) {
+            case JavaFileParser.INCREMENT:
+                op = VariableIncrementExpression.IncrementType.PRE_INCREMENT;
+                break;
+            case JavaFileParser.DECREMENT:
+                op = VariableIncrementExpression.IncrementType.PRE_DECREMENT;
+        }
+        VariableNameExpression expression = new VariableNameExpression(variableName);
+        return new VariableIncrementExpression(expression, op);
+    }
+
+    @Override
+    public VariableIncrementExpression visitPostIncrementExpr(JavaFileParser.PostIncrementExprContext ctx) {
+        String variableName = ctx.IDENTIFIER().toString();
+        VariableIncrementExpression.IncrementType op = null;
+        switch (ctx.op.getType()) {
+            case JavaFileParser.INCREMENT:
+                op = VariableIncrementExpression.IncrementType.POST_INCREMENT;
+                break;
+            case JavaFileParser.DECREMENT:
+                op = VariableIncrementExpression.IncrementType.POST_DECREMENT;
+        }
+        VariableNameExpression expression = new VariableNameExpression(variableName);
+        return new VariableIncrementExpression(expression, op);
     }
 
     @Override

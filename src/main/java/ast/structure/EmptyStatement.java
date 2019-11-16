@@ -1,3 +1,3 @@
 package ast.structure;
 
-public class EmptyStatement extends Statement {}
+public class EmptyStatement implements Statement {}

@@ -2,7 +2,7 @@ package ast.expressions;
 
 import java.util.List;
 
-public class FunctionCall extends Expression {
+public class FunctionCall implements Expression {
 
     /**
      * Don't forget that a function call can occur on its own:

@@ -3,7 +3,7 @@ package ast.expressions;
 /**
  * This is one of the 'base case' expressions, denoting a variable name.
  */
-public class VariableNameExpression extends Expression {
+public class VariableNameExpression implements Expression {
 
     private String variableName;
 

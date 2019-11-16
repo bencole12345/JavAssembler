@@ -2,7 +2,7 @@ package ast.structure;
 
 import ast.expressions.Expression;
 
-public class WhileLoop extends Statement {
+public class WhileLoop implements Statement {
 
     private Expression condition;
     private CodeBlock codeBlock;

@@ -2,7 +2,7 @@ package ast.structure;
 
 import ast.expressions.Expression;
 
-public class Assignment extends Statement {
+public class Assignment implements Statement {
 
     private String variableName;
     private Expression expression;

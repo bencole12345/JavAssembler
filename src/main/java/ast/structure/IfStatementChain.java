@@ -9,7 +9,7 @@ import java.util.List;
  *
  * Optionally includes an extra else block without a condition.
  */
-public class IfStatementChain extends Statement {
+public class IfStatementChain implements Statement {
 
     /**
      * The ith condition expression should be the Boolean expression for the ith code block.

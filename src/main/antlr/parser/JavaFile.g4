@@ -35,6 +35,7 @@ statement
     | variableAssignment SEMICOLON                 # AssignmentStatement
     | variableDeclaration SEMICOLON                # DeclarationStatement
     | RETURN expr SEMICOLON                        # ReturnStatement
+    | variableIncrementExpr                        # VariableIncrementStatement
     | ifStatement                                  # IfStatementWrap
     | whileLoop                                    # WhileLoopWrap
     | forLoop                                      # ForLoopWrap
@@ -62,8 +63,8 @@ expr
     : value                                         # ValueExpr
     | functionCall                                  # FunctionCallExpr
     | LPAREN expr RPAREN                            # ParenthesesExpr
-    | op=(MINUS|INCREMENT|DECREMENT) expr           # UnaryPrefixExpr
-    | expr op=(INCREMENT|DECREMENT)                 # UnaryPostfixExpr
+    | MINUS expr                                    # NegateExpr
+    | variableIncrementExpr                         # IncrementExpr
     | expr op=(MULTIPLY|DIVIDE) expr                # InfixExpr
     | expr op=(PLUS|MINUS) expr                     # InfixExpr
     | expr op=(EQUAL_TO
@@ -73,6 +74,11 @@ expr
                 | GREATER_THAN_EQUAL_TO) expr       # InfixExpr
     | expr QUESTION_MARK expr COLON expr SEMICOLON  # BinarySelectorExpr
     | IDENTIFIER                                    # VariableNameExpr
+    ;
+
+variableIncrementExpr
+    : op=(INCREMENT|DECREMENT) IDENTIFIER           # PreIncrementExpr
+    | IDENTIFIER op=(INCREMENT|DECREMENT)           # PostIncrementExpr
     ;
 
 functionCall

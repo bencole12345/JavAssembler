@@ -9,7 +9,6 @@ public class JavAssembler {
         if (args.length == 1) {
             String path = args[0];
             CompilationUnit unit = ParserWrapper.parseFile(path);
-            int x = 1;
         }
     }
 

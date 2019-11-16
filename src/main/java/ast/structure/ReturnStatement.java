@@ -2,7 +2,7 @@ package ast.structure;
 
 import ast.expressions.Expression;
 
-public class ReturnStatement extends Statement {
+public class ReturnStatement implements Statement {
 
     private Expression expression;
 

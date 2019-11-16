@@ -3,7 +3,7 @@ package ast.structure;
 import ast.expressions.Expression;
 import ast.types.Type;
 
-public class DeclarationAndAssignment extends Statement {
+public class DeclarationAndAssignment implements Statement {
 
     private Type type;
     private String variableName;

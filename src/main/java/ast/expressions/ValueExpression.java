@@ -1,3 +1,3 @@
 package ast.expressions;
 
-public abstract class ValueExpression extends Expression {}
+public abstract class ValueExpression implements Expression {}

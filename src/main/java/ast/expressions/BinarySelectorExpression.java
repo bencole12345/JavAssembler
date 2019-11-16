@@ -6,7 +6,7 @@ package ast.expressions;
  * (That's one of the form
  *      cond ? e1 : e2)
  */
-public class BinarySelectorExpression extends Expression {
+public class BinarySelectorExpression implements Expression {
 
     private Expression condition;
     private Expression trueExpression;
