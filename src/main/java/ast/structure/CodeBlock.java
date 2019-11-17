@@ -2,28 +2,21 @@ package ast.structure;
 
 import ast.ASTNode;
 import ast.statements.Statement;
-import ast.types.Type;
 
 import java.util.List;
-import java.util.Map;
 
 public class CodeBlock implements ASTNode {
 
-    public static class VariableDeclarationPlaceholder {}
+    private VariableScope variableScope;
+    private List<Statement> statements;
 
-    // TODO: Figure out how to handle this - should it be done while building the AST?
-    private CodeBlock enclosingBlock;
-
-    private Map<String, Type> variableDeclarations;
-    private List<Statement> statements;  // Note: an if statement will be counted as a single statement
-
-    public CodeBlock(Map<String, Type> variableDeclarations, List<Statement> statements) {
-        this.variableDeclarations = variableDeclarations;
+    public CodeBlock(VariableScope variableScope, List<Statement> statements) {
         this.statements = statements;
+        this.variableScope = variableScope;
     }
 
-    public Map<String, Type> getVariableDeclarations() {
-        return variableDeclarations;
+    public VariableScope getVariableScope() {
+        return variableScope;
     }
 
     public List<Statement> getStatements() {

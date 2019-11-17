@@ -15,8 +15,11 @@ import java.util.*;
 
 public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
+    private Stack<VariableScope> variableScopeStack;
+
     @Override
     public CompilationUnit visitFile(JavaFileParser.FileContext ctx) {
+        variableScopeStack = new Stack<>();
         Imports imports = (Imports) visit(ctx.imports());
         JavaClass javaClass = (JavaClass) visit(ctx.classDefinition());
         // TODO: Support package name
@@ -36,29 +39,40 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public JavaClass visitClassDefinition(JavaFileParser.ClassDefinitionContext ctx) {
+
+        // Read the visibility status and class name
         AccessModifier visibility = (ctx.accessModifier() != null)
                 ? (AccessModifier) visit(ctx.accessModifier())
                 : new AccessModifier(AccessModifier.AccessModifierType.DEFAULT);
-        // TODO: check that getType() does what you think it does here
         String className = ctx.IDENTIFIER().toString();
-        VariableDeclarationGroup attributeDeclarations = new VariableDeclarationGroup();
+
+        // Set up a variable scope for this class
+        // (intentionally using the constructor that doesn't have a containingScope reference
+        VariableScope classScope = new VariableScope();
+        variableScopeStack.push(classScope);
+
+        // Handle each method definition and attribute declaration
         List<ClassMethod> methods = new ArrayList<>();
         for (JavaFileParser.ClassItemContext classItem : ctx.classItem()) {
             ASTNode node = visit(classItem);
             if (node instanceof ClassAttributeDeclaration) {
-                try {
-                    ClassAttributeDeclaration declaration = (ClassAttributeDeclaration) node;
-                    attributeDeclarations.addDeclaration(declaration);
-                } catch (VariableDeclarationGroup.MultipleDeclarationsException e) {
-                    // TODO: Handle multiple declarations of same variable name
-                }
+                ClassAttributeDeclaration declaration = (ClassAttributeDeclaration) node;
+                classScope.registerVariable(declaration.getVariableName(), declaration.getVariableType());
+                String variableName = declaration.getVariableName();
+                Type type = declaration.getVariableType();
+                // TODO: Handle multiple declarations with same name
+                classScope.registerVariable(variableName, type);
             } else if (node instanceof ClassMethod) {
                 // TODO: Ensure no duplicate definitions for same name/signature
                 ClassMethod method = (ClassMethod) node;
                 methods.add(method);
             }
         }
-        return new JavaClass(visibility, className, attributeDeclarations, methods);
+
+        // Pop the scope for this class from the stack
+        variableScopeStack.pop();
+
+        return new JavaClass(visibility, className, classScope, methods);
     }
 
     @Override
@@ -82,16 +96,10 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     @Override
     public VariableDeclaration visitDeclarationStatement(JavaFileParser.DeclarationStatementContext ctx) {
         return (VariableDeclaration) visit(ctx.variableDeclaration());
-//        Type type = (Type) visit(ctx.type());
-//        String variableName = ctx.IDENTIFIER().toString();
-//        return new VariableDeclaration(type, variableName);
     }
 
     @Override
     public Assignment visitAssignmentStatement(JavaFileParser.AssignmentStatementContext ctx) {
-//        String variableName = ctx.IDENTIFIER().toString();
-//        Expression expression = (Expression) visit(ctx.expr());
-//        return new Assignment(variableName, expression);
         return (Assignment) visit(ctx.variableAssignment());
     }
 
@@ -338,34 +346,35 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public CodeBlock visitStatementList(JavaFileParser.StatementListContext ctx) {
-        Map<String, Type> declarations = new HashMap<>();
+
+        // Create a new scope for this code block and push it to the stack
+        VariableScope containingScope = variableScopeStack.peek();
+        VariableScope variableScope = new VariableScope(containingScope);
+        variableScopeStack.push(variableScope);
+
+        // Recursively visit each statement in this code block
         List<Statement> statements = new ArrayList<>();
         for (JavaFileParser.StatementContext statementCtx : ctx.statement()) {
             ASTNode statementNode = visit(statementCtx);
             if (statementNode instanceof VariableDeclaration) {
                 VariableDeclaration declaration = (VariableDeclaration) statementNode;
-                if (declarations.containsKey(declaration.getVariableName())) {
-                    // TODO: We already have a declaration for this variable in
-                    // this scope, so the compiler should reject the file with a
-                    // semantic error.
-                    // Possibly throw an exception?
-                    // Throwing exceptions in a visitor class looks like it could
-                    // be a nightmare because the method we are overriding doesn't
-                    // throw any exceptions. Hmmmm
-                }
                 String name = declaration.getVariableName();
                 Type type = declaration.getVariableType();
-                declarations.put(name, type);
+                variableScope.registerVariable(name, type);
             } else if (statementNode instanceof DeclarationAndAssignment) {
                 DeclarationAndAssignment combined = (DeclarationAndAssignment) statementNode;
-                declarations.put(combined.getVariableName(), combined.getType());
+                variableScope.registerVariable(combined.getVariableName(), combined.getType());
                 Assignment assignment = new Assignment(combined.getVariableName(), combined.getExpression());
                 statements.add(assignment);
             } else if (!(statementNode instanceof EmptyStatement)) {
                 statements.add((Statement) statementNode);
             }
         }
-        return new CodeBlock(declarations, statements);
+
+        // Remove the scope from the stack since we are done with this block
+        variableScopeStack.pop();
+
+        return new CodeBlock(variableScope, statements);
     }
 
     @Override

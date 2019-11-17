@@ -10,13 +10,13 @@ public class JavaClass implements ASTNode {
 
     private AccessModifier visibility;
     private String name;
-    private VariableDeclarationGroup declarations;
+    private VariableScope variableScope;
     private List<ClassMethod> methods;
 
-    public JavaClass(AccessModifier visibility, String name, VariableDeclarationGroup declarations, List<ClassMethod> methods) {
+    public JavaClass(AccessModifier visibility, String name, VariableScope variableScope, List<ClassMethod> methods) {
         this.visibility = visibility;
         this.name = name;
-        this.declarations = declarations;
+        this.variableScope = variableScope;
         this.methods = methods;
     }
 
@@ -28,12 +28,11 @@ public class JavaClass implements ASTNode {
         return name;
     }
 
-    public VariableDeclarationGroup getDeclarations() {
-        return declarations;
+    public VariableScope getVariableScope() {
+        return variableScope;
     }
 
     public List<ClassMethod> getMethods() {
         return methods;
     }
-
 }
