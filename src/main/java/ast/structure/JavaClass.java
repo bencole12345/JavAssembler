@@ -1,6 +1,7 @@
 package ast.structure;
 
 import ast.ASTNode;
+import ast.types.AccessModifier;
 
 import java.util.List;
 

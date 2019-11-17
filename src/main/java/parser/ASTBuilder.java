@@ -6,10 +6,7 @@ import ast.operations.BinaryOp;
 import ast.operations.IncrementOp;
 import ast.statements.*;
 import ast.structure.*;
-import ast.types.NonPrimitiveType;
-import ast.types.PrimitiveType;
-import ast.types.Type;
-import ast.types.VoidType;
+import ast.types.*;
 
 import java.util.*;
 
@@ -43,7 +40,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         // Read the visibility status and class name
         AccessModifier visibility = (ctx.accessModifier() != null)
                 ? (AccessModifier) visit(ctx.accessModifier())
-                : new AccessModifier(AccessModifier.AccessModifierType.DEFAULT);
+                : AccessModifier.DEFAULT;
         String className = ctx.IDENTIFIER().toString();
 
         // Set up a variable scope for this class
@@ -311,11 +308,9 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public ClassMethod visitMethodDefinition(JavaFileParser.MethodDefinitionContext ctx) {
-        // TODO: Check that the thing is indeed null if it's not present for an optional term
-        AccessModifier modifier = new AccessModifier(AccessModifier.AccessModifierType.DEFAULT);
-        if (ctx.accessModifier() != null) {
-            modifier = (AccessModifier) visit(ctx.accessModifier());
-        }
+        AccessModifier modifier = (ctx.accessModifier() != null)
+                ? (AccessModifier) visit(ctx.accessModifier())
+                : AccessModifier.DEFAULT;
         boolean isStatic = ctx.STATIC() != null;
         // TODO: Investigate this, sometimes it's null (eg for void)
         Type returnType = (Type) visit(ctx.type());
@@ -453,18 +448,18 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public AccessModifier visitAccessModifier(JavaFileParser.AccessModifierContext ctx) {
-        AccessModifier.AccessModifierType modifierType = AccessModifier.AccessModifierType.DEFAULT;
+        AccessModifier modifier = AccessModifier.DEFAULT;
         switch (ctx.modifier.getType()) {
             case JavaFileParser.PUBLIC:
-                modifierType = AccessModifier.AccessModifierType.PUBLIC;
+                modifier = AccessModifier.PUBLIC;
                 break;
             case JavaFileParser.PRIVATE:
-                modifierType = AccessModifier.AccessModifierType.PRIVATE;
+                modifier = AccessModifier.PRIVATE;
                 break;
             case JavaFileParser.PROTECTED:
-                modifierType = AccessModifier.AccessModifierType.PROTECTED;
+                modifier = AccessModifier.PROTECTED;
         }
-        return new AccessModifier(modifierType);
+        return modifier;
     }
 
     @Override
