@@ -54,14 +54,14 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             ASTNode node = visit(classItem);
             if (node instanceof ClassAttributeDeclaration) {
                 ClassAttributeDeclaration declaration = (ClassAttributeDeclaration) node;
-                classScope.registerVariable(declaration.getVariableName(), declaration.getVariableType());
                 String variableName = declaration.getVariableName();
                 Type type = declaration.getVariableType();
-                // TODO: Handle multiple declarations with same name
-                classScope.registerVariable(variableName, type);
+                VariableScope.Domain domain = VariableScope.Domain.StaticClassAttribute;
+                classScope.registerVariable(variableName, type, domain);
             } else if (node instanceof ClassMethod) {
                 // TODO: Ensure no duplicate definitions for same name/signature
                 ClassMethod method = (ClassMethod) node;
+                method.bindContainingVariableScope(classScope);
                 methods.add(method);
             }
         }
@@ -355,11 +355,15 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 VariableDeclaration declaration = (VariableDeclaration) statementNode;
                 String name = declaration.getVariableName();
                 Type type = declaration.getVariableType();
-                variableScope.registerVariable(name, type);
+                VariableScope.Domain domain = VariableScope.Domain.Local;
+                variableScope.registerVariable(name, type, domain);
             } else if (statementNode instanceof DeclarationAndAssignment) {
                 DeclarationAndAssignment combined = (DeclarationAndAssignment) statementNode;
-                variableScope.registerVariable(combined.getVariableName(), combined.getType());
-                Assignment assignment = new Assignment(combined.getVariableName(), combined.getExpression());
+                String name = combined.getVariableName();
+                Type type = combined.getType();
+                VariableScope.Domain domain = VariableScope.Domain.Local;
+                variableScope.registerVariable(name, type, domain);
+                Assignment assignment = new Assignment(name, combined.getExpression());
                 statements.add(assignment);
             } else if (!(statementNode instanceof EmptyStatement)) {
                 statements.add((Statement) statementNode);

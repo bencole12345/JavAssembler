@@ -22,4 +22,13 @@ public class CodeBlock implements ASTNode {
     public List<Statement> getStatements() {
         return statements;
     }
+
+    /**
+     * Sets the VariableScope that contains this code block.
+     *
+     * @param containingScope The new VariableScope to contain this code block
+     */
+    public void bindContainingVariableScope(VariableScope containingScope) {
+        variableScope.bindContainingScope(variableScope);
+    }
 }

@@ -22,6 +22,12 @@ public class ClassMethod implements ASTNode {
         this.name = name;
         this.params = params;
         this.body = body;
+
+        for (MethodParameter param : params) {
+            String paramName = param.getParameterName();
+            Type type = param.getType();
+            body.getVariableScope().registerVariable(paramName, type, VariableScope.Domain.Parameter);
+        }
     }
 
     public AccessModifier getAccessModifier() {
@@ -46,5 +52,14 @@ public class ClassMethod implements ASTNode {
 
     public CodeBlock getBody() {
         return body;
+    }
+
+    /**
+     * Sets the VariableScope that contains this code block.
+     *
+     * @param containingScope The new VariableScope to contain this code block
+     */
+    public void bindContainingVariableScope(VariableScope containingScope) {
+        body.bindContainingVariableScope(containingScope);
     }
 }
