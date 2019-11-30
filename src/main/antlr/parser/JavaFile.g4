@@ -68,6 +68,7 @@ expr
     | expr op=(MULTIPLY|DIVIDE) expr                # InfixExpr
     | expr op=(PLUS|MINUS) expr                     # InfixExpr
     | expr op=(EQUAL_TO
+                | NOT_EQUAL_TO
                 | LESS_THAN
                 | LESS_THAN_EQUAL_TO
                 | GREATER_THAN

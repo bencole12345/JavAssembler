@@ -222,6 +222,9 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             case JavaFileParser.EQUAL_TO:
                 op = BinaryOp.EQUAL_TO;
                 break;
+            case JavaFileParser.NOT_EQUAL_TO:
+                op = BinaryOp.NOT_EQUAL_TO;
+                break;
             case JavaFileParser.LESS_THAN:
                 op = BinaryOp.LESS_THAN;
                 break;

@@ -7,6 +7,7 @@ public enum BinaryOp {
     MULTIPLY(OpType.Combiner),
     DIVIDE(OpType.Combiner),
     EQUAL_TO(OpType.Boolean),
+    NOT_EQUAL_TO(OpType.Boolean),
     LESS_THAN(OpType.Boolean),
     LESS_THAN_OR_EQUAL_TO(OpType.Boolean),
     GREATER_THAN(OpType.Boolean),
