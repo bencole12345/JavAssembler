@@ -1,6 +1,6 @@
 package ast.literals;
 
-public class ByteLiteral implements ValueExpression {
+public class ByteLiteral implements LiteralValue {
 
     private byte value;
 

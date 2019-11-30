@@ -4,7 +4,7 @@ import ast.ASTNode;
 import ast.expressions.*;
 import ast.literals.DoubleLiteral;
 import ast.literals.IntLiteral;
-import ast.literals.ValueExpression;
+import ast.literals.LiteralValue;
 import ast.operations.BinaryOp;
 import ast.operations.IncrementOp;
 import ast.statements.*;
@@ -282,8 +282,8 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public ValueExpression visitValueExpr(JavaFileParser.ValueExprContext ctx) {
-        return (ValueExpression) visit(ctx.value());
+    public LiteralValue visitValueExpr(JavaFileParser.ValueExprContext ctx) {
+        return (LiteralValue) visit(ctx.value());
     }
 
     @Override

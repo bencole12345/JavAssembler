@@ -1,6 +1,6 @@
 package ast.literals;
 
-public class DoubleLiteral implements ValueExpression {
+public class DoubleLiteral implements LiteralValue {
 
     private double value;
 

@@ -1,6 +1,6 @@
 package ast.literals;
 
-public class BooleanLiteral implements ValueExpression {
+public class BooleanLiteral implements LiteralValue {
 
     private boolean value;
 

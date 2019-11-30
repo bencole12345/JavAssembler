@@ -1,6 +1,6 @@
 package ast.literals;
 
-public class FloatLiteral implements ValueExpression {
+public class FloatLiteral implements LiteralValue {
 
     private float value;
 

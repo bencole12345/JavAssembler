@@ -1,6 +1,6 @@
 package ast.literals;
 
-public class CharLiteral implements ValueExpression {
+public class CharLiteral implements LiteralValue {
 
     private char value;
 
