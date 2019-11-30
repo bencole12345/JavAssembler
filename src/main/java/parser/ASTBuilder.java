@@ -2,6 +2,9 @@ package parser;
 
 import ast.ASTNode;
 import ast.expressions.*;
+import ast.literals.DoubleLiteral;
+import ast.literals.IntLiteral;
+import ast.literals.ValueExpression;
 import ast.operations.BinaryOp;
 import ast.operations.IncrementOp;
 import ast.statements.*;
@@ -509,14 +512,14 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public IntegerLiteral visitSignedIntegerValue(JavaFileParser.SignedIntegerValueContext ctx) {
+    public IntLiteral visitSignedIntegerValue(JavaFileParser.SignedIntegerValueContext ctx) {
         int value = Integer.parseInt(ctx.SIGNED_INTEGER().toString());
-        return new IntegerLiteral(value);
+        return new IntLiteral(value);
     }
 
     @Override
     public ASTNode visitDecimalValue(JavaFileParser.DecimalValueContext ctx) {
         double value = Double.parseDouble(ctx.DECIMAL().toString());
-        return new DecimalLiteral(value);
+        return new DoubleLiteral(value);
     }
 }

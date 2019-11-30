@@ -1,10 +1,10 @@
-package ast.expressions;
+package ast.literals;
 
-public class DecimalLiteral extends ValueExpression {
+public class DoubleLiteral implements ValueExpression {
 
     private double value;
 
-    public DecimalLiteral(double value) {
+    public DoubleLiteral(double value) {
         this.value = value;
     }
 

@@ -1,10 +1,10 @@
-package ast.expressions;
+package ast.literals;
 
-public class IntegerLiteral extends ValueExpression {
+public class IntLiteral implements ValueExpression {
 
     private int value;
 
-    public IntegerLiteral(int value) {
+    public IntLiteral(int value) {
         this.value = value;
     }
 
