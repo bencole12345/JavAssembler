@@ -387,8 +387,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         Expression condition = (Expression) visit(ctx.expr());
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
         IfStatementChain nextStatement = (IfStatementChain) visit(ctx.ifStatement());
-        nextStatement.prependBlock(condition, codeBlock);
-        return nextStatement;
+        return new IfStatementChain(condition, codeBlock, nextStatement);
     }
 
     @Override
@@ -396,22 +395,14 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         Expression condition = (Expression) visit(ctx.expr());
         CodeBlock ifBlock = (CodeBlock) visit(ctx.codeBlock(0));
         CodeBlock elseBlock = (CodeBlock) visit(ctx.codeBlock(1));
-        List<Expression> conditions = new ArrayList<>();
-        conditions.add(condition);
-        List<CodeBlock> codeBlocks = new ArrayList<>();
-        codeBlocks.add(ifBlock);
-        return new IfStatementChain(conditions, codeBlocks, elseBlock);
+        return new IfStatementChain(condition, ifBlock, elseBlock);
     }
 
     @Override
     public IfStatementChain visitIf(JavaFileParser.IfContext ctx) {
         Expression condition = (Expression) visit(ctx.expr());
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
-        List<Expression> conditions = new ArrayList<>();
-        conditions.add(condition);
-        List<CodeBlock> codeBlocks = new ArrayList<>();
-        codeBlocks.add(codeBlock);
-        return new IfStatementChain(conditions, codeBlocks);
+        return new IfStatementChain(condition, codeBlock);
     }
 
     @Override
