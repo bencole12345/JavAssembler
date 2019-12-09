@@ -48,8 +48,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
         // Set up a variable scope for this class
         // (intentionally using the constructor that doesn't have a containingScope reference
-        VariableScope classScope = new VariableScope();
-        variableScopeStack.push(classScope);
+        VariableScope classScope = pushNewVariableScope();
 
         // Handle each method definition and attribute declaration
         List<ClassMethod> methods = new ArrayList<>();
@@ -59,18 +58,17 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 ClassAttributeDeclaration declaration = (ClassAttributeDeclaration) node;
                 String variableName = declaration.getVariableName();
                 Type type = declaration.getVariableType();
-                VariableScope.Domain domain = VariableScope.Domain.StaticClassAttribute;
-                classScope.registerVariable(variableName, type, domain);
+                // TODO: Implement static class attributes
+                classScope.registerVariable(variableName, type);
             } else if (node instanceof ClassMethod) {
                 // TODO: Ensure no duplicate definitions for same name/signature
                 ClassMethod method = (ClassMethod) node;
-                method.bindContainingVariableScope(classScope);
                 methods.add(method);
             }
         }
 
         // Pop the scope for this class from the stack
-        variableScopeStack.pop();
+        popVariableScope();
 
         return new JavaClass(visibility, className, classScope, methods);
     }
@@ -323,7 +321,21 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         String methodName = ctx.IDENTIFIER().toString();
         MethodParameterList params = (MethodParameterList) visit(ctx.methodParams());
         List<MethodParameter> paramsList = params.getParameters();
+
+        // Create a new variable scope object on the stack for
+        // containing the list of method parameters
+        VariableScope scopeForParameters = pushNewVariableScope();
+        for (MethodParameter param : paramsList) {
+            String name = param.getParameterName();
+            Type type = param.getType();
+            scopeForParameters.registerVariable(name, type);
+        }
+
+        // Now visit the body of the method
         CodeBlock body = (CodeBlock) visit(ctx.codeBlock());
+
+        // Pop the scope that was created to contain the parameters
+        popVariableScope();
         return new ClassMethod(modifier, isStatic, returnType, methodName, paramsList, body);
     }
 
@@ -349,9 +361,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     public CodeBlock visitStatementList(JavaFileParser.StatementListContext ctx) {
 
         // Create a new scope for this code block and push it to the stack
-        VariableScope containingScope = variableScopeStack.peek();
-        VariableScope variableScope = new VariableScope(containingScope);
-        variableScopeStack.push(variableScope);
+        VariableScope innerScope = pushNewVariableScope();
 
         // Recursively visit each statement in this code block
         List<Statement> statements = new ArrayList<>();
@@ -361,14 +371,12 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 VariableDeclaration declaration = (VariableDeclaration) statementNode;
                 String name = declaration.getVariableName();
                 Type type = declaration.getVariableType();
-                VariableScope.Domain domain = VariableScope.Domain.Local;
-                variableScope.registerVariable(name, type, domain);
+                innerScope.registerVariable(name, type);
             } else if (statementNode instanceof DeclarationAndAssignment) {
                 DeclarationAndAssignment combined = (DeclarationAndAssignment) statementNode;
                 String name = combined.getVariableName();
                 Type type = combined.getType();
-                VariableScope.Domain domain = VariableScope.Domain.Local;
-                variableScope.registerVariable(name, type, domain);
+                innerScope.registerVariable(name, type);
                 Assignment assignment = new Assignment(name, combined.getExpression());
                 statements.add(assignment);
             } else if (!(statementNode instanceof EmptyStatement)) {
@@ -376,10 +384,10 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             }
         }
 
-        // Remove the scope from the stack since we are done with this block
-        variableScopeStack.pop();
+        // Remove the inner scope from the stack since we are done with this block
+        popVariableScope();
 
-        return new CodeBlock(variableScope, statements);
+        return new CodeBlock(innerScope, statements);
     }
 
     @Override
@@ -414,13 +422,49 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public ForLoop visitForLoop(JavaFileParser.ForLoopContext ctx) {
+
         Statement initialiser = (ctx.forLoopInitialiser() != null)
                 ? (Statement) visit(ctx.forLoopInitialiser()) : null;
         Expression condition = (ctx.forLoopCondition() != null)
                 ? (Expression) visit(ctx.forLoopCondition()) : null;
         Expression updater = (ctx.forLoopUpdater() != null)
                 ? (Expression) visit(ctx.forLoopUpdater()) : null;
+
+        // Explanation: if a new variable is introduced in the
+        // initialisation section of the for loop, then we need to
+        // insert an intermediate VariableScope object to make the
+        // declared variable accessible within the body of the for
+        // loop but inaccessible once the for loop has finished.
+        //
+        // Examples:
+        //
+        // Extra scope required:
+        // for (int i = 0; i < 10; i++) {}
+        //
+        // Extra scope not required:
+        // int i;
+        // for (i = 0; i < 10; i++) {}
+        //
+        // We need to compute this before visiting the CodeBlock of
+        // this for loop, because doing that will cause a VariableScope
+        // object to be created for that scope, and its parent needs
+        // to be set correctly, using variableScopeStack.
+
+        boolean insertedExtraScope = false;
+        if (initialiser instanceof DeclarationAndAssignment) {
+            DeclarationAndAssignment decAndAssign = (DeclarationAndAssignment) initialiser;
+            VariableScope newScope = pushNewVariableScope();
+            newScope.registerVariable(decAndAssign.getVariableName(), decAndAssign.getType());
+            insertedExtraScope = true;
+        }
+
+        // Now we can safely visit the body of the loop
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
+
+        if (insertedExtraScope) {
+            popVariableScope();
+        }
+
         return new ForLoop(initialiser, condition, updater, codeBlock);
     }
 
@@ -515,5 +559,34 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     public ASTNode visitDecimalValue(JavaFileParser.DecimalValueContext ctx) {
         double value = Double.parseDouble(ctx.DECIMAL().toString());
         return new DoubleLiteral(value);
+    }
+
+    /**
+     * Pushes a new VariableScope object to the stack
+     *
+     * This method automatically handles setting the containing
+     * scope attribute of the scope that is created.
+     *
+     * @return The VariableScope object that was created
+     */
+    private VariableScope pushNewVariableScope() {
+        VariableScope newScope;
+        if (!variableScopeStack.isEmpty()) {
+            newScope = new VariableScope(variableScopeStack.peek());
+        } else {
+            newScope = new VariableScope();
+        }
+        variableScopeStack.push(newScope);
+        return newScope;
+    }
+
+    /**
+     * Pops the top VariableScope object from the stack
+     *
+     * @return The VariableScope object that was popped, or null
+     *         if the stack is empty
+     */
+    private VariableScope popVariableScope() {
+        return variableScopeStack.pop();
     }
 }

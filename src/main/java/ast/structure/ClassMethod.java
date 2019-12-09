@@ -22,12 +22,6 @@ public class ClassMethod implements ASTNode {
         this.name = name;
         this.params = params;
         this.body = body;
-
-        for (MethodParameter param : params) {
-            String paramName = param.getParameterName();
-            Type type = param.getType();
-            body.getVariableScope().registerVariable(paramName, type, VariableScope.Domain.Parameter);
-        }
     }
 
     public AccessModifier getAccessModifier() {

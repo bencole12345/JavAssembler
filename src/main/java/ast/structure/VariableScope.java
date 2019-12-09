@@ -16,48 +16,57 @@ import java.util.Map;
  */
 public class VariableScope {
 
-    // TODO: Generalise or extend to also cover class attributes
-
     /**
-     * Denotes the nature of the variable.
+     * Wraps the data stored about a variable allocation.
      */
-    public enum Domain {
+    private class RegisterAllocation {
 
-        /**
-         * The variable is a local variable.
-         */
-        Local,
+        private int registerIndex;
+        private Type type;
 
-        /**
-         * The variable is a parameter to a method.
-         */
-        Parameter,
+        public RegisterAllocation(int registerIndex, Type type) {
+            this.registerIndex = registerIndex;
+            this.type = type;
+        }
 
-        /**
-         * The variable is a static class attribute.
-         */
-        StaticClassAttribute
+        public int getRegisterIndex() {
+            return registerIndex;
+        }
+
+        public Type getType() {
+            return type;
+        }
     }
 
+    /**
+     * Reference to the containing scope
+     *
+     * This is needed in case a variable is requested that
+     * was declared in a higher scope.
+     */
     private VariableScope containingScope;
-    private Map<String, Type> variableTypes;
-    private Map<String, Integer> registerIndices;
-    private Map<String, Domain> variableDomains;
-    private int nextRegisterToAllocate;
-    private int methodParamCount;
+
+    /**
+     * The map from variable names to register allocations
+     */
+    private Map<String, RegisterAllocation> allocations;
+
+    /**
+     * Tracks which register index we can allocate next for
+     * a local variable
+     */
+    private int nextAllocation;
 
     public VariableScope() {
-        variableTypes = new HashMap<>();
-        registerIndices = new HashMap<>();
-        variableDomains = new HashMap<>();
-        nextRegisterToAllocate = 0;
-        methodParamCount = 0;
+        allocations = new HashMap<>();
+        nextAllocation = 0;
+        containingScope = null;
     }
 
     public VariableScope(VariableScope containingScope) {
         this();
         this.containingScope = containingScope;
-        nextRegisterToAllocate = containingScope.nextRegisterToAllocate;
+        nextAllocation = containingScope.nextAllocation;
     }
 
     /**
@@ -70,26 +79,31 @@ public class VariableScope {
     }
 
     /**
+     * Returns the containing scope.
+     *
+     * @return The containing scope, or none if there is no containing scope
+     */
+    public VariableScope getContainingScope() {
+        return containingScope;
+    }
+
+    /**
      * Assigns a register to a variable in this scope.
      *
      * @param name The variable's name
      * @param type The type of the variable
      * @return The register index that was allocated
      */
-    public int registerVariable(String name, Type type, Domain domain) {
+    public int registerVariable(String name, Type type) {
         if (lookupVariableType(name) == null) {
-            variableTypes.put(name, type);
-            registerIndices.put(name, nextRegisterToAllocate);
-            variableDomains.put(name, domain);
-            if (domain == Domain.Parameter) {
-                methodParamCount++;
-            }
+            RegisterAllocation allocation = new RegisterAllocation(nextAllocation, type);
+            allocations.put(name, allocation);
         } else {
             // TODO: Report error in source file; this variable has already
             // been declared.
             throw new RuntimeException();
         }
-        return ++nextRegisterToAllocate;
+        return nextAllocation++;
     }
 
     /**
@@ -99,8 +113,8 @@ public class VariableScope {
      * @return The Type of that variable, or null if not registered
      */
     public Type lookupVariableType(String name) {
-        if (variableTypes.containsKey(name)) {
-            return variableTypes.get(name);
+        if (allocations.containsKey(name)) {
+            return allocations.get(name).getType();
         } else if (containingScope != null) {
             return containingScope.lookupVariableType(name);
         } else {
@@ -116,28 +130,10 @@ public class VariableScope {
      *      registered
      */
     public Integer lookupRegisterIndexOfVariable(String name) {
-        if (registerIndices.containsKey(name)) {
-            Domain domain = lookupVariableDomain(name);
-            int offset = (domain == Domain.Local) ? methodParamCount : 0;
-            return registerIndices.get(name) + offset;
+        if (allocations.containsKey(name)) {
+            return allocations.get(name).getRegisterIndex();
         } else if (containingScope != null) {
             return containingScope.lookupRegisterIndexOfVariable(name);
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Looks up the domain of a variable.
-     *
-     * @param name The name of the variable to look up
-     * @return The domain of the variable
-     */
-    public Domain lookupVariableDomain(String name) {
-        if (variableDomains.containsKey(name)) {
-            return variableDomains.get(name);
-        } else if (containingScope != null) {
-            return containingScope.lookupVariableDomain(name);
         } else {
             return null;
         }
