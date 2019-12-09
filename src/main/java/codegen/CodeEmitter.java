@@ -15,14 +15,12 @@ public class CodeEmitter {
     private BufferedWriter writer;
     private int indentationLevel;
     private String indentationString;
-    private boolean currentlyWritingLine;
 
     public CodeEmitter(String outputFilePath) throws IOException {
         FileWriter fileWriter = new FileWriter(outputFilePath, false);
         writer = new BufferedWriter(fileWriter);
         indentationLevel = 0;
         indentationString = DEFAULT_INDENTION_STRING;
-        currentlyWritingLine = false;
     }
 
     /**
@@ -32,11 +30,10 @@ public class CodeEmitter {
      * @param line The line of code to emit
      */
     public void emitLine(String line) {
-        if (currentlyWritingLine) {
-            finishLine();
+        for (int i = 0; i < indentationLevel; i++) {
+            emit(indentationString);
         }
-        currentlyWritingLine = false;
-        emit(indentationString.repeat(indentationLevel) + line + "\n");
+        emit(line + "\n");
     }
 
     /**
@@ -44,34 +41,12 @@ public class CodeEmitter {
      *
      * @param output The text to output
      */
-    public void emit(String output) {
+    private void emit(String output) {
         try {
             writer.write(output);
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    /**
-     * Starts writing a new line.
-     *
-     * This method writes the indentation at the start of the line but does not
-     * write the newline character.
-     */
-    public void startLine() {
-        if (currentlyWritingLine) {
-            finishLine();
-        }
-        currentlyWritingLine = true;
-        emit(indentationString.repeat(indentationLevel));
-    }
-
-    /**
-     * Finishes writing a new line, emitting a newline character.
-     */
-    public void finishLine() {
-        emit("\n");
-        currentlyWritingLine = false;
     }
 
     /**
