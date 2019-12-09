@@ -316,7 +316,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 ? (AccessModifier) visit(ctx.accessModifier())
                 : AccessModifier.DEFAULT;
         boolean isStatic = ctx.STATIC() != null;
-        // TODO: Investigate this, sometimes it's null (eg for void)
         Type returnType = (Type) visit(ctx.type());
         String methodName = ctx.IDENTIFIER().toString();
         MethodParameterList params = (MethodParameterList) visit(ctx.methodParams());
