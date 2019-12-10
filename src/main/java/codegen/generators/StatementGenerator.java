@@ -1,9 +1,9 @@
 package codegen.generators;
 
 import ast.statements.*;
+import ast.structure.CodeBlock;
 import ast.structure.VariableScope;
 import codegen.CodeEmitter;
-import codegen.WasmGenerator;
 
 import static codegen.generators.ExpressionGenerator.compileExpression;
 
@@ -21,7 +21,6 @@ public class StatementGenerator {
         } else if (statement instanceof ForLoop) {
             compileForLoop((ForLoop) statement, emitter, scope);
         }
-        // TODO: Add rest of cases
     }
 
     private static void compileReturnStatement(ReturnStatement returnStatement, CodeEmitter emitter, VariableScope scope) {
@@ -41,7 +40,7 @@ public class StatementGenerator {
         ExpressionGenerator.compileExpression(chain.getCondition(), emitter, scope);
         emitter.emitLine("if");
         emitter.increaseIndentationLevel();
-        WasmGenerator.compileCodeBlock(chain.getIfBlock(), emitter);
+        compileCodeBlock(chain.getIfBlock(), emitter);
         emitter.decreaseIndentationLevel();
         if (chain.hasNextIfStatementChain()) {
             emitter.emitLine("else");
@@ -51,7 +50,7 @@ public class StatementGenerator {
         } else if (chain.hasElseBlock()) {
             emitter.emitLine("else");
             emitter.increaseIndentationLevel();
-            WasmGenerator.compileCodeBlock(chain.getElseBlock(), emitter);
+            compileCodeBlock(chain.getElseBlock(), emitter);
             emitter.decreaseIndentationLevel();
         }
         emitter.emitLine("end");
@@ -75,7 +74,7 @@ public class StatementGenerator {
         emitter.emitLine("br_if 1");
 
         // Compile the body of the loop
-        WasmGenerator.compileCodeBlock(whileLoop.getCodeBlock(), emitter);
+        compileCodeBlock(whileLoop.getCodeBlock(), emitter);
 
         // Branch back to the start of the loop
         emitter.emitLine("br 0");
@@ -110,7 +109,7 @@ public class StatementGenerator {
         emitter.emitLine("sub");
         emitter.emitLine("br_if 1");
 
-        WasmGenerator.compileCodeBlock(forLoop.getCodeBlock(), emitter);
+        compileCodeBlock(forLoop.getCodeBlock(), emitter);
 
         // We have a problem: we need to compile the updater, eg i++
         // BUT: if you do this the standard way, it leaves the old value of i
@@ -131,6 +130,12 @@ public class StatementGenerator {
         emitter.emitLine(")");
         emitter.decreaseIndentationLevel();
         emitter.emitLine(")");
+    }
+
+    public static void compileCodeBlock(CodeBlock codeBlock, CodeEmitter emitter) {
+        for (Statement statement : codeBlock.getStatements()) {
+            StatementGenerator.compileStatement(statement, emitter, codeBlock.getVariableScope());
+        }
     }
 
 }
