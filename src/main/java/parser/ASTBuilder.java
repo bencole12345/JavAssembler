@@ -2,21 +2,24 @@ package parser;
 
 import ast.ASTNode;
 import ast.expressions.*;
+import ast.literals.DoubleLiteral;
+import ast.literals.IntLiteral;
+import ast.literals.LiteralValue;
 import ast.operations.BinaryOp;
 import ast.operations.IncrementOp;
 import ast.statements.*;
 import ast.structure.*;
-import ast.types.NonPrimitiveType;
-import ast.types.PrimitiveType;
-import ast.types.Type;
-import ast.types.VoidType;
+import ast.types.*;
 
 import java.util.*;
 
 public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
+    private Stack<VariableScope> variableScopeStack;
+
     @Override
     public CompilationUnit visitFile(JavaFileParser.FileContext ctx) {
+        variableScopeStack = new Stack<>();
         Imports imports = (Imports) visit(ctx.imports());
         JavaClass javaClass = (JavaClass) visit(ctx.classDefinition());
         // TODO: Support package name
@@ -36,29 +39,38 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public JavaClass visitClassDefinition(JavaFileParser.ClassDefinitionContext ctx) {
+
+        // Read the visibility status and class name
         AccessModifier visibility = (ctx.accessModifier() != null)
                 ? (AccessModifier) visit(ctx.accessModifier())
-                : new AccessModifier(AccessModifier.AccessModifierType.DEFAULT);
-        // TODO: check that getType() does what you think it does here
+                : AccessModifier.DEFAULT;
         String className = ctx.IDENTIFIER().toString();
-        VariableDeclarationGroup attributeDeclarations = new VariableDeclarationGroup();
+
+        // Set up a variable scope for this class
+        // (intentionally using the constructor that doesn't have a containingScope reference
+        VariableScope classScope = pushNewVariableScope();
+
+        // Handle each method definition and attribute declaration
         List<ClassMethod> methods = new ArrayList<>();
         for (JavaFileParser.ClassItemContext classItem : ctx.classItem()) {
             ASTNode node = visit(classItem);
             if (node instanceof ClassAttributeDeclaration) {
-                try {
-                    ClassAttributeDeclaration declaration = (ClassAttributeDeclaration) node;
-                    attributeDeclarations.addDeclaration(declaration);
-                } catch (VariableDeclarationGroup.MultipleDeclarationsException e) {
-                    // TODO: Handle multiple declarations of same variable name
-                }
+                ClassAttributeDeclaration declaration = (ClassAttributeDeclaration) node;
+                String variableName = declaration.getVariableName();
+                Type type = declaration.getVariableType();
+                // TODO: Implement static class attributes
+                classScope.registerVariable(variableName, type);
             } else if (node instanceof ClassMethod) {
                 // TODO: Ensure no duplicate definitions for same name/signature
                 ClassMethod method = (ClassMethod) node;
                 methods.add(method);
             }
         }
-        return new JavaClass(visibility, className, attributeDeclarations, methods);
+
+        // Pop the scope for this class from the stack
+        popVariableScope();
+
+        return new JavaClass(visibility, className, classScope, methods);
     }
 
     @Override
@@ -82,16 +94,10 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     @Override
     public VariableDeclaration visitDeclarationStatement(JavaFileParser.DeclarationStatementContext ctx) {
         return (VariableDeclaration) visit(ctx.variableDeclaration());
-//        Type type = (Type) visit(ctx.type());
-//        String variableName = ctx.IDENTIFIER().toString();
-//        return new VariableDeclaration(type, variableName);
     }
 
     @Override
     public Assignment visitAssignmentStatement(JavaFileParser.AssignmentStatementContext ctx) {
-//        String variableName = ctx.IDENTIFIER().toString();
-//        Expression expression = (Expression) visit(ctx.expr());
-//        return new Assignment(variableName, expression);
         return (Assignment) visit(ctx.variableAssignment());
     }
 
@@ -214,6 +220,9 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             case JavaFileParser.EQUAL_TO:
                 op = BinaryOp.EQUAL_TO;
                 break;
+            case JavaFileParser.NOT_EQUAL_TO:
+                op = BinaryOp.NOT_EQUAL_TO;
+                break;
             case JavaFileParser.LESS_THAN:
                 op = BinaryOp.LESS_THAN;
                 break;
@@ -274,8 +283,8 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public ValueExpression visitValueExpr(JavaFileParser.ValueExprContext ctx) {
-        return (ValueExpression) visit(ctx.value());
+    public LiteralValue visitValueExpr(JavaFileParser.ValueExprContext ctx) {
+        return (LiteralValue) visit(ctx.value());
     }
 
     @Override
@@ -303,18 +312,29 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public ClassMethod visitMethodDefinition(JavaFileParser.MethodDefinitionContext ctx) {
-        // TODO: Check that the thing is indeed null if it's not present for an optional term
-        AccessModifier modifier = new AccessModifier(AccessModifier.AccessModifierType.DEFAULT);
-        if (ctx.accessModifier() != null) {
-            modifier = (AccessModifier) visit(ctx.accessModifier());
-        }
+        AccessModifier modifier = (ctx.accessModifier() != null)
+                ? (AccessModifier) visit(ctx.accessModifier())
+                : AccessModifier.DEFAULT;
         boolean isStatic = ctx.STATIC() != null;
-        // TODO: Investigate this, sometimes it's null (eg for void)
         Type returnType = (Type) visit(ctx.type());
         String methodName = ctx.IDENTIFIER().toString();
         MethodParameterList params = (MethodParameterList) visit(ctx.methodParams());
         List<MethodParameter> paramsList = params.getParameters();
+
+        // Create a new variable scope object on the stack for
+        // containing the list of method parameters
+        VariableScope scopeForParameters = pushNewVariableScope();
+        for (MethodParameter param : paramsList) {
+            String name = param.getParameterName();
+            Type type = param.getType();
+            scopeForParameters.registerVariable(name, type);
+        }
+
+        // Now visit the body of the method
         CodeBlock body = (CodeBlock) visit(ctx.codeBlock());
+
+        // Pop the scope that was created to contain the parameters
+        popVariableScope();
         return new ClassMethod(modifier, isStatic, returnType, methodName, paramsList, body);
     }
 
@@ -338,34 +358,35 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public CodeBlock visitStatementList(JavaFileParser.StatementListContext ctx) {
-        Map<String, Type> declarations = new HashMap<>();
+
+        // Create a new scope for this code block and push it to the stack
+        VariableScope innerScope = pushNewVariableScope();
+
+        // Recursively visit each statement in this code block
         List<Statement> statements = new ArrayList<>();
         for (JavaFileParser.StatementContext statementCtx : ctx.statement()) {
             ASTNode statementNode = visit(statementCtx);
             if (statementNode instanceof VariableDeclaration) {
                 VariableDeclaration declaration = (VariableDeclaration) statementNode;
-                if (declarations.containsKey(declaration.getVariableName())) {
-                    // TODO: We already have a declaration for this variable in
-                    // this scope, so the compiler should reject the file with a
-                    // semantic error.
-                    // Possibly throw an exception?
-                    // Throwing exceptions in a visitor class looks like it could
-                    // be a nightmare because the method we are overriding doesn't
-                    // throw any exceptions. Hmmmm
-                }
                 String name = declaration.getVariableName();
                 Type type = declaration.getVariableType();
-                declarations.put(name, type);
+                innerScope.registerVariable(name, type);
             } else if (statementNode instanceof DeclarationAndAssignment) {
                 DeclarationAndAssignment combined = (DeclarationAndAssignment) statementNode;
-                declarations.put(combined.getVariableName(), combined.getType());
-                Assignment assignment = new Assignment(combined.getVariableName(), combined.getExpression());
+                String name = combined.getVariableName();
+                Type type = combined.getType();
+                innerScope.registerVariable(name, type);
+                Assignment assignment = new Assignment(name, combined.getExpression());
                 statements.add(assignment);
             } else if (!(statementNode instanceof EmptyStatement)) {
                 statements.add((Statement) statementNode);
             }
         }
-        return new CodeBlock(declarations, statements);
+
+        // Remove the inner scope from the stack since we are done with this block
+        popVariableScope();
+
+        return new CodeBlock(innerScope, statements);
     }
 
     @Override
@@ -373,8 +394,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         Expression condition = (Expression) visit(ctx.expr());
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
         IfStatementChain nextStatement = (IfStatementChain) visit(ctx.ifStatement());
-        nextStatement.prependBlock(condition, codeBlock);
-        return nextStatement;
+        return new IfStatementChain(condition, codeBlock, nextStatement);
     }
 
     @Override
@@ -382,22 +402,14 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         Expression condition = (Expression) visit(ctx.expr());
         CodeBlock ifBlock = (CodeBlock) visit(ctx.codeBlock(0));
         CodeBlock elseBlock = (CodeBlock) visit(ctx.codeBlock(1));
-        List<Expression> conditions = new ArrayList<>();
-        conditions.add(condition);
-        List<CodeBlock> codeBlocks = new ArrayList<>();
-        codeBlocks.add(ifBlock);
-        return new IfStatementChain(conditions, codeBlocks, elseBlock);
+        return new IfStatementChain(condition, ifBlock, elseBlock);
     }
 
     @Override
     public IfStatementChain visitIf(JavaFileParser.IfContext ctx) {
         Expression condition = (Expression) visit(ctx.expr());
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
-        List<Expression> conditions = new ArrayList<>();
-        conditions.add(condition);
-        List<CodeBlock> codeBlocks = new ArrayList<>();
-        codeBlocks.add(codeBlock);
-        return new IfStatementChain(conditions, codeBlocks);
+        return new IfStatementChain(condition, codeBlock);
     }
 
     @Override
@@ -409,13 +421,49 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public ForLoop visitForLoop(JavaFileParser.ForLoopContext ctx) {
+
         Statement initialiser = (ctx.forLoopInitialiser() != null)
                 ? (Statement) visit(ctx.forLoopInitialiser()) : null;
         Expression condition = (ctx.forLoopCondition() != null)
                 ? (Expression) visit(ctx.forLoopCondition()) : null;
         Expression updater = (ctx.forLoopUpdater() != null)
                 ? (Expression) visit(ctx.forLoopUpdater()) : null;
+
+        // Explanation: if a new variable is introduced in the
+        // initialisation section of the for loop, then we need to
+        // insert an intermediate VariableScope object to make the
+        // declared variable accessible within the body of the for
+        // loop but inaccessible once the for loop has finished.
+        //
+        // Examples:
+        //
+        // Extra scope required:
+        // for (int i = 0; i < 10; i++) {}
+        //
+        // Extra scope not required:
+        // int i;
+        // for (i = 0; i < 10; i++) {}
+        //
+        // We need to compute this before visiting the CodeBlock of
+        // this for loop, because doing that will cause a VariableScope
+        // object to be created for that scope, and its parent needs
+        // to be set correctly, using variableScopeStack.
+
+        boolean insertedExtraScope = false;
+        if (initialiser instanceof DeclarationAndAssignment) {
+            DeclarationAndAssignment decAndAssign = (DeclarationAndAssignment) initialiser;
+            VariableScope newScope = pushNewVariableScope();
+            newScope.registerVariable(decAndAssign.getVariableName(), decAndAssign.getType());
+            insertedExtraScope = true;
+        }
+
+        // Now we can safely visit the body of the loop
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
+
+        if (insertedExtraScope) {
+            popVariableScope();
+        }
+
         return new ForLoop(initialiser, condition, updater, codeBlock);
     }
 
@@ -444,18 +492,18 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public AccessModifier visitAccessModifier(JavaFileParser.AccessModifierContext ctx) {
-        AccessModifier.AccessModifierType modifierType = AccessModifier.AccessModifierType.DEFAULT;
+        AccessModifier modifier = AccessModifier.DEFAULT;
         switch (ctx.modifier.getType()) {
             case JavaFileParser.PUBLIC:
-                modifierType = AccessModifier.AccessModifierType.PUBLIC;
+                modifier = AccessModifier.PUBLIC;
                 break;
             case JavaFileParser.PRIVATE:
-                modifierType = AccessModifier.AccessModifierType.PRIVATE;
+                modifier = AccessModifier.PRIVATE;
                 break;
             case JavaFileParser.PROTECTED:
-                modifierType = AccessModifier.AccessModifierType.PROTECTED;
+                modifier = AccessModifier.PROTECTED;
         }
-        return new AccessModifier(modifierType);
+        return modifier;
     }
 
     @Override
@@ -501,14 +549,43 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public IntegerLiteral visitSignedIntegerValue(JavaFileParser.SignedIntegerValueContext ctx) {
+    public IntLiteral visitSignedIntegerValue(JavaFileParser.SignedIntegerValueContext ctx) {
         int value = Integer.parseInt(ctx.SIGNED_INTEGER().toString());
-        return new IntegerLiteral(value);
+        return new IntLiteral(value);
     }
 
     @Override
     public ASTNode visitDecimalValue(JavaFileParser.DecimalValueContext ctx) {
         double value = Double.parseDouble(ctx.DECIMAL().toString());
-        return new DecimalLiteral(value);
+        return new DoubleLiteral(value);
+    }
+
+    /**
+     * Pushes a new VariableScope object to the stack
+     *
+     * This method automatically handles setting the containing
+     * scope attribute of the scope that is created.
+     *
+     * @return The VariableScope object that was created
+     */
+    private VariableScope pushNewVariableScope() {
+        VariableScope newScope;
+        if (!variableScopeStack.isEmpty()) {
+            newScope = new VariableScope(variableScopeStack.peek());
+        } else {
+            newScope = new VariableScope();
+        }
+        variableScopeStack.push(newScope);
+        return newScope;
+    }
+
+    /**
+     * Pops the top VariableScope object from the stack
+     *
+     * @return The VariableScope object that was popped, or null
+     *         if the stack is empty
+     */
+    private VariableScope popVariableScope() {
+        return variableScopeStack.pop();
     }
 }

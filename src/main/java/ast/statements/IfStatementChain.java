@@ -3,8 +3,6 @@ package ast.statements;
 import ast.expressions.Expression;
 import ast.structure.CodeBlock;
 
-import java.util.List;
-
 /**
  * Wraps a chain of if-else blocks.
  *
@@ -12,31 +10,50 @@ import java.util.List;
  */
 public class IfStatementChain implements Statement {
 
-    /**
-     * The ith condition expression should be the Boolean expression for the ith code block.
-     */
-    private List<Expression> conditions;
-    private List<CodeBlock> codeBlocks;
+    private Expression condition;
+    private CodeBlock ifBlock;
+    private IfStatementChain nextIfStatementChain;
     private CodeBlock elseBlock;
 
-    public IfStatementChain(List<Expression> conditions, List<CodeBlock> codeBlocks) {
-        this.conditions = conditions;
-        this.codeBlocks = codeBlocks;
+    public IfStatementChain(Expression condition, CodeBlock ifBlock) {
+        this.condition = condition;
+        this.ifBlock = ifBlock;
+        nextIfStatementChain = null;
         elseBlock = null;
     }
 
-    public IfStatementChain(List<Expression> conditions, List<CodeBlock> codeBlocks, CodeBlock elseBlock) {
-        this.conditions = conditions;
-        this.codeBlocks = codeBlocks;
+    public IfStatementChain(Expression condition, CodeBlock ifBlock, IfStatementChain nextIfStatementChain) {
+        this(condition, ifBlock);
+        this.nextIfStatementChain = nextIfStatementChain;
+    }
+
+    public IfStatementChain(Expression condition, CodeBlock ifBlock, CodeBlock elseBlock) {
+        this(condition, ifBlock);
         this.elseBlock = elseBlock;
+    }
+
+    public boolean hasNextIfStatementChain() {
+        return nextIfStatementChain != null;
     }
 
     public boolean hasElseBlock() {
         return elseBlock != null;
     }
 
-    public void prependBlock(Expression condition, CodeBlock codeBlock) {
-        conditions.add(0, condition);
-        codeBlocks.add(0, codeBlock);
+    public Expression getCondition() {
+        return condition;
     }
+
+    public CodeBlock getIfBlock() {
+        return ifBlock;
+    }
+
+    public IfStatementChain getNextInChain() {
+        return nextIfStatementChain;
+    }
+
+    public CodeBlock getElseBlock() {
+        return elseBlock;
+    }
+
 }

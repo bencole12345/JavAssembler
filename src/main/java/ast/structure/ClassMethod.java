@@ -1,6 +1,7 @@
 package ast.structure;
 
 import ast.ASTNode;
+import ast.types.AccessModifier;
 import ast.types.Type;
 
 import java.util.List;
@@ -45,5 +46,14 @@ public class ClassMethod implements ASTNode {
 
     public CodeBlock getBody() {
         return body;
+    }
+
+    /**
+     * Sets the VariableScope that contains this code block.
+     *
+     * @param containingScope The new VariableScope to contain this code block
+     */
+    public void bindContainingVariableScope(VariableScope containingScope) {
+        body.bindContainingVariableScope(containingScope);
     }
 }
