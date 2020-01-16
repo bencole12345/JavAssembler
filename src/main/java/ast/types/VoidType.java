@@ -1,3 +1,15 @@
 package ast.types;
 
-public class VoidType implements Type {}
+/**
+ * Denotes a void type.
+ *
+ * This is only ever used for function return types. A variable should never
+ * be marked as void type.
+ */
+public class VoidType implements Type {
+
+    @Override
+    public boolean isSubtypeOf(Type other) {
+        return other instanceof VoidType;
+    }
+}

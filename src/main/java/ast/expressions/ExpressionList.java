@@ -1,8 +1,10 @@
 package ast.expressions;
 
+import ast.ASTNode;
+
 import java.util.List;
 
-public class ExpressionList implements Expression {
+public class ExpressionList implements ASTNode {
 
     private List<Expression> expressionList;
 

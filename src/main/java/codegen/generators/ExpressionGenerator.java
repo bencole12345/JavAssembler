@@ -9,6 +9,7 @@ import ast.structure.VariableScope;
 import ast.types.PrimitiveType;
 import codegen.CodeEmitter;
 import codegen.CodeGenUtil;
+import errors.IncorrectTypeException;
 
 public class ExpressionGenerator {
 
@@ -115,30 +116,34 @@ public class ExpressionGenerator {
         Expression one = new IntLiteral(1);
         BinaryOperatorExpression bopExpr;
         Assignment assignment;
-        switch (expression.getIncrementOp()) {
-            case PRE_INCREMENT:
-                bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.ADD);
-                assignment = new Assignment(expression.getVariableNameExpression().getVariableName(), bopExpr);
-                StatementGenerator.compileStatement(assignment, emitter, variableScope);
-                emitter.emitLine("local.get " + registerNumber);
-                break;
-            case PRE_DECREMENT:
-                bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.SUBTRACT);
-                assignment = new Assignment(expression.getVariableNameExpression().getVariableName(), bopExpr);
-                StatementGenerator.compileStatement(assignment, emitter, variableScope);
-                emitter.emitLine("local.get " + registerNumber);
-                break;
-            case POST_INCREMENT:
-                emitter.emitLine("local.get " + registerNumber);
-                bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.ADD);
-                assignment = new Assignment(expression.getVariableNameExpression().getVariableName(), bopExpr);
-                StatementGenerator.compileStatement(assignment, emitter, variableScope);
-                break;
-            case POST_DECREMENT:
-                emitter.emitLine("local.get " + registerNumber);
-                bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.SUBTRACT);
-                assignment = new Assignment(expression.getVariableNameExpression().getVariableName(), bopExpr);
-                StatementGenerator.compileStatement(assignment, emitter, variableScope);
+        try {
+            switch (expression.getIncrementOp()) {
+                case PRE_INCREMENT:
+                    bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.ADD);
+                    assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
+                    StatementGenerator.compileStatement(assignment, emitter, variableScope);
+                    emitter.emitLine("local.get " + registerNumber);
+                    break;
+                case PRE_DECREMENT:
+                    bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.SUBTRACT);
+                    assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
+                    StatementGenerator.compileStatement(assignment, emitter, variableScope);
+                    emitter.emitLine("local.get " + registerNumber);
+                    break;
+                case POST_INCREMENT:
+                    emitter.emitLine("local.get " + registerNumber);
+                    bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.ADD);
+                    assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
+                    StatementGenerator.compileStatement(assignment, emitter, variableScope);
+                    break;
+                case POST_DECREMENT:
+                    emitter.emitLine("local.get " + registerNumber);
+                    bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.SUBTRACT);
+                    assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
+                    StatementGenerator.compileStatement(assignment, emitter, variableScope);
+            }
+        } catch (IncorrectTypeException e) {
+            e.printStackTrace();
         }
     }
 

@@ -39,11 +39,26 @@ public enum PrimitiveType implements Type {
     }
 
     /**
+     * Returns whether the type is a numeric type.
+     *
+     * @return true for numeric types, false otherwise
+     */
+    public boolean isNumericType() {
+        return isIntegralType || isDecimalType;
+    }
+
+    /**
      * Returns the size of the type, in bits.
      *
      * @return The size of the type, in bits
      */
     public int getSize() {
         return size;
+    }
+
+    @Override
+    public boolean isSubtypeOf(Type other) {
+        // TODO: Consider supporting type coercion
+        return this.equals(other);
     }
 }

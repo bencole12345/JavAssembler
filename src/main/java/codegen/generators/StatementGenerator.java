@@ -30,7 +30,7 @@ public class StatementGenerator {
 
     private static void compileAssignment(Assignment assignment, CodeEmitter emitter, VariableScope scope) {
         compileExpression(assignment.getExpression(), emitter, scope);
-        int registerNum = scope.lookupRegisterIndexOfVariable(assignment.getVariableName());
+        int registerNum = scope.lookupRegisterIndexOfVariable(assignment.getVariableNameExpression().getVariableName());
         emitter.emitLine("local.set " + registerNum);
     }
 

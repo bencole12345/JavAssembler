@@ -1,5 +1,8 @@
 package ast.literals;
 
+import ast.types.PrimitiveType;
+import ast.types.Type;
+
 public class ShortLiteral implements LiteralValue {
 
     private short value;
@@ -10,5 +13,10 @@ public class ShortLiteral implements LiteralValue {
 
     public short getValue() {
         return value;
+    }
+
+    @Override
+    public Type getType() {
+        return PrimitiveType.Short;
     }
 }

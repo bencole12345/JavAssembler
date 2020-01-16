@@ -1,5 +1,8 @@
 package ast.expressions;
 
+import ast.types.PrimitiveType;
+import ast.types.Type;
+
 import java.util.List;
 
 public class FunctionCall implements Expression {
@@ -16,7 +19,7 @@ public class FunctionCall implements Expression {
      * should not be a possible statement.
      */
 
-    // TODO: Consider find a way to also make this a statement
+    // TODO: Consider finding a way to also make this a statement
 
     private String functionName;
     private List<Expression> arguments;
@@ -32,5 +35,11 @@ public class FunctionCall implements Expression {
 
     public List<Expression> getArguments() {
         return arguments;
+    }
+
+    @Override
+    public Type getType() {
+        // TODO: Implement
+        return PrimitiveType.Int;
     }
 }

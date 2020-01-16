@@ -10,20 +10,30 @@ import ast.operations.IncrementOp;
 import ast.statements.*;
 import ast.structure.*;
 import ast.types.*;
+import errors.IncorrectTypeException;
+import org.antlr.v4.runtime.ParserRuleContext;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Stack;
 
 public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     private Stack<VariableScope> variableScopeStack;
+    private ErrorReporter errorReporter;
 
     @Override
     public CompilationUnit visitFile(JavaFileParser.FileContext ctx) {
         variableScopeStack = new Stack<>();
+        errorReporter = new ErrorReporter();
         Imports imports = (Imports) visit(ctx.imports());
         JavaClass javaClass = (JavaClass) visit(ctx.classDefinition());
         // TODO: Support package name
-        return new CompilationUnit(imports, javaClass);
+        if (errorReporter.getErrorHasHappened()) {
+            return null;
+        } else {
+            return new CompilationUnit(imports, javaClass);
+        }
     }
 
     @Override
@@ -141,6 +151,16 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public Assignment visitVariableAssignment(JavaFileParser.VariableAssignmentContext ctx) {
+        // This method covers +=, -=, *=, /=, and also a simple assignment, =
+        // The main idea is that we can reduce any of the first 4 into a simple
+        // assignment (=) by replacing the expression on the RHS with a binary
+        // operation involving the variable name and the expression.
+        //
+        // Examples:
+        //
+        // x += 1;      --becomes-->  x = (x + 1);
+        // y *= (y/z);  --becomes-->  y = (y * (y/z));
+
         String name = ctx.IDENTIFIER().toString();
         Expression expression = (Expression) visit(ctx.expr());
         BinaryOp bop = null;
@@ -158,11 +178,28 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 bop = BinaryOp.DIVIDE;
             // No case for JavaFileParser.EQUALS
         }
+
+        VariableScope currentScope = variableScopeStack.peek();
+
+        // Perform substitution if this is not a simple assignment
         if (bop != null) {
-            VariableNameExpression varNameExpr = new VariableNameExpression(name);
-            expression = new BinaryOperatorExpression(varNameExpr, expression, bop);
+            VariableNameExpression innerVarNameExpr = new VariableNameExpression(name, currentScope);
+            try {
+                expression = new BinaryOperatorExpression(innerVarNameExpr, expression, bop);
+            } catch (IncorrectTypeException e) {
+                reportError(e.getMessage(), ctx);
+            }
         }
-        return new Assignment(name, expression);
+
+        VariableNameExpression variableNameExpression = new VariableNameExpression(name, currentScope);
+        Assignment assignment = null;
+        try {
+            assignment = new Assignment(variableNameExpression, expression);
+        } catch (IncorrectTypeException e) {
+            reportError(e.getMessage(), ctx);
+        }
+
+        return assignment;
     }
 
     @Override
@@ -191,7 +228,13 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     @Override
     public NegateExpression visitNegateExpr(JavaFileParser.NegateExprContext ctx) {
         Expression expression = (Expression) visit(ctx.expr());
-        return new NegateExpression(expression);
+        NegateExpression negExpression = null;
+        try {
+            negExpression = new NegateExpression(expression);
+        } catch (IncorrectTypeException e) {
+            reportError(e.getMessage(), ctx);
+        }
+        return negExpression;
     }
 
     @Override
@@ -235,7 +278,13 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             case JavaFileParser.GREATER_THAN_EQUAL_TO:
                 op = BinaryOp.GREATER_THAN_OR_EQUAL_TO;
         }
-        return new BinaryOperatorExpression(left, right, op);
+        BinaryOperatorExpression bopExpression = null;
+        try {
+            bopExpression = new BinaryOperatorExpression(left, right, op);
+        } catch (IncorrectTypeException e) {
+            reportError(e.getMessage(), ctx);
+        }
+        return bopExpression;
     }
 
     @Override
@@ -249,8 +298,15 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             case JavaFileParser.DECREMENT:
                 op = IncrementOp.PRE_DECREMENT;
         }
-        VariableNameExpression expression = new VariableNameExpression(variableName);
-        return new VariableIncrementExpression(expression, op);
+        VariableScope currentScope = variableScopeStack.peek();
+        VariableNameExpression expression = new VariableNameExpression(variableName, currentScope);
+        VariableIncrementExpression incrementExpression = null;
+        try {
+            incrementExpression = new VariableIncrementExpression(expression, op);
+        } catch (IncorrectTypeException e) {
+            reportError(e.getMessage(), ctx);
+        }
+        return incrementExpression;
     }
 
     @Override
@@ -264,8 +320,15 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             case JavaFileParser.DECREMENT:
                 op = IncrementOp.POST_DECREMENT;
         }
-        VariableNameExpression expression = new VariableNameExpression(variableName);
-        return new VariableIncrementExpression(expression, op);
+        VariableScope currentScope = variableScopeStack.peek();
+        VariableNameExpression expression = new VariableNameExpression(variableName, currentScope);
+        VariableIncrementExpression incrementExpression = null;
+        try {
+            incrementExpression = new VariableIncrementExpression(expression, op);
+        } catch (IncorrectTypeException e) {
+            reportError(e.getMessage(), ctx);
+        }
+        return incrementExpression;
     }
 
     @Override
@@ -273,13 +336,20 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         Expression condition = (Expression) visit(ctx.expr(0));
         Expression trueExpression = (Expression) visit(ctx.expr(1));
         Expression falseExpression = (Expression) visit(ctx.expr(2));
-        return new BinarySelectorExpression(condition, trueExpression, falseExpression);
+        BinarySelectorExpression expression = null;
+        try {
+            expression = new BinarySelectorExpression(condition, trueExpression, falseExpression);
+        } catch (IncorrectTypeException e) {
+            reportError(e.getMessage(), ctx);
+        }
+        return expression;
     }
 
     @Override
     public VariableNameExpression visitVariableNameExpr(JavaFileParser.VariableNameExprContext ctx) {
         String variableName = ctx.IDENTIFIER().toString();
-        return new VariableNameExpression(variableName);
+        VariableScope currentScope = variableScopeStack.peek();
+        return new VariableNameExpression(variableName, currentScope);
     }
 
     @Override
@@ -376,7 +446,13 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 String name = combined.getVariableName();
                 Type type = combined.getType();
                 innerScope.registerVariable(name, type);
-                Assignment assignment = new Assignment(name, combined.getExpression());
+                VariableNameExpression nameExpression = new VariableNameExpression(name, innerScope);
+                Assignment assignment = null;
+                try {
+                    assignment = new Assignment(nameExpression, combined.getExpression());
+                } catch (IncorrectTypeException e) {
+                    reportError(e.getMessage(), ctx);
+                }
                 statements.add(assignment);
             } else if (!(statementNode instanceof EmptyStatement)) {
                 statements.add((Statement) statementNode);
@@ -416,7 +492,13 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     public WhileLoop visitWhileLoop(JavaFileParser.WhileLoopContext ctx) {
         Expression condition = (Expression) visit(ctx.expr());
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
-        return new WhileLoop(condition, codeBlock);
+        WhileLoop whileLoop = null;
+        try {
+            whileLoop = new WhileLoop(condition, codeBlock);
+        } catch (IncorrectTypeException e) {
+            reportError(e.getMessage(), ctx);
+        }
+        return whileLoop;
     }
 
     @Override
@@ -424,10 +506,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
         Statement initialiser = (ctx.forLoopInitialiser() != null)
                 ? (Statement) visit(ctx.forLoopInitialiser()) : null;
-        Expression condition = (ctx.forLoopCondition() != null)
-                ? (Expression) visit(ctx.forLoopCondition()) : null;
-        Expression updater = (ctx.forLoopUpdater() != null)
-                ? (Expression) visit(ctx.forLoopUpdater()) : null;
 
         // Explanation: if a new variable is introduced in the
         // initialisation section of the for loop, then we need to
@@ -457,6 +535,14 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             insertedExtraScope = true;
         }
 
+        // We need to handle the condition after the initialiser, since it may
+        // refer to the variable defined in the initialiser, which is only
+        // accessible from the newly created scope
+        Expression condition = (ctx.forLoopCondition() != null)
+                ? (Expression) visit(ctx.forLoopCondition()) : null;
+        Expression updater = (ctx.forLoopUpdater() != null)
+                ? (Expression) visit(ctx.forLoopUpdater()) : null;
+
         // Now we can safely visit the body of the loop
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
 
@@ -464,7 +550,13 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             popVariableScope();
         }
 
-        return new ForLoop(initialiser, condition, updater, codeBlock);
+        ForLoop forLoop = null;
+        try {
+            forLoop = new ForLoop(initialiser, condition, updater, codeBlock);
+        } catch (IncorrectTypeException e) {
+            reportError(e.getMessage(), ctx);
+        }
+        return forLoop;
     }
 
     // TODO: Think about how to handle this
@@ -587,5 +679,17 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
      */
     private VariableScope popVariableScope() {
         return variableScopeStack.pop();
+    }
+
+    /**
+     * Reports an error to the error reporter.
+     *
+     * @param message The error to report
+     * @param ctx The ParserRuleContext at which the error occurred
+     */
+    private void reportError(String message, ParserRuleContext ctx) {
+        int lineNum = ctx.start.getLine();
+        int col = ctx.start.getCharPositionInLine();
+        errorReporter.reportError(message, lineNum, col);
     }
 }
