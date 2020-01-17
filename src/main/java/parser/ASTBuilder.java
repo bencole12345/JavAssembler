@@ -26,20 +26,14 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     private Stack<VariableScope> variableScopeStack;
     private FunctionTable functionTable;
-    private ErrorReporter errorReporter;
 
     @Override
     public CompilationUnit visitFile(JavaFileParser.FileContext ctx) {
         variableScopeStack = new Stack<>();
-        errorReporter = new ErrorReporter();
         Imports imports = (Imports) visit(ctx.imports());
         JavaClass javaClass = (JavaClass) visit(ctx.classDefinition());
         // TODO: Support package name
-        if (errorReporter.getErrorHasHappened()) {
-            return null;
-        } else {
-            return new CompilationUnit(imports, javaClass, functionTable);
-        }
+        return new CompilationUnit(imports, javaClass, functionTable);
     }
 
     @Override
@@ -104,11 +98,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             } catch (DuplicateFunctionSignatureException e) {
                 reportError(e.getMessage(), methodCtx);
             }
-        }
-
-        // Stop now if any errors have occurred
-        if (errorReporter.getErrorHasHappened()) {
-            return null;
         }
 
         // Now build the full AST for each method
@@ -244,7 +233,8 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public DeclarationAndAssignment visitVariableDeclarationAndAssignment(JavaFileParser.VariableDeclarationAndAssignmentContext ctx) {
+    public DeclarationAndAssignment visitVariableDeclarationAndAssignment(
+            JavaFileParser.VariableDeclarationAndAssignmentContext ctx) {
         Type type = (Type) visit(ctx.type());
         String name = ctx.IDENTIFIER().toString();
         Expression expression = (Expression) visit(ctx.expr());
@@ -734,14 +724,19 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     /**
-     * Reports an error to the error reporter.
+     * Reports an error to the console and exits.
      *
-     * @param message The error to report
+     * @param errorMessage The error to report
      * @param ctx The ParserRuleContext at which the error occurred
      */
-    private void reportError(String message, ParserRuleContext ctx) {
-        int lineNum = ctx.start.getLine();
+    private void reportError(String errorMessage, ParserRuleContext ctx) {
+        int line = ctx.start.getLine();
         int col = ctx.start.getCharPositionInLine();
-        errorReporter.reportError(message, lineNum, col);
+        String message = "Error on line " + line
+                + ", column " + col
+                + ": " + errorMessage;
+        System.err.println(message);
+        System.err.println("Exiting...");
+        System.exit(0);
     }
 }
