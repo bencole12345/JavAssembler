@@ -2,6 +2,8 @@ package parser;
 
 import ast.ASTNode;
 import ast.expressions.*;
+import ast.functions.FunctionTable;
+import ast.functions.FunctionTableEntry;
 import ast.literals.DoubleLiteral;
 import ast.literals.IntLiteral;
 import ast.literals.LiteralValue;
@@ -10,16 +12,20 @@ import ast.operations.IncrementOp;
 import ast.statements.*;
 import ast.structure.*;
 import ast.types.*;
+import errors.DuplicateFunctionSignatureException;
 import errors.IncorrectTypeException;
+import errors.UndeclaredFunctionException;
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
+import java.util.stream.Collectors;
 
 public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     private Stack<VariableScope> variableScopeStack;
+    private FunctionTable functionTable;
     private ErrorReporter errorReporter;
 
     @Override
@@ -32,7 +38,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         if (errorReporter.getErrorHasHappened()) {
             return null;
         } else {
-            return new CompilationUnit(imports, javaClass);
+            return new CompilationUnit(imports, javaClass, functionTable);
         }
     }
 
@@ -60,21 +66,56 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         // (intentionally using the constructor that doesn't have a containingScope reference
         VariableScope classScope = pushNewVariableScope();
 
-        // Handle each method definition and attribute declaration
-        List<ClassMethod> methods = new ArrayList<>();
+
+        // Split the class items into attributes and methods
+        // (without visiting them any further yet)
+        List<JavaFileParser.ClassMethodContext> methodASTNodes = new ArrayList<>();
+        List<JavaFileParser.ClassAttributeContext> attributeASTNodes = new ArrayList<>();
         for (JavaFileParser.ClassItemContext classItem : ctx.classItem()) {
-            ASTNode node = visit(classItem);
-            if (node instanceof ClassAttributeDeclaration) {
-                ClassAttributeDeclaration declaration = (ClassAttributeDeclaration) node;
-                String variableName = declaration.getVariableName();
-                Type type = declaration.getVariableType();
-                // TODO: Implement static class attributes
-                classScope.registerVariable(variableName, type);
-            } else if (node instanceof ClassMethod) {
-                // TODO: Ensure no duplicate definitions for same name/signature
-                ClassMethod method = (ClassMethod) node;
-                methods.add(method);
+            if (classItem instanceof JavaFileParser.ClassMethodContext) {
+                methodASTNodes.add((JavaFileParser.ClassMethodContext) classItem);
+            } else if (classItem instanceof JavaFileParser.ClassAttributeContext) {
+                attributeASTNodes.add((JavaFileParser.ClassAttributeContext) classItem);
             }
+        }
+
+        // Process the class attributes
+        for (JavaFileParser.ClassAttributeContext attributeContext : attributeASTNodes) {
+            ClassAttributeDeclaration declaration = (ClassAttributeDeclaration) visit(attributeContext);
+            String name = declaration.getVariableName();
+            Type type = declaration.getVariableType();
+            classScope.registerVariable(name, type);
+        }
+
+        // Build a function table
+        if (functionTable == null) {
+            functionTable = new FunctionTable();
+        }
+        for (JavaFileParser.ClassMethodContext methodContext : methodASTNodes) {
+            JavaFileParser.MethodDefinitionContext methodCtx = methodContext.methodDefinition();
+            String name = methodCtx.IDENTIFIER().toString();
+            Type returnType = (Type) visit(methodCtx.type());
+            MethodParameterList params = (MethodParameterList) visit(methodCtx.methodParams());
+            List<Type> parameterTypes = new ArrayList<>();
+            for (MethodParameter parameter : params.getParameters())
+                parameterTypes.add(parameter.getType());
+            try {
+                functionTable.registerFunction(name, parameterTypes, returnType);
+            } catch (DuplicateFunctionSignatureException e) {
+                reportError(e.getMessage(), methodCtx);
+            }
+        }
+
+        // Stop now if any errors have occurred
+        if (errorReporter.getErrorHasHappened()) {
+            return null;
+        }
+
+        // Now build the full AST for each method
+        List<ClassMethod> methods = new ArrayList<>();
+        for (JavaFileParser.ClassMethodContext methodContext : methodASTNodes) {
+            ClassMethod method = (ClassMethod) visit(methodContext);
+            methods.add(method);
         }
 
         // Pop the scope for this class from the stack
@@ -239,6 +280,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public ASTNode visitIncrementExpr(JavaFileParser.IncrementExprContext ctx) {
+        // TODO: Check this
         return super.visitIncrementExpr(ctx);
     }
 
@@ -360,8 +402,18 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     @Override
     public FunctionCall visitFunctionCall(JavaFileParser.FunctionCallContext ctx) {
         String functionName = ctx.IDENTIFIER().toString();
-        ExpressionList functionArgs = (ExpressionList) visit(ctx.functionArgs());
-        return new FunctionCall(functionName, functionArgs.getExpressionList());
+        ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
+        List<Expression> arguments = expressionList.getExpressionList();
+        List<Type> argumentTypes = arguments.stream()
+                .map(Expression::getType)
+                .collect(Collectors.toList());
+        FunctionTableEntry tableEntry = null;
+        try {
+            tableEntry = functionTable.lookupFunction(functionName, argumentTypes);
+        } catch (UndeclaredFunctionException e) {
+            reportError(e.getMessage(), ctx);
+        }
+        return new FunctionCall(tableEntry, arguments);
     }
 
     @Override

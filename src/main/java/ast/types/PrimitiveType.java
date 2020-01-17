@@ -1,23 +1,25 @@
 package ast.types;
 
 public enum PrimitiveType implements Type {
-    Int(true, false, 32),
-    Short(true, false, 16),
-    Long(true, false, 64),
-    Char(true, false, 16),
-    Byte(true, false, 8),
-    Boolean(false, false, 1),
-    Float(false, true, 32),
-    Double(false, true, 64);
+    Int(true, false, 32, "int"),
+    Short(true, false, 16, "short"),
+    Long(true, false, 64, "long"),
+    Char(true, false, 16, "char"),
+    Byte(true, false, 8, "byte"),
+    Boolean(false, false, 1, "boolean"),
+    Float(false, true, 32, "float"),
+    Double(false, true, 64, "double");
 
     private boolean isIntegralType;
     private boolean isDecimalType;
     private int size;
+    private String representation;
 
-    PrimitiveType(boolean isIntegralType, boolean isDecimalType, int size) {
+    PrimitiveType(boolean isIntegralType, boolean isDecimalType, int size, String representation) {
         this.isIntegralType = isIntegralType;
         this.isDecimalType = isDecimalType;
         this.size = size;
+        this.representation = representation;
     }
 
     /**
@@ -60,5 +62,10 @@ public enum PrimitiveType implements Type {
     public boolean isSubtypeOf(Type other) {
         // TODO: Consider supporting type coercion
         return this.equals(other);
+    }
+
+    @Override
+    public String toString() {
+        return representation;
     }
 }

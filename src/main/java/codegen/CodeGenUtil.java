@@ -1,37 +1,11 @@
 package codegen;
 
 import ast.literals.IntLiteral;
-import ast.structure.ClassMethod;
 import ast.types.PrimitiveType;
-
-import java.util.List;
 
 import static codegen.generators.LiteralGenerator.compileLiteralValue;
 
 public class CodeGenUtil {
-
-    /**
-     * Builds a table of all functions/methods in the compilation unit.
-     *
-     * This allows functions/methods to be referenced via their index in the
-     * function table during the code generation phase.
-     *
-     * @param methods The list of methods to include in the table
-     * @return The FunctionTable object that was constructed
-     */
-    static FunctionTable buildFunctionTable(List<ClassMethod> methods) {
-        FunctionTable functionTable = new FunctionTable();
-        for (ClassMethod method : methods) {
-            try {
-                functionTable.registerFunction(method.getName());
-            } catch (FunctionTable.DuplicateFunctionSignatureException e) {
-                // TODO: Actually output this as an error message and reject
-                // the input file.
-                e.printStackTrace();
-            }
-        }
-        return functionTable;
-    }
 
     /**
      * Returns the wasm type mapping for a given Java primitive type.

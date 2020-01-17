@@ -1,6 +1,6 @@
 package ast.expressions;
 
-import ast.types.PrimitiveType;
+import ast.functions.FunctionTableEntry;
 import ast.types.Type;
 
 import java.util.List;
@@ -21,16 +21,16 @@ public class FunctionCall implements Expression {
 
     // TODO: Consider finding a way to also make this a statement
 
-    private String functionName;
+    private FunctionTableEntry tableEntry;
     private List<Expression> arguments;
 
-    public FunctionCall(String functionName, List<Expression> arguments) {
-        this.functionName = functionName;
+    public FunctionCall(FunctionTableEntry functionTableEntry, List<Expression> arguments) {
+        this.tableEntry = functionTableEntry;
         this.arguments = arguments;
     }
 
-    public String getFunctionName() {
-        return functionName;
+    public FunctionTableEntry getFunctionTableEntry() {
+        return tableEntry;
     }
 
     public List<Expression> getArguments() {
@@ -39,7 +39,6 @@ public class FunctionCall implements Expression {
 
     @Override
     public Type getType() {
-        // TODO: Implement
-        return PrimitiveType.Int;
+        return tableEntry.getReturnType();
     }
 }
