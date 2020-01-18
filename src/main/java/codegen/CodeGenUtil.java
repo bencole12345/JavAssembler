@@ -1,7 +1,13 @@
 package codegen;
 
+import ast.functions.FunctionTable;
 import ast.literals.IntLiteral;
+import ast.structure.ClassMethod;
+import ast.structure.MethodParameter;
 import ast.types.PrimitiveType;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static codegen.generators.LiteralGenerator.compileLiteralValue;
 
@@ -48,6 +54,31 @@ public class CodeGenUtil {
             IntLiteral literal = new IntLiteral(mask);
             compileLiteralValue(literal, codeEmitter);
             codeEmitter.emitLine("and");
+        }
+    }
+
+    /**
+     * Determines the function name to be emitted.
+     *
+     * If this is the only method with this name, then just the method name will
+     * be used. If there are multiple overloaded methods with this name, then
+     * name mangling with the types will be applied.
+     *
+     * @param method The method under compilation
+     * @param functionTable The function table
+     * @return The name to be emitted
+     */
+    public static String getFunctionNameForOutput(ClassMethod method, FunctionTable functionTable) {
+        String name = method.getName();
+        if (functionTable.getNumberOfFunctionsWithName(name) == 1) {
+            return name;
+        } else {
+            List<String> typeNames = method.getParams()
+                    .stream()
+                    .map(MethodParameter::getType)
+                    .map(Object::toString)
+                    .collect(Collectors.toList());
+            return name + "__" + String.join("_", typeNames);
         }
     }
 }

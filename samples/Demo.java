@@ -37,4 +37,12 @@ public class Demo {
         }
         return a;
     }
+
+    public static int overloaded(int x, float y) {
+        return 1;
+    }
+
+    public static float overloaded(float x, int y) {
+        return 1.0f;
+    }
 }

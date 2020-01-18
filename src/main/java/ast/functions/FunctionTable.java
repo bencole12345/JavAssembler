@@ -13,9 +13,11 @@ public class FunctionTable {
 
     private Map<String, FunctionLookupTreeNode> nameMap;
     private int nextIndexToAssign;
+    private Map<String, Integer> functionsWithNameCount;
 
     public FunctionTable() {
         nameMap = new HashMap<>();
+        functionsWithNameCount = new HashMap<>();
         nextIndexToAssign = 0;
     }
 
@@ -67,9 +69,15 @@ public class FunctionTable {
             throw new DuplicateFunctionSignatureException(message);
         }
 
+        // Make a new function table entry and point the current node to it
         int assignedIndex = nextIndexToAssign++;
         FunctionTableEntry newEntry = new FunctionTableEntry(assignedIndex, functionName, returnType);
         node.value = newEntry;
+
+        // Increment the counter for the number of functions with this name
+        int countWithThisName = functionsWithNameCount.getOrDefault(functionName, 0);
+        functionsWithNameCount.put(functionName, countWithThisName + 1);
+
         return newEntry;
     }
 
@@ -106,6 +114,16 @@ public class FunctionTable {
         } else {
             return node.value;
         }
+    }
+
+    /**
+     * Returns the number of functions registered with a given name.
+     *
+     * @param name The name to look up
+     * @return The number of functions registered with that name
+     */
+    public int getNumberOfFunctionsWithName(String name) {
+        return functionsWithNameCount.getOrDefault(name, 0);
     }
 
     private String functionSignatureToString(String name, List<Type> parameterTypes) {

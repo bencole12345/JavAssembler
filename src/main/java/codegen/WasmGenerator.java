@@ -10,8 +10,6 @@ import ast.types.PrimitiveType;
 import ast.types.Type;
 import codegen.generators.StatementGenerator;
 
-import java.util.List;
-
 
 public class WasmGenerator {
 
@@ -21,12 +19,8 @@ public class WasmGenerator {
 
         JavaClass classToCompile = compilationUnit.getJavaClass();
 
-        // Pass over all the methods to add them to the function table, so that they can be referred
-        // to via their index during the code generation phase.
-        List<ClassMethod> methods = classToCompile.getMethods();
-
         // Compile each method separately
-        for (ClassMethod method : methods) {
+        for (ClassMethod method : classToCompile.getMethods()) {
             compileStaticMethod(method, functionTable, emitter);
         }
 
@@ -40,7 +34,8 @@ public class WasmGenerator {
         // Emit the function declaration
         StringBuilder line = new StringBuilder();
         line.append("(func $");
-        line.append(method.getName());
+        String functionName = CodeGenUtil.getFunctionNameForOutput(method, functionTable);
+        line.append(functionName);
 
         // List the parameters
         for (MethodParameter param : method.getParams()) {
@@ -71,7 +66,7 @@ public class WasmGenerator {
 
         // Export the function if it's declared public
         if (method.getAccessModifier() == AccessModifier.PUBLIC) {
-            emitter.emitLine("(export \"" + method.getName() + "\" (func $" + method.getName() + "))");
+            emitter.emitLine("(export \"" + functionName + "\" (func $" + functionName + "))");
         }
     }
 
