@@ -55,6 +55,15 @@ public class BinaryOperatorExpression implements Expression {
     }
 
     /**
+     * Returns the underlying shared type of the two operands.
+     *
+     * @return The shared type of the two operands
+     */
+    public PrimitiveType getUnderlyingType() {
+        return (PrimitiveType) left.getType();
+    }
+
+    /**
      * Determines whether the operation is legal given the types of the left
      * and right expressions.
      *
