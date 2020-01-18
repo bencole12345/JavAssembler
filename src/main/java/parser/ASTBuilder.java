@@ -4,9 +4,7 @@ import ast.ASTNode;
 import ast.expressions.*;
 import ast.functions.FunctionTable;
 import ast.functions.FunctionTableEntry;
-import ast.literals.DoubleLiteral;
-import ast.literals.IntLiteral;
-import ast.literals.LiteralValue;
+import ast.literals.*;
 import ast.operations.BinaryOp;
 import ast.operations.IncrementOp;
 import ast.statements.*;
@@ -385,8 +383,8 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public LiteralValue visitValueExpr(JavaFileParser.ValueExprContext ctx) {
-        return (LiteralValue) visit(ctx.value());
+    public LiteralValue visitLiteralExpr(JavaFileParser.LiteralExprContext ctx) {
+        return (LiteralValue) visit(ctx.literal());
     }
 
     @Override
@@ -683,15 +681,37 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public IntLiteral visitSignedIntegerValue(JavaFileParser.SignedIntegerValueContext ctx) {
-        int value = Integer.parseInt(ctx.SIGNED_INTEGER().toString());
-        return new IntLiteral(value);
-    }
-
-    @Override
-    public ASTNode visitDecimalValue(JavaFileParser.DecimalValueContext ctx) {
-        double value = Double.parseDouble(ctx.DECIMAL().toString());
-        return new DoubleLiteral(value);
+    public LiteralValue visitLiteral(JavaFileParser.LiteralContext ctx) {
+        if (ctx.BOOLEAN_LITERAL() != null) {
+            boolean value;
+            if (ctx.BOOLEAN_LITERAL().getSymbol().getType() == JavaFileParser.TRUE) {
+                value = true;
+            } else {
+                value = false;
+            }
+            return new BooleanLiteral(value);
+        } else if (ctx.SHORT_LITERAL() != null) {
+            String toParse = ctx.SHORT_LITERAL().toString();
+            // Need to remove the 's' from the end
+            short value = Short.parseShort(toParse.substring(0, toParse.length()-1));
+            return new ShortLiteral(value);
+        } else if (ctx.INT_LITERAL() != null) {
+            int value = Integer.parseInt(ctx.INT_LITERAL().toString());
+            return new IntLiteral(value);
+        } else if (ctx.LONG_LITERAL() != null) {
+            String toParse = ctx.LONG_LITERAL().toString();
+            long value = Long.parseLong(toParse.substring(0, toParse.length()-1));
+            return new LongLiteral(value);
+        } else if (ctx.DOUBLE_LITERAL() != null) {
+            double value = Double.parseDouble(ctx.DOUBLE_LITERAL().toString());
+            return new DoubleLiteral(value);
+        } else if (ctx.FLOAT_LITERAL() != null) {
+            String toParse = ctx.FLOAT_LITERAL().toString();
+            float value = Float.parseFloat(toParse.substring(0, toParse.length()-1));
+            return new FloatLiteral(value);
+        } else {
+            return null;
+        }
     }
 
     /**

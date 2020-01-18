@@ -20,8 +20,8 @@ public class NegateExpression implements Expression {
     }
 
     @Override
-    public Type getType() {
-        return expression.getType();
+    public PrimitiveType getType() {
+        return (PrimitiveType) expression.getType();
     }
 
     /**

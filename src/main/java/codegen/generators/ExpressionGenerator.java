@@ -2,8 +2,7 @@ package codegen.generators;
 
 import ast.expressions.*;
 import ast.functions.FunctionTable;
-import ast.literals.IntLiteral;
-import ast.literals.LiteralValue;
+import ast.literals.*;
 import ast.operations.BinaryOp;
 import ast.statements.Assignment;
 import ast.structure.VariableScope;
@@ -41,8 +40,7 @@ public class ExpressionGenerator {
                                              FunctionTable functionTable) {
         compileExpression(bopExpression.getLeft(), emitter, variableScope, functionTable);
         compileExpression(bopExpression.getRight(), emitter, variableScope, functionTable);
-        // TODO: Actually use the type!
-        PrimitiveType expressionType = PrimitiveType.Int;
+        PrimitiveType expressionType = bopExpression.getType();
         String typeString = CodeGenUtil.getTypeForPrimitive(expressionType);
         switch (bopExpression.getOp()) {
             case ADD:
@@ -114,7 +112,9 @@ public class ExpressionGenerator {
                                                 FunctionTable functionTable) {
         // TODO: Check we haven't broken the range by negating
         // (you have one more negative number available than you do positive numbers)
-        emitter.emitLine("i32.const 0");
+        PrimitiveType type = negateExpression.getType();
+        String typeString = CodeGenUtil.getTypeForPrimitive(type);
+        emitter.emitLine(typeString + ".const 0");
         compileExpression(negateExpression.getExpression(), emitter, scope, functionTable);
         emitter.emitLine("sub");
     }
@@ -123,13 +123,28 @@ public class ExpressionGenerator {
                                                            CodeEmitter emitter,
                                                            VariableScope variableScope,
                                                            FunctionTable functionTable) {
-        // TODO: Check the type of the thing we are incrementing/decrementing
-        //       (this affects whether we use i32.const or i64.const)
         // TODO: Make sure range is preserved
         //       (shouldn't be able to ++ a short to get out of the 16-bit range)
         int registerNumber = variableScope.lookupRegisterIndexOfVariable(expression.getVariableNameExpression().getVariableName());
         Expression varNameExpr = expression.getVariableNameExpression();
-        Expression one = new IntLiteral(1);
+        Expression one;
+        PrimitiveType variableType = (PrimitiveType) expression.getVariableNameExpression().getType();
+        switch (variableType) {
+            case Short:
+                one = new ShortLiteral((short) 1);
+                break;
+            case Long:
+                one = new LongLiteral(1);
+                break;
+            case Float:
+                one = new FloatLiteral(1);
+                break;
+            case Double:
+                one = new DoubleLiteral(1);
+                break;
+            default:
+                one = new IntLiteral(1);
+        }
         BinaryOperatorExpression bopExpr;
         Assignment assignment;
         try {

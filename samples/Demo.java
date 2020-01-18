@@ -16,7 +16,7 @@ public class Demo {
         double start = 1.0;
         double soFar = start;
         for (int i = 0; i < a; i++) {
-            soFar += b * 12;
+            soFar += b * 12.0;
         }
         return soFar;
     }

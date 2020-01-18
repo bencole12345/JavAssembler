@@ -35,7 +35,7 @@ public class BinaryOperatorExpression implements Expression {
     }
 
     @Override
-    public Type getType() {
+    public PrimitiveType getType() {
         // We already have the guarantee that the left and right are of the
         // same type, thanks to the constructor
         switch (op.getOpType()) {
@@ -46,7 +46,7 @@ public class BinaryOperatorExpression implements Expression {
                 // Probably need to implement a method in PrimitiveType
                 // like .getResultingTypeWhenCombinedWith(PrimitiveType other)
                 // There should definitely be a good reference for this
-                return left.getType();
+                return (PrimitiveType) left.getType();
             case Comparison:
                 return PrimitiveType.Boolean;
             default:
@@ -72,9 +72,6 @@ public class BinaryOperatorExpression implements Expression {
         if (!(rightType instanceof PrimitiveType))
             return false;
 
-        PrimitiveType leftPrimitive = (PrimitiveType) leftType;
-        PrimitiveType rightPrimitive = (PrimitiveType) rightType;
-
-        return leftPrimitive.isNumericType() && rightPrimitive.isNumericType();
+        return leftType.equals(rightType);
     }
 }
