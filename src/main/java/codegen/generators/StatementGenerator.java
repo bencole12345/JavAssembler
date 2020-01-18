@@ -76,7 +76,7 @@ public class StatementGenerator {
         emitter.emitLine("(block");
         emitter.increaseIndentationLevel();
 
-        emitter.emitLine("(while");
+        emitter.emitLine("(loop");
         emitter.increaseIndentationLevel();
 
         // Test the condition, negate it, and jump out of the loop if the
@@ -84,7 +84,7 @@ public class StatementGenerator {
         // TODO: Find a better way to negate the expression!
         emitter.emitLine("i32.const 1");
         ExpressionGenerator.compileExpression(whileLoop.getCondition(), emitter, scope, functionTable);
-        emitter.emitLine("sub");
+        emitter.emitLine("i32.sub");
 
         // If not(condition) is true then condition is false, so exit the loop
         emitter.emitLine("br_if 1");
@@ -125,7 +125,7 @@ public class StatementGenerator {
         // TODO: Find better way to do negation
         emitter.emitLine("i32.const 1");
         ExpressionGenerator.compileExpression(forLoop.getCondition(), emitter, conditionScope, functionTable);
-        emitter.emitLine("sub");
+        emitter.emitLine("i32.sub");
         emitter.emitLine("br_if 1");
 
         compileCodeBlock(forLoop.getCodeBlock(), emitter, functionTable);

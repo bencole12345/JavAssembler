@@ -38,15 +38,6 @@ public class WasmGenerator {
         String functionName = CodeGenUtil.getFunctionNameForOutput(method, functionTable);
         line.append(functionName);
 
-        // Emit return type, unless it's a void return
-        Type returnType = method.getReturnType();
-        if (!(returnType instanceof VoidType)) {
-            line.append(" (return ");
-            // TODO: This will break for non-primitive types
-            line.append(CodeGenUtil.getTypeForPrimitive((PrimitiveType) returnType));
-            line.append(")");
-        }
-
         // List the parameters
         for (MethodParameter param : method.getParams()) {
             line.append(" (param $");
@@ -60,6 +51,15 @@ public class WasmGenerator {
             } else {
                 // TODO: Implement non-primitive types
             }
+        }
+
+        // Emit return type, unless it's a void return
+        Type returnType = method.getReturnType();
+        if (!(returnType instanceof VoidType)) {
+            line.append(" (result ");
+            // TODO: This will break for non-primitive types
+            line.append(CodeGenUtil.getTypeForPrimitive((PrimitiveType) returnType));
+            line.append(")");
         }
 
         emitter.emitLine(line.toString());

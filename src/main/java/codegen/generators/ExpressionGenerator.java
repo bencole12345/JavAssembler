@@ -112,11 +112,11 @@ public class ExpressionGenerator {
                                                 FunctionTable functionTable) {
         // TODO: Check we haven't broken the range by negating
         // (you have one more negative number available than you do positive numbers)
+        compileExpression(negateExpression.getExpression(), emitter, scope, functionTable);
         PrimitiveType type = negateExpression.getType();
         String typeString = CodeGenUtil.getTypeForPrimitive(type);
-        emitter.emitLine(typeString + ".const 0");
-        compileExpression(negateExpression.getExpression(), emitter, scope, functionTable);
-        emitter.emitLine("sub");
+        String signedSuffix = type.isIntegralType() ? "_s" : "";
+        emitter.emitLine(typeString + ".neg" + signedSuffix);
     }
 
     private static void compileVariableIncrementExpression(VariableIncrementExpression expression,
