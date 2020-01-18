@@ -6,12 +6,12 @@ public enum BinaryOp {
     SUBTRACT(OpType.Combiner),
     MULTIPLY(OpType.Combiner),
     DIVIDE(OpType.Combiner),
-    EQUAL_TO(OpType.Boolean),
-    NOT_EQUAL_TO(OpType.Boolean),
-    LESS_THAN(OpType.Boolean),
-    LESS_THAN_OR_EQUAL_TO(OpType.Boolean),
-    GREATER_THAN(OpType.Boolean),
-    GREATER_THAN_OR_EQUAL_TO(OpType.Boolean);
+    EQUAL_TO(OpType.Comparison),
+    NOT_EQUAL_TO(OpType.Comparison),
+    LESS_THAN(OpType.Comparison),
+    LESS_THAN_OR_EQUAL_TO(OpType.Comparison),
+    GREATER_THAN(OpType.Comparison),
+    GREATER_THAN_OR_EQUAL_TO(OpType.Comparison);
 
     private OpType opType;
 

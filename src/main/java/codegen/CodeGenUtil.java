@@ -1,37 +1,17 @@
 package codegen;
 
+import ast.functions.FunctionTable;
 import ast.literals.IntLiteral;
 import ast.structure.ClassMethod;
+import ast.structure.MethodParameter;
 import ast.types.PrimitiveType;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static codegen.generators.LiteralGenerator.compileLiteralValue;
 
 public class CodeGenUtil {
-
-    /**
-     * Builds a table of all functions/methods in the compilation unit.
-     *
-     * This allows functions/methods to be referenced via their index in the
-     * function table during the code generation phase.
-     *
-     * @param methods The list of methods to include in the table
-     * @return The FunctionTable object that was constructed
-     */
-    static FunctionTable buildFunctionTable(List<ClassMethod> methods) {
-        FunctionTable functionTable = new FunctionTable();
-        for (ClassMethod method : methods) {
-            try {
-                functionTable.registerFunction(method.getName());
-            } catch (FunctionTable.DuplicateFunctionSignatureException e) {
-                // TODO: Actually output this as an error message and reject
-                // the input file.
-                e.printStackTrace();
-            }
-        }
-        return functionTable;
-    }
 
     /**
      * Returns the wasm type mapping for a given Java primitive type.
@@ -74,6 +54,31 @@ public class CodeGenUtil {
             IntLiteral literal = new IntLiteral(mask);
             compileLiteralValue(literal, codeEmitter);
             codeEmitter.emitLine("and");
+        }
+    }
+
+    /**
+     * Determines the function name to be emitted.
+     *
+     * If this is the only method with this name, then just the method name will
+     * be used. If there are multiple overloaded methods with this name, then
+     * name mangling with the types will be applied.
+     *
+     * @param method The method under compilation
+     * @param functionTable The function table
+     * @return The name to be emitted
+     */
+    public static String getFunctionNameForOutput(ClassMethod method, FunctionTable functionTable) {
+        String name = method.getName();
+        if (functionTable.getNumberOfFunctionsWithName(name) == 1) {
+            return name;
+        } else {
+            List<String> typeNames = method.getParams()
+                    .stream()
+                    .map(MethodParameter::getType)
+                    .map(Object::toString)
+                    .collect(Collectors.toList());
+            return name + "__" + String.join("_", typeNames);
         }
     }
 }

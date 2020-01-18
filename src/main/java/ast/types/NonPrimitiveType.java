@@ -31,4 +31,10 @@ public class NonPrimitiveType implements Type {
     public int hashCode() {
         return Objects.hash(className);
     }
+
+    @Override
+    public boolean isSubtypeOf(Type other) {
+        // TODO: Implement class hierarchy lookup
+        return this.equals(other);
+    }
 }

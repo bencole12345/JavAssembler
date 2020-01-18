@@ -1,5 +1,8 @@
 package ast.literals;
 
+import ast.types.PrimitiveType;
+import ast.types.Type;
+
 public class IntLiteral implements LiteralValue {
 
     private int value;
@@ -10,5 +13,10 @@ public class IntLiteral implements LiteralValue {
 
     public int getValue() {
         return value;
+    }
+
+    @Override
+    public Type getType() {
+        return PrimitiveType.Int;
     }
 }

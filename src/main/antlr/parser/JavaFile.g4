@@ -60,7 +60,7 @@ variableDeclarationAndAssignment
     ;
 
 expr
-    : value                                         # ValueExpr
+    : literal                                       # LiteralExpr
     | functionCall                                  # FunctionCallExpr
     | LPAREN expr RPAREN                            # ParenthesesExpr
     | MINUS expr                                    # NegateExpr
@@ -143,7 +143,11 @@ type
     | nonPrimitiveType=IDENTIFIER                                      # NonPrimitiveType
     ;
 
-value
-    : SIGNED_INTEGER        # SignedIntegerValue
-    | DECIMAL               # DecimalValue
+literal
+    : SHORT_LITERAL
+    | INT_LITERAL
+    | LONG_LITERAL
+    | FLOAT_LITERAL
+    | DOUBLE_LITERAL
+    | BOOLEAN_LITERAL
     ;

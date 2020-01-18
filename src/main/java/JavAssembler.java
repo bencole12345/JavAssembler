@@ -1,10 +1,9 @@
+import ast.functions.FunctionTable;
 import ast.structure.CompilationUnit;
 import codegen.CodeEmitter;
 import codegen.WasmGenerator;
 import org.apache.commons.cli.*;
 import parser.ParserWrapper;
-
-
 
 import java.io.IOException;
 
@@ -32,8 +31,13 @@ public class JavAssembler {
 
     private static void compileFile(String inputFile, String outputFile) throws IOException {
         CompilationUnit compilationUnit = ParserWrapper.parseFile(inputFile);
+        if (compilationUnit == null) {
+            return;
+            // An error message should already have been displayed
+        }
+        FunctionTable functionTable = compilationUnit.getFunctionTable();
         CodeEmitter codeEmitter = new CodeEmitter(outputFile);
-        WasmGenerator.compile(compilationUnit, codeEmitter);
+        WasmGenerator.compile(compilationUnit, codeEmitter, functionTable);
     }
 
     private static Options getCommandLineOptions() {

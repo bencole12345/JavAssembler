@@ -19,7 +19,7 @@ public class VariableScope {
     /**
      * Wraps the data stored about a variable allocation.
      */
-    private class RegisterAllocation {
+    private static class RegisterAllocation {
 
         private int registerIndex;
         private Type type;

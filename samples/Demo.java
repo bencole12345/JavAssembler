@@ -16,7 +16,7 @@ public class Demo {
         double start = 1.0;
         double soFar = start;
         for (int i = 0; i < a; i++) {
-            soFar += b * 12;
+            soFar += b * 12.0;
         }
         return soFar;
     }
@@ -36,5 +36,13 @@ public class Demo {
             }
         }
         return a;
+    }
+
+    public static int overloaded(int x, float y) {
+        return 1;
+    }
+
+    public static float overloaded(float x, int y) {
+        return 1.0f;
     }
 }
