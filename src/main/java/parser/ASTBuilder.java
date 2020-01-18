@@ -24,6 +24,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     private Stack<VariableScope> variableScopeStack;
     private FunctionTable functionTable;
+    private Type currentFunctionReturnType;
 
     @Override
     public CompilationUnit visitFile(JavaFileParser.FileContext ctx) {
@@ -147,7 +148,13 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     @Override
     public ReturnStatement visitReturnStatement(JavaFileParser.ReturnStatementContext ctx) {
         Expression expression = (Expression) visit(ctx.expr());
-        return new ReturnStatement(expression);
+        ReturnStatement returnStatement = null;
+        try {
+            returnStatement = new ReturnStatement(expression, currentFunctionReturnType);
+        } catch (IncorrectTypeException e) {
+            reportError(e.getMessage(), ctx);
+        }
+        return returnStatement;
     }
 
     @Override
@@ -441,6 +448,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         }
 
         // Now visit the body of the method
+        currentFunctionReturnType = returnType;
         CodeBlock body = (CodeBlock) visit(ctx.codeBlock());
 
         // Pop the scope that was created to contain the parameters
