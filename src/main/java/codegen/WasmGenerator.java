@@ -60,6 +60,7 @@ public class WasmGenerator {
         }
 
         emitter.emitLine(line.toString());
+        emitter.increaseIndentationLevel();
 
         VariableScope bodyScope = method.getBody().getVariableScope();
         for (Type type : bodyScope.getAllKnownAllocatedTypes()) {
@@ -72,7 +73,6 @@ public class WasmGenerator {
         }
 
         // Now compile the body of the function
-        emitter.increaseIndentationLevel();
         StatementGenerator.compileCodeBlock(method.getBody(), emitter, functionTable);
         // TODO: Find way to get this on the same line as the last instruction from above
         emitter.emitLine(")");

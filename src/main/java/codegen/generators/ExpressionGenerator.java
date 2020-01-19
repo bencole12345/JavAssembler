@@ -189,7 +189,9 @@ public class ExpressionGenerator {
         }
     }
 
-    private static void compileVariableNameExpression(VariableNameExpression expression, CodeEmitter emitter, VariableScope variableScope) {
+    private static void compileVariableNameExpression(VariableNameExpression expression,
+                                                      CodeEmitter emitter,
+                                                      VariableScope variableScope) {
         int index = variableScope.lookupRegisterIndexOfVariable(expression.getVariableName());
         emitter.emitLine("local.get " + index);
     }
