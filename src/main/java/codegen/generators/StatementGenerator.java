@@ -27,6 +27,8 @@ public class StatementGenerator {
             compileWhileLoop((WhileLoop) statement, emitter, scope, functionTable);
         } else if (statement instanceof ForLoop) {
             compileForLoop((ForLoop) statement, emitter, scope, functionTable);
+        } else if (statement instanceof VariableIncrementExpression) {
+            ExpressionGenerator.compileExpression((VariableIncrementExpression) statement, emitter, scope, functionTable);
         }
     }
 

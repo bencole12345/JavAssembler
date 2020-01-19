@@ -140,6 +140,7 @@ public class ExpressionGenerator {
         Expression varNameExpr = expression.getVariableNameExpression();
         Expression one;
         PrimitiveType variableType = (PrimitiveType) expression.getVariableNameExpression().getType();
+        // TODO: Support the rest of the primitives
         switch (variableType) {
             case Short:
                 one = new ShortLiteral((short) 1);
