@@ -12,6 +12,7 @@ import ast.structure.*;
 import ast.types.*;
 import errors.DuplicateFunctionSignatureException;
 import errors.IncorrectTypeException;
+import errors.MultipleVariableDeclarationException;
 import errors.UndeclaredFunctionException;
 import org.antlr.v4.runtime.ParserRuleContext;
 
@@ -72,13 +73,13 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             }
         }
 
-        // Process the class attributes
-        for (JavaFileParser.ClassAttributeContext attributeContext : attributeASTNodes) {
-            ClassAttributeDeclaration declaration = (ClassAttributeDeclaration) visit(attributeContext);
-            String name = declaration.getVariableName();
-            Type type = declaration.getVariableType();
-            classScope.registerVariable(name, type);
-        }
+//        // Process the class attributes
+//        for (JavaFileParser.ClassAttributeContext attributeContext : attributeASTNodes) {
+//            ClassAttributeDeclaration declaration = (ClassAttributeDeclaration) visit(attributeContext);
+//            String name = declaration.getVariableName();
+//            Type type = declaration.getVariableType();
+//            classScope.registerVariable(name, type);
+//        }
 
         // Build a function table
         if (functionTable == null) {
@@ -456,7 +457,11 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         for (MethodParameter param : paramsList) {
             String name = param.getParameterName();
             Type type = param.getType();
-            scopeForParameters.registerVariable(name, type);
+            try {
+                scopeForParameters.registerVariable(name, type);
+            } catch (MultipleVariableDeclarationException e) {
+                reportError(e.getMessage(), ctx);
+            }
         }
 
         // Now visit the body of the method
@@ -500,12 +505,20 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 VariableDeclaration declaration = (VariableDeclaration) statementNode;
                 String name = declaration.getVariableName();
                 Type type = declaration.getVariableType();
-                innerScope.registerVariable(name, type);
+                try {
+                    innerScope.registerVariable(name, type);
+                } catch (MultipleVariableDeclarationException e) {
+                    reportError(e.getMessage(), statementCtx);
+                }
             } else if (statementNode instanceof DeclarationAndAssignment) {
                 DeclarationAndAssignment combined = (DeclarationAndAssignment) statementNode;
                 String name = combined.getVariableName();
                 Type type = combined.getType();
-                innerScope.registerVariable(name, type);
+                try {
+                    innerScope.registerVariable(name, type);
+                } catch (MultipleVariableDeclarationException e) {
+                    reportError(e.getMessage(), statementCtx);
+                }
                 VariableNameExpression nameExpression = new VariableNameExpression(name, innerScope);
                 Assignment assignment = null;
                 try {
@@ -590,7 +603,11 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         VariableScope newScope = pushNewVariableScope();
         if (initialiser instanceof DeclarationAndAssignment) {
             DeclarationAndAssignment decAndAssign = (DeclarationAndAssignment) initialiser;
-            newScope.registerVariable(decAndAssign.getVariableName(), decAndAssign.getType());
+            try {
+                newScope.registerVariable(decAndAssign.getVariableName(), decAndAssign.getType());
+            } catch (MultipleVariableDeclarationException e) {
+                reportError(e.getMessage(), ctx);
+            }
         }
 
         // We need to handle the condition after the initialiser, since it may

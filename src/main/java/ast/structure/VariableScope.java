@@ -1,6 +1,7 @@
 package ast.structure;
 
 import ast.types.Type;
+import errors.MultipleVariableDeclarationException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -106,15 +107,15 @@ public class VariableScope {
      * @param type The type of the variable
      * @return The register index that was allocated
      */
-    public int registerVariable(String name, Type type) {
+    public int registerVariable(String name, Type type) throws MultipleVariableDeclarationException {
         if (lookupVariableType(name) == null) {
             RegisterAllocation allocation = new RegisterAllocation(nextAllocation, type);
             allocations.put(name, allocation);
             allocationsList.add(allocation);
         } else {
-            // TODO: Report error in source file; this variable has already
-            // been declared.
-            throw new RuntimeException();
+            String message = "Variable " + name
+                    + " already has a declaration in this scope";
+            throw new MultipleVariableDeclarationException(message);
         }
         return nextAllocation++;
     }
