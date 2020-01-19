@@ -1,10 +1,13 @@
 package codegen.generators;
 
+import ast.expressions.NotExpression;
+import ast.expressions.VariableIncrementExpression;
 import ast.functions.FunctionTable;
 import ast.statements.*;
 import ast.structure.CodeBlock;
 import ast.structure.VariableScope;
 import codegen.CodeEmitter;
+import errors.IncorrectTypeException;
 
 import static codegen.generators.ExpressionGenerator.compileExpression;
 
@@ -81,10 +84,13 @@ public class StatementGenerator {
 
         // Test the condition, negate it, and jump out of the loop if the
         // negation is true
-        // TODO: Find a better way to negate the expression!
-        emitter.emitLine("i32.const 1");
-        ExpressionGenerator.compileExpression(whileLoop.getCondition(), emitter, scope, functionTable);
-        emitter.emitLine("i32.sub");
+        NotExpression notExpression = null;
+        try {
+            notExpression = new NotExpression(whileLoop.getCondition());
+        } catch (IncorrectTypeException e) {
+            e.printStackTrace();
+        }
+        ExpressionGenerator.compileExpression(notExpression, emitter, scope, functionTable);
 
         // If not(condition) is true then condition is false, so exit the loop
         emitter.emitLine("br_if 1");
@@ -122,10 +128,13 @@ public class StatementGenerator {
 
         // Test the condition, negate it, and jump out of the loop if the
         // negation is true
-        // TODO: Find better way to do negation
-        emitter.emitLine("i32.const 1");
-        ExpressionGenerator.compileExpression(forLoop.getCondition(), emitter, conditionScope, functionTable);
-        emitter.emitLine("i32.sub");
+        NotExpression notExpression = null;
+        try {
+            notExpression = new NotExpression(forLoop.getCondition());
+        } catch (IncorrectTypeException e) {
+            e.printStackTrace();
+        }
+        ExpressionGenerator.compileExpression(notExpression, emitter, scope, functionTable);
         emitter.emitLine("br_if 1");
 
         compileCodeBlock(forLoop.getCodeBlock(), emitter, functionTable);

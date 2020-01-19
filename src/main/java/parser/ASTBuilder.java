@@ -274,6 +274,18 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
+    public NotExpression visitNotExpr(JavaFileParser.NotExprContext ctx) {
+        Expression expression = (Expression) visit(ctx.expr());
+        NotExpression notExpression = null;
+        try {
+            notExpression = new NotExpression(expression);
+        } catch (IncorrectTypeException e) {
+            reportError(e.getMessage(), ctx);
+        }
+        return notExpression;
+    }
+
+    @Override
     public ASTNode visitIncrementExpr(JavaFileParser.IncrementExprContext ctx) {
         // TODO: Check this
         return super.visitIncrementExpr(ctx);
@@ -744,11 +756,17 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     /**
      * Pops the top VariableScope object from the stack
      *
+     * This also informs the new top scope how many allocations its child
+     * made, to ensure that different variables are never bound to the
+     * same register index.
+     *
      * @return The VariableScope object that was popped, or null
      *         if the stack is empty
      */
     private VariableScope popVariableScope() {
-        return variableScopeStack.pop();
+        VariableScope top = variableScopeStack.pop();
+        top.notifyPopped();
+        return top;
     }
 
     /**

@@ -29,6 +29,8 @@ public class ExpressionGenerator {
             compileFunctionCallExpression((FunctionCall) expression, emitter, scope, functionTable);
         } else if (expression instanceof NegateExpression) {
             compileNegateExpression((NegateExpression) expression, emitter, scope, functionTable);
+        } else if (expression instanceof NotExpression) {
+            compileNotExpression((NotExpression) expression, emitter, scope, functionTable);
         } else if (expression instanceof VariableIncrementExpression) {
             compileVariableIncrementExpression((VariableIncrementExpression) expression, emitter, scope, functionTable);
         }
@@ -117,6 +119,15 @@ public class ExpressionGenerator {
         String typeString = CodeGenUtil.getTypeForPrimitive(type);
         String signedSuffix = type.isIntegralType() ? "_s" : "";
         emitter.emitLine(typeString + ".neg" + signedSuffix);
+    }
+
+    private static void compileNotExpression(NotExpression notExpression,
+                                             CodeEmitter emitter,
+                                             VariableScope scope,
+                                             FunctionTable functionTable) {
+        emitter.emitLine("i32.const 1");
+        compileExpression(notExpression.getExpression(), emitter, scope, functionTable);
+        emitter.emitLine("i32.sub");
     }
 
     private static void compileVariableIncrementExpression(VariableIncrementExpression expression,

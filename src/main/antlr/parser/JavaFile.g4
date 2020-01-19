@@ -64,6 +64,7 @@ expr
     | functionCall                                  # FunctionCallExpr
     | LPAREN expr RPAREN                            # ParenthesesExpr
     | MINUS expr                                    # NegateExpr
+    | NOT expr                                      # NotExpr
     | variableIncrementExpr                         # IncrementExpr
     | expr op=(MULTIPLY|DIVIDE) expr                # InfixExpr
     | expr op=(PLUS|MINUS) expr                     # InfixExpr
