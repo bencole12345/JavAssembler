@@ -703,12 +703,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     @Override
     public LiteralValue visitLiteral(JavaFileParser.LiteralContext ctx) {
         if (ctx.BOOLEAN_LITERAL() != null) {
-            boolean value;
-            if (ctx.BOOLEAN_LITERAL().getSymbol().getType() == JavaFileParser.TRUE) {
-                value = true;
-            } else {
-                value = false;
-            }
+            boolean value = Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().toString());
             return new BooleanLiteral(value);
         } else if (ctx.SHORT_LITERAL() != null) {
             String toParse = ctx.SHORT_LITERAL().toString();

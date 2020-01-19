@@ -145,10 +145,10 @@ type
     ;
 
 literal
-    : SHORT_LITERAL
+    : BOOLEAN_LITERAL
+    | SHORT_LITERAL
     | INT_LITERAL
     | LONG_LITERAL
     | FLOAT_LITERAL
     | DOUBLE_LITERAL
-    | BOOLEAN_LITERAL
     ;
