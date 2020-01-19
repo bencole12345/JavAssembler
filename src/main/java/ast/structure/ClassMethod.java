@@ -15,7 +15,12 @@ public class ClassMethod implements ASTNode {
     private List<MethodParameter> params;
     private CodeBlock body;
 
-    public ClassMethod(AccessModifier accessModifier, boolean isStatic, Type returnType, String name, List<MethodParameter> params, CodeBlock body) {
+    public ClassMethod(AccessModifier accessModifier,
+                       boolean isStatic,
+                       Type returnType,
+                       String name,
+                       List<MethodParameter> params,
+                       CodeBlock body) {
         this.accessModifier = accessModifier;
         this.isStatic = isStatic;
         this.returnType = returnType;

@@ -28,11 +28,21 @@
 /buildSrc/subprojects/*/*.iml
 /buildSrc/subprojects/*/out
 /out
+bin/*
 /subprojects/*/*.iml
 /subprojects/*/out
 /.teamcity/*.iml
 /.teamcity/target
+*codeStyleConfig.xml
+.settings
 
 # ANTLR
 # -----
 *.tokens
+
+# Generated outputs
+# -----------------
+generated_wat
+*.wat
+*.classpath
+*.project

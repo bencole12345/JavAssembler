@@ -1,10 +1,13 @@
 package codegen.generators;
 
+import ast.expressions.NotExpression;
+import ast.expressions.VariableIncrementExpression;
 import ast.functions.FunctionTable;
 import ast.statements.*;
 import ast.structure.CodeBlock;
 import ast.structure.VariableScope;
 import codegen.CodeEmitter;
+import errors.IncorrectTypeException;
 
 import static codegen.generators.ExpressionGenerator.compileExpression;
 
@@ -24,6 +27,8 @@ public class StatementGenerator {
             compileWhileLoop((WhileLoop) statement, emitter, scope, functionTable);
         } else if (statement instanceof ForLoop) {
             compileForLoop((ForLoop) statement, emitter, scope, functionTable);
+        } else if (statement instanceof VariableIncrementExpression) {
+            ExpressionGenerator.compileExpression((VariableIncrementExpression) statement, emitter, scope, functionTable);
         }
     }
 
@@ -76,15 +81,18 @@ public class StatementGenerator {
         emitter.emitLine("(block");
         emitter.increaseIndentationLevel();
 
-        emitter.emitLine("(while");
+        emitter.emitLine("(loop");
         emitter.increaseIndentationLevel();
 
         // Test the condition, negate it, and jump out of the loop if the
         // negation is true
-        // TODO: Find a better way to negate the expression!
-        emitter.emitLine("i32.const 1");
-        ExpressionGenerator.compileExpression(whileLoop.getCondition(), emitter, scope, functionTable);
-        emitter.emitLine("sub");
+        NotExpression notExpression = null;
+        try {
+            notExpression = new NotExpression(whileLoop.getCondition());
+        } catch (IncorrectTypeException e) {
+            e.printStackTrace();
+        }
+        ExpressionGenerator.compileExpression(notExpression, emitter, scope, functionTable);
 
         // If not(condition) is true then condition is false, so exit the loop
         emitter.emitLine("br_if 1");
@@ -108,24 +116,26 @@ public class StatementGenerator {
                                        FunctionTable functionTable) {
 
         VariableScope bodyScope = forLoop.getCodeBlock().getVariableScope();
-        // TODO: Rename to something more general since it's used for both condition and updater
-        VariableScope conditionScope = bodyScope.getContainingScope();
+        VariableScope headerScope = bodyScope.getContainingScope();
 
         // First run the setup code
-        compileStatement(forLoop.getInitialiser(), emitter, scope, functionTable);
+        compileStatement(forLoop.getInitialiser(), emitter, headerScope, functionTable);
 
         // Set up the loop
         emitter.emitLine("(block");
         emitter.increaseIndentationLevel();
-        emitter.emitLine("(while");
+        emitter.emitLine("(loop");
         emitter.increaseIndentationLevel();
 
         // Test the condition, negate it, and jump out of the loop if the
         // negation is true
-        // TODO: Find better way to do negation
-        emitter.emitLine("i32.const 1");
-        ExpressionGenerator.compileExpression(forLoop.getCondition(), emitter, conditionScope, functionTable);
-        emitter.emitLine("sub");
+        NotExpression notExpression = null;
+        try {
+            notExpression = new NotExpression(forLoop.getCondition());
+        } catch (IncorrectTypeException e) {
+            e.printStackTrace();
+        }
+        ExpressionGenerator.compileExpression(notExpression, emitter, headerScope, functionTable);
         emitter.emitLine("br_if 1");
 
         compileCodeBlock(forLoop.getCodeBlock(), emitter, functionTable);
@@ -139,7 +149,7 @@ public class StatementGenerator {
         // whenever you compile an expression?
 
         // TODO: Stop dumping result on the stack
-        ExpressionGenerator.compileExpression(forLoop.getUpdater(), emitter, conditionScope, functionTable);
+        ExpressionGenerator.compileExpression(forLoop.getUpdater(), emitter, headerScope, functionTable);
 
         // Branch back to the start of the loop
         emitter.emitLine("br 0");

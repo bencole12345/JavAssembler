@@ -29,6 +29,8 @@ public class ExpressionGenerator {
             compileFunctionCallExpression((FunctionCall) expression, emitter, scope, functionTable);
         } else if (expression instanceof NegateExpression) {
             compileNegateExpression((NegateExpression) expression, emitter, scope, functionTable);
+        } else if (expression instanceof NotExpression) {
+            compileNotExpression((NotExpression) expression, emitter, scope, functionTable);
         } else if (expression instanceof VariableIncrementExpression) {
             compileVariableIncrementExpression((VariableIncrementExpression) expression, emitter, scope, functionTable);
         }
@@ -40,7 +42,7 @@ public class ExpressionGenerator {
                                              FunctionTable functionTable) {
         compileExpression(bopExpression.getLeft(), emitter, variableScope, functionTable);
         compileExpression(bopExpression.getRight(), emitter, variableScope, functionTable);
-        PrimitiveType expressionType = bopExpression.getType();
+        PrimitiveType expressionType = bopExpression.getUnderlyingType();
         String typeString = CodeGenUtil.getTypeForPrimitive(expressionType);
         switch (bopExpression.getOp()) {
             case ADD:
@@ -61,37 +63,37 @@ public class ExpressionGenerator {
                 emitter.emitLine(typeString + ".div");
                 break;
             case EQUAL_TO:
-                emitter.emitLine("eq");
+                emitter.emitLine(typeString + ".eq");
                 break;
             case NOT_EQUAL_TO:
-                emitter.emitLine("ne");
+                emitter.emitLine(typeString + ".ne");
                 break;
             case LESS_THAN:
                 if (expressionType.isIntegralType()) {
-                    emitter.emitLine("lt_s");
+                    emitter.emitLine(typeString + ".lt_s");
                 } else {
-                    emitter.emitLine("lt");
+                    emitter.emitLine(typeString + ".lt");
                 }
                 break;
             case LESS_THAN_OR_EQUAL_TO:
                 if (expressionType.isIntegralType()) {
-                    emitter.emitLine("le_s");
+                    emitter.emitLine(typeString + ".le_s");
                 } else {
-                    emitter.emitLine("le");
+                    emitter.emitLine(typeString + ".le");
                 }
                 break;
             case GREATER_THAN:
                 if (expressionType.isIntegralType()) {
-                    emitter.emitLine("gt_s");
+                    emitter.emitLine(typeString + ".gt_s");
                 } else {
-                    emitter.emitLine("gt");
+                    emitter.emitLine(typeString + ".gt");
                 }
                 break;
             case GREATER_THAN_OR_EQUAL_TO:
                 if (expressionType.isIntegralType()) {
-                    emitter.emitLine("ge_s");
+                    emitter.emitLine(typeString + ".ge_s");
                 } else {
-                    emitter.emitLine("ge");
+                    emitter.emitLine(typeString + ".ge");
                 }
         }
     }
@@ -112,11 +114,20 @@ public class ExpressionGenerator {
                                                 FunctionTable functionTable) {
         // TODO: Check we haven't broken the range by negating
         // (you have one more negative number available than you do positive numbers)
+        compileExpression(negateExpression.getExpression(), emitter, scope, functionTable);
         PrimitiveType type = negateExpression.getType();
         String typeString = CodeGenUtil.getTypeForPrimitive(type);
-        emitter.emitLine(typeString + ".const 0");
-        compileExpression(negateExpression.getExpression(), emitter, scope, functionTable);
-        emitter.emitLine("sub");
+        String signedSuffix = type.isIntegralType() ? "_s" : "";
+        emitter.emitLine(typeString + ".neg" + signedSuffix);
+    }
+
+    private static void compileNotExpression(NotExpression notExpression,
+                                             CodeEmitter emitter,
+                                             VariableScope scope,
+                                             FunctionTable functionTable) {
+        emitter.emitLine("i32.const 1");
+        compileExpression(notExpression.getExpression(), emitter, scope, functionTable);
+        emitter.emitLine("i32.sub");
     }
 
     private static void compileVariableIncrementExpression(VariableIncrementExpression expression,
@@ -129,6 +140,7 @@ public class ExpressionGenerator {
         Expression varNameExpr = expression.getVariableNameExpression();
         Expression one;
         PrimitiveType variableType = (PrimitiveType) expression.getVariableNameExpression().getType();
+        // TODO: Support the rest of the primitives
         switch (variableType) {
             case Short:
                 one = new ShortLiteral((short) 1);
@@ -178,7 +190,9 @@ public class ExpressionGenerator {
         }
     }
 
-    private static void compileVariableNameExpression(VariableNameExpression expression, CodeEmitter emitter, VariableScope variableScope) {
+    private static void compileVariableNameExpression(VariableNameExpression expression,
+                                                      CodeEmitter emitter,
+                                                      VariableScope variableScope) {
         int index = variableScope.lookupRegisterIndexOfVariable(expression.getVariableName());
         emitter.emitLine("local.get " + index);
     }

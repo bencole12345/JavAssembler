@@ -64,6 +64,7 @@ expr
     | functionCall                                  # FunctionCallExpr
     | LPAREN expr RPAREN                            # ParenthesesExpr
     | MINUS expr                                    # NegateExpr
+    | NOT expr                                      # NotExpr
     | variableIncrementExpr                         # IncrementExpr
     | expr op=(MULTIPLY|DIVIDE) expr                # InfixExpr
     | expr op=(PLUS|MINUS) expr                     # InfixExpr
@@ -144,10 +145,10 @@ type
     ;
 
 literal
-    : SHORT_LITERAL
+    : BOOLEAN_LITERAL
+    | SHORT_LITERAL
     | INT_LITERAL
     | LONG_LITERAL
     | FLOAT_LITERAL
     | DOUBLE_LITERAL
-    | BOOLEAN_LITERAL
     ;

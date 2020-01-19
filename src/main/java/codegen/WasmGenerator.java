@@ -1,10 +1,7 @@
 package codegen;
 
 import ast.functions.FunctionTable;
-import ast.structure.ClassMethod;
-import ast.structure.CompilationUnit;
-import ast.structure.JavaClass;
-import ast.structure.MethodParameter;
+import ast.structure.*;
 import ast.types.AccessModifier;
 import ast.types.PrimitiveType;
 import ast.types.Type;
@@ -38,15 +35,6 @@ public class WasmGenerator {
         String functionName = CodeGenUtil.getFunctionNameForOutput(method, functionTable);
         line.append(functionName);
 
-        // Emit return type, unless it's a void return
-        Type returnType = method.getReturnType();
-        if (!(returnType instanceof VoidType)) {
-            line.append(" (return ");
-            // TODO: This will break for non-primitive types
-            line.append(CodeGenUtil.getTypeForPrimitive((PrimitiveType) returnType));
-            line.append(")");
-        }
-
         // List the parameters
         for (MethodParameter param : method.getParams()) {
             line.append(" (param $");
@@ -62,10 +50,29 @@ public class WasmGenerator {
             }
         }
 
+        // Emit return type, unless it's a void return
+        Type returnType = method.getReturnType();
+        if (!(returnType instanceof VoidType)) {
+            line.append(" (result ");
+            // TODO: This will break for non-primitive types
+            line.append(CodeGenUtil.getTypeForPrimitive((PrimitiveType) returnType));
+            line.append(")");
+        }
+
         emitter.emitLine(line.toString());
+        emitter.increaseIndentationLevel();
+
+        VariableScope bodyScope = method.getBody().getVariableScope();
+        for (Type type : bodyScope.getAllKnownAllocatedTypes()) {
+            if (type instanceof PrimitiveType) {
+                String typeString = CodeGenUtil.getTypeForPrimitive((PrimitiveType) type);
+                emitter.emitLine("(local " + typeString + ")");
+            } else {
+                // TODO: Implement for non-primitive types
+            }
+        }
 
         // Now compile the body of the function
-        emitter.increaseIndentationLevel();
         StatementGenerator.compileCodeBlock(method.getBody(), emitter, functionTable);
         // TODO: Find way to get this on the same line as the last instruction from above
         emitter.emitLine(")");

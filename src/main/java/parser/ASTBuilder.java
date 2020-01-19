@@ -12,6 +12,7 @@ import ast.structure.*;
 import ast.types.*;
 import errors.DuplicateFunctionSignatureException;
 import errors.IncorrectTypeException;
+import errors.MultipleVariableDeclarationException;
 import errors.UndeclaredFunctionException;
 import org.antlr.v4.runtime.ParserRuleContext;
 
@@ -72,13 +73,13 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             }
         }
 
-        // Process the class attributes
-        for (JavaFileParser.ClassAttributeContext attributeContext : attributeASTNodes) {
-            ClassAttributeDeclaration declaration = (ClassAttributeDeclaration) visit(attributeContext);
-            String name = declaration.getVariableName();
-            Type type = declaration.getVariableType();
-            classScope.registerVariable(name, type);
-        }
+//        // Process the class attributes
+//        for (JavaFileParser.ClassAttributeContext attributeContext : attributeASTNodes) {
+//            ClassAttributeDeclaration declaration = (ClassAttributeDeclaration) visit(attributeContext);
+//            String name = declaration.getVariableName();
+//            Type type = declaration.getVariableType();
+//            classScope.registerVariable(name, type);
+//        }
 
         // Build a function table
         if (functionTable == null) {
@@ -274,6 +275,18 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
+    public NotExpression visitNotExpr(JavaFileParser.NotExprContext ctx) {
+        Expression expression = (Expression) visit(ctx.expr());
+        NotExpression notExpression = null;
+        try {
+            notExpression = new NotExpression(expression);
+        } catch (IncorrectTypeException e) {
+            reportError(e.getMessage(), ctx);
+        }
+        return notExpression;
+    }
+
+    @Override
     public ASTNode visitIncrementExpr(JavaFileParser.IncrementExprContext ctx) {
         // TODO: Check this
         return super.visitIncrementExpr(ctx);
@@ -444,7 +457,11 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         for (MethodParameter param : paramsList) {
             String name = param.getParameterName();
             Type type = param.getType();
-            scopeForParameters.registerVariable(name, type);
+            try {
+                scopeForParameters.registerVariable(name, type);
+            } catch (MultipleVariableDeclarationException e) {
+                reportError(e.getMessage(), ctx);
+            }
         }
 
         // Now visit the body of the method
@@ -488,12 +505,20 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 VariableDeclaration declaration = (VariableDeclaration) statementNode;
                 String name = declaration.getVariableName();
                 Type type = declaration.getVariableType();
-                innerScope.registerVariable(name, type);
+                try {
+                    innerScope.registerVariable(name, type);
+                } catch (MultipleVariableDeclarationException e) {
+                    reportError(e.getMessage(), statementCtx);
+                }
             } else if (statementNode instanceof DeclarationAndAssignment) {
                 DeclarationAndAssignment combined = (DeclarationAndAssignment) statementNode;
                 String name = combined.getVariableName();
                 Type type = combined.getType();
-                innerScope.registerVariable(name, type);
+                try {
+                    innerScope.registerVariable(name, type);
+                } catch (MultipleVariableDeclarationException e) {
+                    reportError(e.getMessage(), statementCtx);
+                }
                 VariableNameExpression nameExpression = new VariableNameExpression(name, innerScope);
                 Assignment assignment = null;
                 try {
@@ -575,28 +600,30 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         // object to be created for that scope, and its parent needs
         // to be set correctly, using variableScopeStack.
 
-        boolean insertedExtraScope = false;
+        VariableScope newScope = pushNewVariableScope();
         if (initialiser instanceof DeclarationAndAssignment) {
             DeclarationAndAssignment decAndAssign = (DeclarationAndAssignment) initialiser;
-            VariableScope newScope = pushNewVariableScope();
-            newScope.registerVariable(decAndAssign.getVariableName(), decAndAssign.getType());
-            insertedExtraScope = true;
+            try {
+                newScope.registerVariable(decAndAssign.getVariableName(), decAndAssign.getType());
+            } catch (MultipleVariableDeclarationException e) {
+                reportError(e.getMessage(), ctx);
+            }
         }
 
         // We need to handle the condition after the initialiser, since it may
         // refer to the variable defined in the initialiser, which is only
         // accessible from the newly created scope
         Expression condition = (ctx.forLoopCondition() != null)
-                ? (Expression) visit(ctx.forLoopCondition()) : null;
+                ? (Expression) visit(ctx.forLoopCondition())
+                : new BooleanLiteral(true);
         Expression updater = (ctx.forLoopUpdater() != null)
                 ? (Expression) visit(ctx.forLoopUpdater()) : null;
 
         // Now we can safely visit the body of the loop
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
 
-        if (insertedExtraScope) {
-            popVariableScope();
-        }
+        // Pop the header's scope
+        popVariableScope();
 
         ForLoop forLoop = null;
         try {
@@ -691,12 +718,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     @Override
     public LiteralValue visitLiteral(JavaFileParser.LiteralContext ctx) {
         if (ctx.BOOLEAN_LITERAL() != null) {
-            boolean value;
-            if (ctx.BOOLEAN_LITERAL().getSymbol().getType() == JavaFileParser.TRUE) {
-                value = true;
-            } else {
-                value = false;
-            }
+            boolean value = Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().toString());
             return new BooleanLiteral(value);
         } else if (ctx.SHORT_LITERAL() != null) {
             String toParse = ctx.SHORT_LITERAL().toString();
@@ -744,11 +766,17 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     /**
      * Pops the top VariableScope object from the stack
      *
+     * This also informs the new top scope how many allocations its child
+     * made, to ensure that different variables are never bound to the
+     * same register index.
+     *
      * @return The VariableScope object that was popped, or null
      *         if the stack is empty
      */
     private VariableScope popVariableScope() {
-        return variableScopeStack.pop();
+        VariableScope top = variableScopeStack.pop();
+        top.notifyPopped();
+        return top;
     }
 
     /**

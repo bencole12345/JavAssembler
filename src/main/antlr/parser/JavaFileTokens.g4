@@ -63,8 +63,8 @@ BOOLEAN: 'boolean' ;
 FLOAT: 'float' ;
 DOUBLE: 'double' ;
 
-TRUE: 'true' ;
-FALSE: 'false' ;
+fragment TRUE: 'true' ;
+fragment FALSE: 'false' ;
 
 fragment DIGITS: [0-9]+ ;
 fragment SIGNED_INTEGER: MINUS? DIGITS ;
@@ -75,7 +75,7 @@ LONG_LITERAL: SIGNED_INTEGER ('l'|'L') ;
 INT_LITERAL: SIGNED_INTEGER ;
 FLOAT_LITERAL: DECIMAL 'f' ;
 DOUBLE_LITERAL: DECIMAL ;
-BOOLEAN_LITERAL: (TRUE | FALSE) ;
+BOOLEAN_LITERAL: TRUE | FALSE ;
 
 IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]* ;
 

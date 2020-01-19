@@ -7,14 +7,6 @@ import errors.IncorrectTypeException;
 
 public class ForLoop implements Statement {
 
-    // TODO: Consider very carefully how to handle scoping with regards to the loop variable
-    // Eg if we have
-    //      for (int i = 0; i < 10; i++) {
-    //          ...
-    //      }
-    // We need can't just add i to the parent scope
-    // Ideally it should be inserted into the for loop's code block
-
     private Statement initialiser;
     private Expression condition;
     private Expression updater;
