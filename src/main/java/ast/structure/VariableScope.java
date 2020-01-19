@@ -2,8 +2,11 @@ package ast.structure;
 
 import ast.types.Type;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Captures a particular level of variable scoping.
@@ -52,6 +55,14 @@ public class VariableScope {
     private Map<String, RegisterAllocation> allocations;
 
     /**
+     * An ordered list of all known allocations at this level or below
+     *
+     * This is used to generate the list of types used within a function, which
+     * is required at the start of a WebAssembly function.
+     */
+    private List<RegisterAllocation> allocationsList;
+
+    /**
      * Tracks which register index we can allocate next for
      * a local variable
      */
@@ -59,6 +70,7 @@ public class VariableScope {
 
     public VariableScope() {
         allocations = new HashMap<>();
+        allocationsList = new ArrayList<>();
         nextAllocation = 0;
         containingScope = null;
     }
@@ -98,6 +110,7 @@ public class VariableScope {
         if (lookupVariableType(name) == null) {
             RegisterAllocation allocation = new RegisterAllocation(nextAllocation, type);
             allocations.put(name, allocation);
+            allocationsList.add(allocation);
         } else {
             // TODO: Report error in source file; this variable has already
             // been declared.
@@ -137,5 +150,30 @@ public class VariableScope {
         } else {
             return null;
         }
+    }
+
+    /**
+     * Notifies this scope that it has been popped from the scope stack, so that
+     * it can update its containing scope about the allocations that have been
+     * made.
+     */
+    public void notifyPopped() {
+        if (containingScope != null) {
+            containingScope.nextAllocation += allocations.size();
+            containingScope.allocationsList.addAll(this.allocationsList);
+        }
+    }
+
+    /**
+     * Returns a list of all known allocated types.
+     *
+     * This includes allocations made by child scopes.
+     *
+     * @return A list of all known allocated types
+     */
+    public List<Type> getAllKnownAllocatedTypes() {
+        return allocationsList.stream()
+                .map(RegisterAllocation::getType)
+                .collect(Collectors.toList());
     }
 }

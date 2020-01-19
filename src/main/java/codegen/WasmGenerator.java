@@ -1,10 +1,7 @@
 package codegen;
 
 import ast.functions.FunctionTable;
-import ast.structure.ClassMethod;
-import ast.structure.CompilationUnit;
-import ast.structure.JavaClass;
-import ast.structure.MethodParameter;
+import ast.structure.*;
 import ast.types.AccessModifier;
 import ast.types.PrimitiveType;
 import ast.types.Type;
@@ -63,6 +60,16 @@ public class WasmGenerator {
         }
 
         emitter.emitLine(line.toString());
+
+        VariableScope bodyScope = method.getBody().getVariableScope();
+        for (Type type : bodyScope.getAllKnownAllocatedTypes()) {
+            if (type instanceof PrimitiveType) {
+                String typeString = CodeGenUtil.getTypeForPrimitive((PrimitiveType) type);
+                emitter.emitLine("(local " + typeString + ")");
+            } else {
+                // TODO: Implement for non-primitive types
+            }
+        }
 
         // Now compile the body of the function
         emitter.increaseIndentationLevel();
