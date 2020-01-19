@@ -587,28 +587,26 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         // object to be created for that scope, and its parent needs
         // to be set correctly, using variableScopeStack.
 
-        boolean insertedExtraScope = false;
+        VariableScope newScope = pushNewVariableScope();
         if (initialiser instanceof DeclarationAndAssignment) {
             DeclarationAndAssignment decAndAssign = (DeclarationAndAssignment) initialiser;
-            VariableScope newScope = pushNewVariableScope();
             newScope.registerVariable(decAndAssign.getVariableName(), decAndAssign.getType());
-            insertedExtraScope = true;
         }
 
         // We need to handle the condition after the initialiser, since it may
         // refer to the variable defined in the initialiser, which is only
         // accessible from the newly created scope
         Expression condition = (ctx.forLoopCondition() != null)
-                ? (Expression) visit(ctx.forLoopCondition()) : null;
+                ? (Expression) visit(ctx.forLoopCondition())
+                : new BooleanLiteral(true);
         Expression updater = (ctx.forLoopUpdater() != null)
                 ? (Expression) visit(ctx.forLoopUpdater()) : null;
 
         // Now we can safely visit the body of the loop
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
 
-        if (insertedExtraScope) {
-            popVariableScope();
-        }
+        // Pop the header's scope
+        popVariableScope();
 
         ForLoop forLoop = null;
         try {

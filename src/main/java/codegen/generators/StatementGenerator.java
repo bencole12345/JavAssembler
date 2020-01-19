@@ -114,16 +114,15 @@ public class StatementGenerator {
                                        FunctionTable functionTable) {
 
         VariableScope bodyScope = forLoop.getCodeBlock().getVariableScope();
-        // TODO: Rename to something more general since it's used for both condition and updater
-        VariableScope conditionScope = bodyScope.getContainingScope();
+        VariableScope headerScope = bodyScope.getContainingScope();
 
         // First run the setup code
-        compileStatement(forLoop.getInitialiser(), emitter, scope, functionTable);
+        compileStatement(forLoop.getInitialiser(), emitter, headerScope, functionTable);
 
         // Set up the loop
         emitter.emitLine("(block");
         emitter.increaseIndentationLevel();
-        emitter.emitLine("(while");
+        emitter.emitLine("(loop");
         emitter.increaseIndentationLevel();
 
         // Test the condition, negate it, and jump out of the loop if the
@@ -134,7 +133,7 @@ public class StatementGenerator {
         } catch (IncorrectTypeException e) {
             e.printStackTrace();
         }
-        ExpressionGenerator.compileExpression(notExpression, emitter, scope, functionTable);
+        ExpressionGenerator.compileExpression(notExpression, emitter, headerScope, functionTable);
         emitter.emitLine("br_if 1");
 
         compileCodeBlock(forLoop.getCodeBlock(), emitter, functionTable);
@@ -148,7 +147,7 @@ public class StatementGenerator {
         // whenever you compile an expression?
 
         // TODO: Stop dumping result on the stack
-        ExpressionGenerator.compileExpression(forLoop.getUpdater(), emitter, conditionScope, functionTable);
+        ExpressionGenerator.compileExpression(forLoop.getUpdater(), emitter, headerScope, functionTable);
 
         // Branch back to the start of the loop
         emitter.emitLine("br 0");
