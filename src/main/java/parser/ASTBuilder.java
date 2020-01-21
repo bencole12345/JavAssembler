@@ -108,7 +108,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         }
 
         // Pop the scope for this class from the stack
-        popVariableScope();
+        popVariableScope(false);
 
         return new JavaClass(visibility, className, classScope, methods);
     }
@@ -469,7 +469,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         CodeBlock body = (CodeBlock) visit(ctx.codeBlock());
 
         // Pop the scope that was created to contain the parameters
-        popVariableScope();
+        popVariableScope(false);
         return new ClassMethod(modifier, isStatic, returnType, methodName, paramsList, body);
     }
 
@@ -533,7 +533,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         }
 
         // Remove the inner scope from the stack since we are done with this block
-        popVariableScope();
+        popVariableScope(true);
 
         return new CodeBlock(innerScope, statements);
     }
@@ -623,7 +623,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
 
         // Pop the header's scope
-        popVariableScope();
+        popVariableScope(true);
 
         ForLoop forLoop = null;
         try {
@@ -773,9 +773,11 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
      * @return The VariableScope object that was popped, or null
      *         if the stack is empty
      */
-    private VariableScope popVariableScope() {
+    private VariableScope popVariableScope(boolean updateParent) {
         VariableScope top = variableScopeStack.pop();
-        top.notifyPopped();
+        if (updateParent) {
+            top.notifyPopped();
+        }
         return top;
     }
 
