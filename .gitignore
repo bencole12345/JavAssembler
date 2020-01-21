@@ -43,6 +43,11 @@ bin/*
 # Generated outputs
 # -----------------
 generated_wat
+generated_wasm
 *.wat
 *.classpath
 *.project
+
+# Binary for performing assembly
+# ------------------------------
+scripts/wat2wasm

@@ -1,0 +1,3 @@
+#!/bin/bash
+scripts/wat2wasm generated_wat/test.wat -o generated_wasm/test.wasm
+node scripts/testscript.js generated_wasm/test.wasm
