@@ -84,7 +84,9 @@ variableIncrementExpr
     ;
 
 functionCall
-    : IDENTIFIER LPAREN functionArgs RPAREN
+    : IDENTIFIER DOT IDENTIFIER
+      LPAREN functionArgs RPAREN                    # NamespacedFunctionCall
+    | IDENTIFIER LPAREN functionArgs RPAREN         # DirectFunctionCall
     ;
 
 functionArgs

@@ -14,19 +14,22 @@ public class ClassMethod implements ASTNode {
     private String name;
     private List<MethodParameter> params;
     private CodeBlock body;
+    private String containingClassName;
 
     public ClassMethod(AccessModifier accessModifier,
                        boolean isStatic,
                        Type returnType,
                        String name,
                        List<MethodParameter> params,
-                       CodeBlock body) {
+                       CodeBlock body,
+                       String containingClassName) {
         this.accessModifier = accessModifier;
         this.isStatic = isStatic;
         this.returnType = returnType;
         this.name = name;
         this.params = params;
         this.body = body;
+        this.containingClassName = containingClassName;
     }
 
     public AccessModifier getAccessModifier() {
@@ -51,6 +54,10 @@ public class ClassMethod implements ASTNode {
 
     public CodeBlock getBody() {
         return body;
+    }
+
+    public String getContainingClassName() {
+        return containingClassName;
     }
 
     /**

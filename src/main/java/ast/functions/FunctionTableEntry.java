@@ -8,12 +8,17 @@ import ast.types.Type;
 public class FunctionTableEntry {
 
     private int index;
-    private String name;
+    private String namespace;
+    private String functionName;
     private Type returnType;
 
-    public FunctionTableEntry(int index, String name, Type returnType) {
+    public FunctionTableEntry(int index,
+                              String namespace,
+                              String functionName,
+                              Type returnType) {
         this.index = index;
-        this.name = name;
+        this.namespace = namespace;
+        this.functionName = functionName;
         this.returnType = returnType;
     }
 
@@ -21,8 +26,12 @@ public class FunctionTableEntry {
         return index;
     }
 
-    public String getName() {
-        return name;
+    public String getNamespace() {
+        return namespace;
+    }
+
+    public String getFunctionName() {
+        return functionName;
     }
 
     public Type getReturnType() {

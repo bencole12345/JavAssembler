@@ -10,11 +10,11 @@ import ast.operations.IncrementOp;
 import ast.statements.*;
 import ast.structure.*;
 import ast.types.*;
-import errors.DuplicateFunctionSignatureException;
 import errors.IncorrectTypeException;
+import errors.InvalidClassNameException;
 import errors.MultipleVariableDeclarationException;
 import errors.UndeclaredFunctionException;
-import org.antlr.v4.runtime.ParserRuleContext;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,109 +26,51 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     private Stack<VariableScope> variableScopeStack;
     private FunctionTable functionTable;
     private Type currentFunctionReturnType;
+    private String nameOfCurrentClass;
 
-    @Override
-    public CompilationUnit visitFile(JavaFileParser.FileContext ctx) {
+    public ASTBuilder(FunctionTable functionTable) {
+        this.functionTable = functionTable;
+        nameOfCurrentClass = null;
         variableScopeStack = new Stack<>();
-        Imports imports = (Imports) visit(ctx.imports());
-        JavaClass javaClass = (JavaClass) visit(ctx.classDefinition());
-        // TODO: Support package name
-        return new CompilationUnit(imports, javaClass, functionTable);
+    }
+
+    public ClassMethod visitMethod(JavaFileParser.MethodDefinitionContext ctx, String className) {
+        nameOfCurrentClass = className;
+        return visitMethodDefinition(ctx);
     }
 
     @Override
-    public Imports visitNoImports(JavaFileParser.NoImportsContext ctx) {
-        return new Imports();
-    }
-
-    @Override
-    public ASTNode visitSomeImports(JavaFileParser.SomeImportsContext ctx) {
-        // TODO: Actually do something here!
-        return new Imports();
-    }
-
-    @Override
-    public JavaClass visitClassDefinition(JavaFileParser.ClassDefinitionContext ctx) {
-
-        // Read the visibility status and class name
-        AccessModifier visibility = (ctx.accessModifier() != null)
+    public ClassMethod visitMethodDefinition(JavaFileParser.MethodDefinitionContext ctx) {
+        AccessModifier modifier = (ctx.accessModifier() != null)
                 ? (AccessModifier) visit(ctx.accessModifier())
                 : AccessModifier.DEFAULT;
-        String className = ctx.IDENTIFIER().toString();
+        boolean isStatic = ctx.STATIC() != null;
+        Type returnType = (Type) visit(ctx.type());
+        String methodName = ctx.IDENTIFIER().toString();
+        MethodParameterList params = (MethodParameterList) visit(ctx.methodParams());
+        List<MethodParameter> paramsList = params.getParameters();
 
-        // Set up a variable scope for this class
-        // (intentionally using the constructor that doesn't have a containingScope reference
-        VariableScope classScope = pushNewVariableScope();
-
-
-        // Split the class items into attributes and methods
-        // (without visiting them any further yet)
-        List<JavaFileParser.ClassMethodContext> methodASTNodes = new ArrayList<>();
-        List<JavaFileParser.ClassAttributeContext> attributeASTNodes = new ArrayList<>();
-        for (JavaFileParser.ClassItemContext classItem : ctx.classItem()) {
-            if (classItem instanceof JavaFileParser.ClassMethodContext) {
-                methodASTNodes.add((JavaFileParser.ClassMethodContext) classItem);
-            } else if (classItem instanceof JavaFileParser.ClassAttributeContext) {
-                attributeASTNodes.add((JavaFileParser.ClassAttributeContext) classItem);
-            }
-        }
-
-//        // Process the class attributes
-//        for (JavaFileParser.ClassAttributeContext attributeContext : attributeASTNodes) {
-//            ClassAttributeDeclaration declaration = (ClassAttributeDeclaration) visit(attributeContext);
-//            String name = declaration.getVariableName();
-//            Type type = declaration.getVariableType();
-//            classScope.registerVariable(name, type);
-//        }
-
-        // Build a function table
-        if (functionTable == null) {
-            functionTable = new FunctionTable();
-        }
-        for (JavaFileParser.ClassMethodContext methodContext : methodASTNodes) {
-            JavaFileParser.MethodDefinitionContext methodCtx = methodContext.methodDefinition();
-            String name = methodCtx.IDENTIFIER().toString();
-            Type returnType = (Type) visit(methodCtx.type());
-            MethodParameterList params = (MethodParameterList) visit(methodCtx.methodParams());
-            List<Type> parameterTypes = new ArrayList<>();
-            for (MethodParameter parameter : params.getParameters())
-                parameterTypes.add(parameter.getType());
+        // Create a new variable scope stack and push a variable scope object
+        // to contain the method's parameters.
+        variableScopeStack.clear();
+        VariableScope scopeForParameters = pushNewVariableScope();
+        for (MethodParameter param : paramsList) {
+            String name = param.getParameterName();
+            Type type = param.getType();
             try {
-                functionTable.registerFunction(name, parameterTypes, returnType);
-            } catch (DuplicateFunctionSignatureException e) {
-                reportError(e.getMessage(), methodCtx);
+                scopeForParameters.registerVariable(name, type);
+            } catch (MultipleVariableDeclarationException e) {
+                ParserUtil.reportError(e.getMessage(), ctx);
             }
         }
 
-        // Now build the full AST for each method
-        List<ClassMethod> methods = new ArrayList<>();
-        for (JavaFileParser.ClassMethodContext methodContext : methodASTNodes) {
-            ClassMethod method = (ClassMethod) visit(methodContext);
-            methods.add(method);
-        }
+        // Now visit the body of the method
+        currentFunctionReturnType = returnType;
+        CodeBlock body = (CodeBlock) visit(ctx.codeBlock());
 
-        // Pop the scope for this class from the stack
+        // Pop the scope that was created to contain the parameters
         popVariableScope(false);
-
-        return new JavaClass(visibility, className, classScope, methods);
-    }
-
-    @Override
-    public ClassAttributeDeclaration visitClassAttribute(JavaFileParser.ClassAttributeContext ctx) {
-        return (ClassAttributeDeclaration) visit(ctx.classAttributeDeclaration());
-    }
-
-    @Override
-    public ClassAttributeDeclaration visitClassAttributeDeclaration(JavaFileParser.ClassAttributeDeclarationContext ctx) {
-        AccessModifier modifier = (AccessModifier) visit(ctx.accessModifier());
-        Type type = (Type) visit(ctx.type());
-        String identifier = ctx.IDENTIFIER().toString();
-        return new ClassAttributeDeclaration(type, identifier, modifier);
-    }
-
-    @Override
-    public ClassMethod visitClassMethod(JavaFileParser.ClassMethodContext ctx) {
-        return (ClassMethod) visit(ctx.methodDefinition());
+        return new ClassMethod(modifier, isStatic, returnType, methodName, paramsList, body, nameOfCurrentClass);
     }
 
     @Override
@@ -153,7 +95,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             returnStatement = new ReturnStatement(expression, currentFunctionReturnType);
         } catch (IncorrectTypeException e) {
-            reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx);
         }
         return returnStatement;
     }
@@ -223,7 +165,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             try {
                 expression = new BinaryOperatorExpression(innerVarNameExpr, expression, bop);
             } catch (IncorrectTypeException e) {
-                reportError(e.getMessage(), ctx);
+                ParserUtil.reportError(e.getMessage(), ctx);
             }
         }
 
@@ -232,7 +174,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             assignment = new Assignment(variableNameExpression, expression);
         } catch (IncorrectTypeException e) {
-            reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx);
         }
 
         return assignment;
@@ -269,7 +211,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             negExpression = new NegateExpression(expression);
         } catch (IncorrectTypeException e) {
-            reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx);
         }
         return negExpression;
     }
@@ -281,7 +223,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             notExpression = new NotExpression(expression);
         } catch (IncorrectTypeException e) {
-            reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx);
         }
         return notExpression;
     }
@@ -332,7 +274,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             bopExpression = new BinaryOperatorExpression(left, right, op);
         } catch (IncorrectTypeException e) {
-            reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx);
         }
         return bopExpression;
     }
@@ -354,7 +296,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             incrementExpression = new VariableIncrementExpression(expression, op);
         } catch (IncorrectTypeException e) {
-            reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx);
         }
         return incrementExpression;
     }
@@ -376,7 +318,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             incrementExpression = new VariableIncrementExpression(expression, op);
         } catch (IncorrectTypeException e) {
-            reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx);
         }
         return incrementExpression;
     }
@@ -390,7 +332,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             expression = new BinarySelectorExpression(condition, trueExpression, falseExpression);
         } catch (IncorrectTypeException e) {
-            reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx);
         }
         return expression;
     }
@@ -408,7 +350,13 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public FunctionCall visitFunctionCall(JavaFileParser.FunctionCallContext ctx) {
+    public ASTNode visitNamespacedFunctionCall(JavaFileParser.NamespacedFunctionCallContext ctx) {
+        // TODO: Implement
+        throw new NotImplementedException();
+    }
+
+    @Override
+    public FunctionCall visitDirectFunctionCall(JavaFileParser.DirectFunctionCallContext ctx) {
         String functionName = ctx.IDENTIFIER().toString();
         ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
         List<Expression> arguments = expressionList.getExpressionList();
@@ -417,9 +365,9 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 .collect(Collectors.toList());
         FunctionTableEntry tableEntry = null;
         try {
-            tableEntry = functionTable.lookupFunction(functionName, argumentTypes);
-        } catch (UndeclaredFunctionException e) {
-            reportError(e.getMessage(), ctx);
+            tableEntry = functionTable.lookupFunction(nameOfCurrentClass, functionName, argumentTypes);
+        } catch (UndeclaredFunctionException | InvalidClassNameException e) {
+            ParserUtil.reportError(e.getMessage(), ctx);
         }
         return new FunctionCall(tableEntry, arguments);
     }
@@ -438,39 +386,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             expressions.add(expression);
         }
         return new ExpressionList(expressions);
-    }
-
-    @Override
-    public ClassMethod visitMethodDefinition(JavaFileParser.MethodDefinitionContext ctx) {
-        AccessModifier modifier = (ctx.accessModifier() != null)
-                ? (AccessModifier) visit(ctx.accessModifier())
-                : AccessModifier.DEFAULT;
-        boolean isStatic = ctx.STATIC() != null;
-        Type returnType = (Type) visit(ctx.type());
-        String methodName = ctx.IDENTIFIER().toString();
-        MethodParameterList params = (MethodParameterList) visit(ctx.methodParams());
-        List<MethodParameter> paramsList = params.getParameters();
-
-        // Create a new variable scope object on the stack for
-        // containing the list of method parameters
-        VariableScope scopeForParameters = pushNewVariableScope();
-        for (MethodParameter param : paramsList) {
-            String name = param.getParameterName();
-            Type type = param.getType();
-            try {
-                scopeForParameters.registerVariable(name, type);
-            } catch (MultipleVariableDeclarationException e) {
-                reportError(e.getMessage(), ctx);
-            }
-        }
-
-        // Now visit the body of the method
-        currentFunctionReturnType = returnType;
-        CodeBlock body = (CodeBlock) visit(ctx.codeBlock());
-
-        // Pop the scope that was created to contain the parameters
-        popVariableScope(false);
-        return new ClassMethod(modifier, isStatic, returnType, methodName, paramsList, body);
     }
 
     @Override
@@ -508,7 +423,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 try {
                     innerScope.registerVariable(name, type);
                 } catch (MultipleVariableDeclarationException e) {
-                    reportError(e.getMessage(), statementCtx);
+                    ParserUtil.reportError(e.getMessage(), statementCtx);
                 }
             } else if (statementNode instanceof DeclarationAndAssignment) {
                 DeclarationAndAssignment combined = (DeclarationAndAssignment) statementNode;
@@ -517,14 +432,14 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 try {
                     innerScope.registerVariable(name, type);
                 } catch (MultipleVariableDeclarationException e) {
-                    reportError(e.getMessage(), statementCtx);
+                    ParserUtil.reportError(e.getMessage(), statementCtx);
                 }
                 VariableNameExpression nameExpression = new VariableNameExpression(name, innerScope);
                 Assignment assignment = null;
                 try {
                     assignment = new Assignment(nameExpression, combined.getExpression());
                 } catch (IncorrectTypeException e) {
-                    reportError(e.getMessage(), ctx);
+                    ParserUtil.reportError(e.getMessage(), ctx);
                 }
                 statements.add(assignment);
             } else if (!(statementNode instanceof EmptyStatement)) {
@@ -569,7 +484,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             whileLoop = new WhileLoop(condition, codeBlock);
         } catch (IncorrectTypeException e) {
-            reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx);
         }
         return whileLoop;
     }
@@ -606,7 +521,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             try {
                 newScope.registerVariable(decAndAssign.getVariableName(), decAndAssign.getType());
             } catch (MultipleVariableDeclarationException e) {
-                reportError(e.getMessage(), ctx);
+                ParserUtil.reportError(e.getMessage(), ctx);
             }
         }
 
@@ -629,7 +544,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             forLoop = new ForLoop(initialiser, condition, updater, codeBlock);
         } catch (IncorrectTypeException e) {
-            reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx);
         }
         return forLoop;
     }
@@ -675,44 +590,17 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public VoidType visitVoidType(JavaFileParser.VoidTypeContext ctx) {
-        return new VoidType();
+        return new TypeVisitor().visitVoidType(ctx);
     }
 
     @Override
     public PrimitiveType visitPrimitiveType(JavaFileParser.PrimitiveTypeContext ctx) {
-        PrimitiveType type = null;
-        switch (ctx.primitiveType.getType()) {
-            case JavaFileParser.INT:
-                type = PrimitiveType.Int;
-                break;
-            case JavaFileParser.SHORT:
-                type = PrimitiveType.Short;
-                break;
-            case JavaFileParser.LONG:
-                type = PrimitiveType.Long;
-                break;
-            case JavaFileParser.BYTE:
-                type = PrimitiveType.Byte;
-                break;
-            case JavaFileParser.CHAR:
-                type = PrimitiveType.Char;
-                break;
-            case JavaFileParser.BOOLEAN:
-                type = PrimitiveType.Boolean;
-                break;
-            case JavaFileParser.FLOAT:
-                type = PrimitiveType.Float;
-                break;
-            case JavaFileParser.DOUBLE:
-                type = PrimitiveType.Double;
-        }
-        return type;
+        return new TypeVisitor().visitPrimitiveType(ctx);
     }
 
     @Override
     public NonPrimitiveType visitNonPrimitiveType(JavaFileParser.NonPrimitiveTypeContext ctx) {
-        String className = ctx.IDENTIFIER().toString();
-        return new NonPrimitiveType(className);
+        return new TypeVisitor().visitNonPrimitiveType(ctx);
     }
 
     @Override
@@ -781,20 +669,4 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         return top;
     }
 
-    /**
-     * Reports an error to the console and exits.
-     *
-     * @param errorMessage The error to report
-     * @param ctx The ParserRuleContext at which the error occurred
-     */
-    private void reportError(String errorMessage, ParserRuleContext ctx) {
-        int line = ctx.start.getLine();
-        int col = ctx.start.getCharPositionInLine();
-        String message = "Error on line " + line
-                + ", column " + col
-                + ": " + errorMessage;
-        System.err.println(message);
-        System.err.println("Exiting...");
-        System.exit(0);
-    }
 }

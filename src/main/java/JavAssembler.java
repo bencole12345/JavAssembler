@@ -1,11 +1,8 @@
-import ast.functions.FunctionTable;
-import ast.structure.CompilationUnit;
-import codegen.CodeEmitter;
-import codegen.WasmGenerator;
 import org.apache.commons.cli.*;
-import parser.ParserWrapper;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class JavAssembler {
 
@@ -23,21 +20,13 @@ public class JavAssembler {
             System.exit(1);
         }
 
+        // TODO: Support multiple input files
         String inputFile = commandLine.getOptionValue("input");
+        List<String> inputFiles = new ArrayList<>();
+        inputFiles.add(inputFile);
         String outputFile = commandLine.getOptionValue("output");
 
-        compileFile(inputFile, outputFile);
-    }
-
-    private static void compileFile(String inputFile, String outputFile) throws IOException {
-        CompilationUnit compilationUnit = ParserWrapper.parseFile(inputFile);
-        if (compilationUnit == null) {
-            return;
-            // An error message should already have been displayed
-        }
-        FunctionTable functionTable = compilationUnit.getFunctionTable();
-        CodeEmitter codeEmitter = new CodeEmitter(outputFile);
-        WasmGenerator.compile(compilationUnit, codeEmitter, functionTable);
+        Compilation.compileFiles(inputFiles, outputFile);
     }
 
     private static Options getCommandLineOptions() {
