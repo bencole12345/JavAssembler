@@ -14,7 +14,7 @@ import errors.IncorrectTypeException;
 import errors.InvalidClassNameException;
 import errors.MultipleVariableDeclarationException;
 import errors.UndeclaredFunctionException;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+import org.antlr.v4.runtime.ParserRuleContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -350,9 +350,12 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public ASTNode visitNamespacedFunctionCall(JavaFileParser.NamespacedFunctionCallContext ctx) {
-        // TODO: Implement
-        throw new NotImplementedException();
+    public FunctionCall visitNamespacedFunctionCall(JavaFileParser.NamespacedFunctionCallContext ctx) {
+        String namespace = ctx.IDENTIFIER(0).toString();
+        String functionName = ctx.IDENTIFIER(1).toString();
+        ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
+        List<Expression> arguments = expressionList.getExpressionList();
+        return visitFunctionCall(namespace, functionName, arguments, ctx);
     }
 
     @Override
@@ -360,15 +363,23 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         String functionName = ctx.IDENTIFIER().toString();
         ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
         List<Expression> arguments = expressionList.getExpressionList();
+        return visitFunctionCall(nameOfCurrentClass, functionName, arguments, ctx);
+    }
+
+    private FunctionCall visitFunctionCall(String namespace,
+                                           String functionName,
+                                           List<Expression> arguments,
+                                           ParserRuleContext ctx) {
         List<Type> argumentTypes = arguments.stream()
                 .map(Expression::getType)
                 .collect(Collectors.toList());
         FunctionTableEntry tableEntry = null;
         try {
-            tableEntry = functionTable.lookupFunction(nameOfCurrentClass, functionName, argumentTypes);
-        } catch (UndeclaredFunctionException | InvalidClassNameException e) {
+            tableEntry = functionTable.lookupFunction(namespace, functionName, argumentTypes);
+        } catch (InvalidClassNameException | UndeclaredFunctionException e) {
             ParserUtil.reportError(e.getMessage(), ctx);
         }
+        // TODO: Check public/private
         return new FunctionCall(tableEntry, arguments);
     }
 
