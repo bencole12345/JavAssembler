@@ -1,9 +1,4 @@
-import ast.functions.FunctionTable;
-import ast.structure.CompilationUnit;
-import codegen.CodeEmitter;
-import codegen.WasmGenerator;
 import org.apache.commons.cli.*;
-import parser.ParserWrapper;
 
 import java.io.IOException;
 
@@ -23,27 +18,17 @@ public class JavAssembler {
             System.exit(1);
         }
 
-        String inputFile = commandLine.getOptionValue("input");
+        String[] inputFiles = commandLine.getOptionValues("inputs");
         String outputFile = commandLine.getOptionValue("output");
 
-        compileFile(inputFile, outputFile);
-    }
-
-    private static void compileFile(String inputFile, String outputFile) throws IOException {
-        CompilationUnit compilationUnit = ParserWrapper.parseFile(inputFile);
-        if (compilationUnit == null) {
-            return;
-            // An error message should already have been displayed
-        }
-        FunctionTable functionTable = compilationUnit.getFunctionTable();
-        CodeEmitter codeEmitter = new CodeEmitter(outputFile);
-        WasmGenerator.compile(compilationUnit, codeEmitter, functionTable);
+        Compilation.compileFiles(inputFiles, outputFile);
     }
 
     private static Options getCommandLineOptions() {
         Options options = new Options();
-        Option input = new Option("i", "input", true, "The Java file to read from");
+        Option input = new Option("i", "inputs", true, "The Java files to read from");
         input.setRequired(true);
+        input.setArgs(Option.UNLIMITED_VALUES);
         options.addOption(input);
         Option output = new Option("o", "output", true, "The wasm file to write to");
         output.setRequired(true);

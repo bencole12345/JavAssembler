@@ -2,14 +2,19 @@ package codegen.generators;
 
 import ast.expressions.*;
 import ast.functions.FunctionTable;
+import ast.functions.FunctionTableEntry;
 import ast.literals.*;
 import ast.operations.BinaryOp;
 import ast.statements.Assignment;
 import ast.structure.VariableScope;
 import ast.types.PrimitiveType;
+import ast.types.Type;
 import codegen.CodeEmitter;
 import codegen.CodeGenUtil;
 import errors.IncorrectTypeException;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class ExpressionGenerator {
 
@@ -206,6 +211,12 @@ public class ExpressionGenerator {
         }
 
         // TODO: Use function table index not function name
-        emitter.emitLine("call $" + functionCall.getFunctionTableEntry().getName());
+        FunctionTableEntry tableEntry = functionCall.getFunctionTableEntry();
+        List<Type> argumentTypes = functionCall.getArguments()
+                .stream()
+                .map(Expression::getType)
+                .collect(Collectors.toList());
+        String functionName = CodeGenUtil.getFunctionNameForOutput(tableEntry, argumentTypes, functionTable);
+        emitter.emitLine("call $" + functionName);
     }
 }

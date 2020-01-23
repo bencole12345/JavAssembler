@@ -1,10 +1,14 @@
 package codegen;
 
 import ast.functions.FunctionTable;
+import ast.functions.FunctionTableEntry;
 import ast.literals.IntLiteral;
 import ast.structure.ClassMethod;
 import ast.structure.MethodParameter;
 import ast.types.PrimitiveType;
+import ast.types.Type;
+import errors.InvalidClassNameException;
+import errors.UndeclaredFunctionException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -68,17 +72,46 @@ public class CodeGenUtil {
      * @param functionTable The function table
      * @return The name to be emitted
      */
-    public static String getFunctionNameForOutput(ClassMethod method, FunctionTable functionTable) {
-        String name = method.getName();
-        if (functionTable.getNumberOfFunctionsWithName(name) == 1) {
-            return name;
+    public static String getFunctionNameForOutput(ClassMethod method,
+                                                  FunctionTable functionTable) {
+        List<Type> parameterTypes = method.getParams().stream()
+                .map(MethodParameter::getType)
+                .collect(Collectors.toList());
+        FunctionTableEntry functionTableEntry = null;
+        try {
+            functionTableEntry = functionTable.lookupFunction(
+                    method.getContainingClassName(), method.getName(), parameterTypes);
+        } catch (InvalidClassNameException | UndeclaredFunctionException e) {
+            e.printStackTrace();
+        }
+        return getFunctionNameForOutput(functionTableEntry, parameterTypes, functionTable);
+    }
+
+    /**
+     * Determines the function name to be emitted.
+     *
+     * If this is the only method with this name, then just the method name will
+     * be used. If there are multiple overloaded methods with this name, then
+     * name mangling with the types will be applied.
+     *
+     * @param entry The function table entry for the method under compilation
+     * @param parameterTypes The type of each parameter
+     * @param functionTable The function table
+     * @return The name to be emitted
+     */
+    public static String getFunctionNameForOutput(FunctionTableEntry entry,
+                                                  List<Type> parameterTypes,
+                                                  FunctionTable functionTable) {
+        String className = entry.getNamespace();
+        String functionName = entry.getFunctionName();
+        String namespacedName = className + "__" + functionName;
+        if (functionTable.getNumberOfFunctionsWithName(functionName) == 1) {
+            return namespacedName;
         } else {
-            List<String> typeNames = method.getParams()
-                    .stream()
-                    .map(MethodParameter::getType)
+            List<String> typeNames = parameterTypes.stream()
                     .map(Object::toString)
                     .collect(Collectors.toList());
-            return name + "__" + String.join("_", typeNames);
+            return namespacedName + "__" + String.join("_", typeNames);
         }
     }
 }

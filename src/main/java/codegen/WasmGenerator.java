@@ -1,25 +1,27 @@
 package codegen;
 
 import ast.functions.FunctionTable;
-import ast.structure.*;
+import ast.structure.ClassMethod;
+import ast.structure.MethodParameter;
+import ast.structure.VariableScope;
 import ast.types.AccessModifier;
 import ast.types.PrimitiveType;
 import ast.types.Type;
 import ast.types.VoidType;
 import codegen.generators.StatementGenerator;
 
+import java.util.List;
+
 
 public class WasmGenerator {
 
-    public static void compile(CompilationUnit compilationUnit, CodeEmitter emitter, FunctionTable functionTable) {
+    public static void compileMethods(List<ClassMethod> methods, CodeEmitter emitter, FunctionTable functionTable) {
         emitter.emitLine("(module");
         emitter.increaseIndentationLevel();
 
-        JavaClass classToCompile = compilationUnit.getJavaClass();
-
         // Compile each method separately
-        for (ClassMethod method : classToCompile.getMethods()) {
-            compileStaticMethod(method, functionTable, emitter);
+        for (ClassMethod method : methods) {
+            compileMethod(method, functionTable, emitter);
         }
 
         emitter.decreaseIndentationLevel();
@@ -27,7 +29,7 @@ public class WasmGenerator {
         emitter.close();
     }
 
-    private static void compileStaticMethod(ClassMethod method, FunctionTable functionTable, CodeEmitter emitter) {
+    private static void compileMethod(ClassMethod method, FunctionTable functionTable, CodeEmitter emitter) {
 
         // Emit the function declaration
         StringBuilder line = new StringBuilder();

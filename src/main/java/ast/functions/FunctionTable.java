@@ -1,7 +1,9 @@
 package ast.functions;
 
+import ast.types.AccessModifier;
 import ast.types.Type;
 import errors.DuplicateFunctionSignatureException;
+import errors.InvalidClassNameException;
 import errors.UndeclaredFunctionException;
 
 import java.util.HashMap;
@@ -11,12 +13,26 @@ import java.util.stream.Collectors;
 
 public class FunctionTable {
 
-    private Map<String, FunctionLookupTreeNode> nameMap;
+    /**
+     * Contains the map from
+     *      namespace -> function name -> top of the type trie
+     */
+    private Map<String, Map<String, FunctionLookupTreeNode>> namespaceMap;
+
+    /**
+     * Tracks the next index in the table that we are free to assign.
+     */
     private int nextIndexToAssign;
+
+    /**
+     * Counts how many functions have been registered with a given name.
+     *
+     * This is used to determine whether or not to perform name mangling.
+     */
     private Map<String, Integer> functionsWithNameCount;
 
     public FunctionTable() {
-        nameMap = new HashMap<>();
+        namespaceMap = new HashMap<>();
         functionsWithNameCount = new HashMap<>();
         nextIndexToAssign = 0;
     }
@@ -30,13 +46,28 @@ public class FunctionTable {
      * @throws DuplicateFunctionSignatureException if a function with this signature has already
      *      been declared.
      */
-    public FunctionTableEntry registerFunction(String functionName, List<Type> parameterTypes, Type returnType)
+    public FunctionTableEntry registerFunction(String namespace,
+                                               String functionName,
+                                               List<Type> parameterTypes,
+                                               Type returnType,
+                                               AccessModifier accessModifier)
             throws DuplicateFunctionSignatureException {
 
         FunctionLookupTreeNode node;
 
         // Identify which tree to walk down, creating it if this is the first
         // function entry with this name
+
+        // First lookup the map for this namespace
+        Map<String, FunctionLookupTreeNode> nameMap;
+        if (namespaceMap.containsKey(namespace)) {
+             nameMap = namespaceMap.get(namespace);
+        } else {
+            nameMap = new HashMap<>();
+            namespaceMap.put(namespace, nameMap);
+        }
+
+        // Now look up the trie for the function in this namespace
         if (nameMap.containsKey(functionName)) {
             node = nameMap.get(functionName);
         } else {
@@ -71,7 +102,8 @@ public class FunctionTable {
 
         // Make a new function table entry and point the current node to it
         int assignedIndex = nextIndexToAssign++;
-        FunctionTableEntry newEntry = new FunctionTableEntry(assignedIndex, functionName, returnType);
+        FunctionTableEntry newEntry = new FunctionTableEntry(
+                assignedIndex, namespace, functionName, returnType, accessModifier);
         node.value = newEntry;
 
         // Increment the counter for the number of functions with this name
@@ -89,9 +121,19 @@ public class FunctionTable {
      * @return The index of the function in the function table
      * @throws UndeclaredFunctionException
      */
-    public FunctionTableEntry lookupFunction(String name, List<Type> parameterTypes) throws UndeclaredFunctionException {
+    public FunctionTableEntry lookupFunction(String namespace,
+                                             String name,
+                                             List<Type> parameterTypes)
+            throws UndeclaredFunctionException, InvalidClassNameException {
 
-        // First lookup the tree for this name
+        // First look up the map for the requested namespace
+        Map<String, FunctionLookupTreeNode> nameMap = namespaceMap.getOrDefault(namespace, null);
+        if (nameMap == null) {
+            String message = "Invalid class name " + namespace;
+            throw new InvalidClassNameException(message);
+        }
+
+        // Now look up the trie for the function within this namespace
         FunctionLookupTreeNode node = nameMap.getOrDefault(name, null);
         if (node == null) {
             String message = "No function defined with signature "

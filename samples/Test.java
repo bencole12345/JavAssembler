@@ -39,4 +39,8 @@ public class Test {
         return 10.0f;
     }
 
+    public static int callFunctionFromOtherClass() {
+        return Test2.get42FromAnotherClass();
+    }
+
 }

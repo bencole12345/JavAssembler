@@ -1,8 +1,6 @@
 package ast.types;
 
-import ast.ASTNode;
-
-public enum AccessModifier implements ASTNode {
+public enum AccessModifier {
     PUBLIC,
     PROTECTED,
     PRIVATE,
