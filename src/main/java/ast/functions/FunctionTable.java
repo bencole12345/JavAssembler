@@ -1,5 +1,6 @@
 package ast.functions;
 
+import ast.types.AccessModifier;
 import ast.types.Type;
 import errors.DuplicateFunctionSignatureException;
 import errors.InvalidClassNameException;
@@ -48,7 +49,8 @@ public class FunctionTable {
     public FunctionTableEntry registerFunction(String namespace,
                                                String functionName,
                                                List<Type> parameterTypes,
-                                               Type returnType)
+                                               Type returnType,
+                                               AccessModifier accessModifier)
             throws DuplicateFunctionSignatureException {
 
         FunctionLookupTreeNode node;
@@ -100,7 +102,8 @@ public class FunctionTable {
 
         // Make a new function table entry and point the current node to it
         int assignedIndex = nextIndexToAssign++;
-        FunctionTableEntry newEntry = new FunctionTableEntry(assignedIndex, namespace, functionName, returnType);
+        FunctionTableEntry newEntry = new FunctionTableEntry(
+                assignedIndex, namespace, functionName, returnType, accessModifier);
         node.value = newEntry;
 
         // Increment the counter for the number of functions with this name

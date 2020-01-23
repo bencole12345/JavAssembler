@@ -1,6 +1,7 @@
 package parser;
 
 import ast.functions.FunctionTable;
+import ast.types.AccessModifier;
 import ast.types.Type;
 import errors.DuplicateFunctionSignatureException;
 
@@ -11,19 +12,23 @@ import java.util.stream.Collectors;
 
 public class ClassSignatureVisitor extends JavaFileBaseVisitor<Void> {
 
-    private TypeVisitor typeVisitor;
     private FunctionTable functionTable;
     private List<JavaFileParser.MethodDefinitionContext> methodsList;
     private Map<JavaFileParser.MethodDefinitionContext, String> classNameMap;
+
+    private TypeVisitor typeVisitor;
+    private AccessModifierVisitor accessModifierVisitor;
 
     public ClassSignatureVisitor(FunctionTable functionTable,
                                  List<JavaFileParser.MethodDefinitionContext> methods,
                                  Map<JavaFileParser.MethodDefinitionContext, String> classNameMap) {
         super();
-        this.typeVisitor = new TypeVisitor();
         this.functionTable = functionTable;
         this.methodsList = methods;
         this.classNameMap = classNameMap;
+
+        this.typeVisitor = new TypeVisitor();
+        this.accessModifierVisitor = new AccessModifierVisitor();
     }
 
     @Override
@@ -59,8 +64,9 @@ public class ClassSignatureVisitor extends JavaFileBaseVisitor<Void> {
         List<Type> types = (ctx.methodParams() instanceof JavaFileParser.SomeParamsContext)
                 ? visitMethodParams((JavaFileParser.SomeParamsContext) ctx.methodParams())
                 : new ArrayList<>();
+        AccessModifier accessModifier = accessModifierVisitor.visitAccessModifier(ctx.accessModifier());
         try {
-            table.registerFunction(className, functionName, types, returnType);
+            table.registerFunction(className, functionName, types, returnType, accessModifier);
             methodsList.add(ctx);
             classNameMap.put(ctx, className);
         } catch (DuplicateFunctionSignatureException e) {

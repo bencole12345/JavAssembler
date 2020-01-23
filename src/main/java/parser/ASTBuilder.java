@@ -28,10 +28,13 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     private Type currentFunctionReturnType;
     private String nameOfCurrentClass;
 
+    private AccessModifierVisitor accessModifierVisitor;
+
     public ASTBuilder(FunctionTable functionTable) {
         this.functionTable = functionTable;
         nameOfCurrentClass = null;
         variableScopeStack = new Stack<>();
+        accessModifierVisitor = new AccessModifierVisitor();
     }
 
     public ClassMethod visitMethod(JavaFileParser.MethodDefinitionContext ctx, String className) {
@@ -41,9 +44,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public ClassMethod visitMethodDefinition(JavaFileParser.MethodDefinitionContext ctx) {
-        AccessModifier modifier = (ctx.accessModifier() != null)
-                ? (AccessModifier) visit(ctx.accessModifier())
-                : AccessModifier.DEFAULT;
+        AccessModifier modifier = accessModifierVisitor.visitAccessModifier(ctx.accessModifier());
         boolean isStatic = ctx.STATIC() != null;
         Type returnType = (Type) visit(ctx.type());
         String methodName = ctx.IDENTIFIER().toString();
@@ -379,8 +380,16 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         } catch (InvalidClassNameException | UndeclaredFunctionException e) {
             ParserUtil.reportError(e.getMessage(), ctx);
         }
-        // TODO: Check public/private
-        return new FunctionCall(tableEntry, arguments);
+
+        assert tableEntry != null;
+        if (tableEntry.canBeCalledFrom(nameOfCurrentClass)) {
+            return new FunctionCall(tableEntry, arguments);
+        } else {
+            String message = "Illegal call to a private method: method "
+                    + functionName + " is declared private in " + namespace + ".";
+            ParserUtil.reportError(message, ctx);
+            return null;
+        }
     }
 
     @Override
@@ -581,22 +590,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     @Override
     public Expression visitForLoopUpdater(JavaFileParser.ForLoopUpdaterContext ctx) {
         return (Expression) visit(ctx.expr());
-    }
-
-    @Override
-    public AccessModifier visitAccessModifier(JavaFileParser.AccessModifierContext ctx) {
-        AccessModifier modifier = AccessModifier.DEFAULT;
-        switch (ctx.modifier.getType()) {
-            case JavaFileParser.PUBLIC:
-                modifier = AccessModifier.PUBLIC;
-                break;
-            case JavaFileParser.PRIVATE:
-                modifier = AccessModifier.PRIVATE;
-                break;
-            case JavaFileParser.PROTECTED:
-                modifier = AccessModifier.PROTECTED;
-        }
-        return modifier;
     }
 
     @Override
