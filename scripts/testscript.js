@@ -45,6 +45,11 @@ const runTests = async () => {
     // Test private function not exported
     passFail = module.Test__otherFunction == null ? "PASS" : "FAIL";
     console.log(passFail + ": Private function test");
+
+    // Test can call functions defined in other classes
+    result = module.Test__callFunctionFromOtherClass();
+    passFail = result == 42 ? "PASS" : "FAIL";
+    console.log(passFail + ": Call function in another class test");
     
 };
 
