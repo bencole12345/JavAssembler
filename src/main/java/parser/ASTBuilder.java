@@ -28,12 +28,15 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     private Type currentFunctionReturnType;
     private String nameOfCurrentClass;
 
+    private TypeVisitor typeVisitor;
     private AccessModifierVisitor accessModifierVisitor;
 
     public ASTBuilder(FunctionTable functionTable) {
         this.functionTable = functionTable;
         nameOfCurrentClass = null;
         variableScopeStack = new Stack<>();
+
+        typeVisitor = new TypeVisitor();
         accessModifierVisitor = new AccessModifierVisitor();
     }
 
@@ -594,17 +597,17 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public VoidType visitVoidType(JavaFileParser.VoidTypeContext ctx) {
-        return new TypeVisitor().visitVoidType(ctx);
+        return typeVisitor.visitVoidType(ctx);
     }
 
     @Override
     public PrimitiveType visitPrimitiveType(JavaFileParser.PrimitiveTypeContext ctx) {
-        return new TypeVisitor().visitPrimitiveType(ctx);
+        return typeVisitor.visitPrimitiveType(ctx);
     }
 
     @Override
     public NonPrimitiveType visitNonPrimitiveType(JavaFileParser.NonPrimitiveTypeContext ctx) {
-        return new TypeVisitor().visitNonPrimitiveType(ctx);
+        return typeVisitor.visitNonPrimitiveType(ctx);
     }
 
     @Override
