@@ -15,7 +15,7 @@ import java.util.Map;
 
 public class Compilation {
 
-    public static void compileFiles(List<String> fileNames, String outputFileName) throws IOException {
+    public static void compileFiles(String[] fileNames, String outputFileName) throws IOException {
 
         FunctionTable functionTable = new FunctionTable();
         List<JavaFileParser.FileContext> parseTrees = new ArrayList<>();

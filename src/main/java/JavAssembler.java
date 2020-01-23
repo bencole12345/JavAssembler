@@ -1,8 +1,6 @@
 import org.apache.commons.cli.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class JavAssembler {
 
@@ -20,10 +18,7 @@ public class JavAssembler {
             System.exit(1);
         }
 
-        // TODO: Support multiple input files
-        String inputFile = commandLine.getOptionValue("input");
-        List<String> inputFiles = new ArrayList<>();
-        inputFiles.add(inputFile);
+        String[] inputFiles = commandLine.getOptionValues("inputs");
         String outputFile = commandLine.getOptionValue("output");
 
         Compilation.compileFiles(inputFiles, outputFile);
@@ -31,8 +26,9 @@ public class JavAssembler {
 
     private static Options getCommandLineOptions() {
         Options options = new Options();
-        Option input = new Option("i", "input", true, "The Java file to read from");
+        Option input = new Option("i", "inputs", true, "The Java files to read from");
         input.setRequired(true);
+        input.setArgs(Option.UNLIMITED_VALUES);
         options.addOption(input);
         Option output = new Option("o", "output", true, "The wasm file to write to");
         output.setRequired(true);
