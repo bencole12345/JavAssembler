@@ -1,7 +1,5 @@
 package codegen;
 
-import ast.functions.FunctionTable;
-import ast.functions.FunctionTableEntry;
 import ast.literals.IntLiteral;
 import ast.structure.ClassMethod;
 import ast.structure.MethodParameter;
@@ -9,6 +7,8 @@ import ast.types.PrimitiveType;
 import ast.types.Type;
 import errors.InvalidClassNameException;
 import errors.UndeclaredFunctionException;
+import util.FunctionTable;
+import util.FunctionTableEntry;
 
 import java.util.List;
 import java.util.stream.Collectors;

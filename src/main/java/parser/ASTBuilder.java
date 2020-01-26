@@ -2,8 +2,6 @@ package parser;
 
 import ast.ASTNode;
 import ast.expressions.*;
-import ast.functions.FunctionTable;
-import ast.functions.FunctionTableEntry;
 import ast.literals.*;
 import ast.operations.BinaryOp;
 import ast.operations.IncrementOp;
@@ -15,6 +13,9 @@ import errors.InvalidClassNameException;
 import errors.MultipleVariableDeclarationException;
 import errors.UndeclaredFunctionException;
 import org.antlr.v4.runtime.ParserRuleContext;
+import util.ClassTable;
+import util.FunctionTable;
+import util.FunctionTableEntry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,14 +26,16 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     private Stack<VariableScope> variableScopeStack;
     private FunctionTable functionTable;
+    private ClassTable classTable;
     private Type currentFunctionReturnType;
     private String nameOfCurrentClass;
 
     private TypeVisitor typeVisitor;
     private AccessModifierVisitor accessModifierVisitor;
 
-    public ASTBuilder(FunctionTable functionTable) {
+    public ASTBuilder(FunctionTable functionTable, ClassTable classTable) {
         this.functionTable = functionTable;
+        this.classTable = classTable;
         nameOfCurrentClass = null;
         variableScopeStack = new Stack<>();
 

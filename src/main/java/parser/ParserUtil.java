@@ -23,4 +23,15 @@ class ParserUtil {
         System.err.println("Exiting...");
         System.exit(0);
     }
+
+    /**
+     * Reports an error to the console and exits.
+     *
+     * @param errorMessage The error to report
+     */
+    static void reportError(String errorMessage) {
+        System.err.println(errorMessage);
+        System.err.println("Exiting...");
+        System.exit(0);
+    }
 }

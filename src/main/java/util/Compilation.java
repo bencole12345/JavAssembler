@@ -1,15 +1,15 @@
-import ast.functions.FunctionTable;
+package util;
+
 import ast.structure.ClassMethod;
 import codegen.CodeEmitter;
 import codegen.WasmGenerator;
 import parser.ASTBuilder;
-import parser.ClassSignatureVisitor;
+import parser.ClassSignatureBuilder;
 import parser.JavaFileParser;
 import parser.ParserWrapper;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -17,38 +17,43 @@ public class Compilation {
 
     public static void compileFiles(String[] fileNames, String outputFileName) throws IOException {
 
-        FunctionTable functionTable = new FunctionTable();
+        // First use ANTLR to generate a parse tree for every file.
         List<JavaFileParser.FileContext> parseTrees = new ArrayList<>();
-
-        // Parse every file
         for (String fileName : fileNames) {
             parseTrees.add(ParserWrapper.parse(fileName));
         }
 
-        // In the first parse we just extract all function signatures and load
+        // In the first pass we just extract all function signatures and load
         // them into the function table. We use the map to track the class name
         // for each method.
-        // TODO: Also pull out class attributes
-        List<JavaFileParser.MethodDefinitionContext> methods = new ArrayList<>();
-        Map<JavaFileParser.MethodDefinitionContext, String> classNameMap = new HashMap<>();
-        ClassSignatureVisitor visitor = new ClassSignatureVisitor(functionTable, methods, classNameMap);
+        ClassSignatureBuilder signatureBuilder = new ClassSignatureBuilder();
         for (JavaFileParser.FileContext parseTree : parseTrees) {
-            visitor.visit(parseTree);
+            signatureBuilder.visit(parseTree);
         }
+
+        // Now that the first pass has completed, we can extract the generated
+        // function table and class table.
+        FunctionTable functionTable = signatureBuilder.getFunctionTable();
+        ClassTable classTable = signatureBuilder.getClassTable();
+
+        // Also extract the list of methods to be compiled.
+        List<JavaFileParser.MethodDefinitionContext> methodParseTrees =
+                signatureBuilder.getMethodParseTrees();
+        Map<JavaFileParser.MethodDefinitionContext, String> classNameMap =
+                signatureBuilder.getClassNameMap();
 
         // Now that the function table has been built, we can properly construct
         // an AST for each method.
         List<ClassMethod> methodASTs = new ArrayList<>();
-        ASTBuilder astBuilder = new ASTBuilder(functionTable);
-        for (JavaFileParser.MethodDefinitionContext methodCtx : methods) {
+        ASTBuilder astBuilder = new ASTBuilder(functionTable, classTable);
+        for (JavaFileParser.MethodDefinitionContext methodCtx : methodParseTrees) {
             String className = classNameMap.get(methodCtx);
             ClassMethod methodAST = astBuilder.visitMethod(methodCtx, className);
             methodASTs.add(methodAST);
         }
 
-        // Now that we have an AST for each method, and a complete function
-        // table, we can start generating code for each method. We do this
-        // in the same order as the entries in the function
+        // Now that we have built the AST for every method, we can compile each
+        // method into WebAssembly.
         CodeEmitter codeEmitter = new CodeEmitter(outputFileName);
         WasmGenerator.compileMethods(methodASTs, codeEmitter, functionTable);
 

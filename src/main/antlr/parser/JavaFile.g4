@@ -17,7 +17,8 @@ imports
 
 classDefinition
     : accessModifier?
-            CLASS IDENTIFIER
+            CLASS className=IDENTIFIER
+            (EXTENDS parentClassName=IDENTIFIER)?
             LBRACE classItem* RBRACE
     ;
 

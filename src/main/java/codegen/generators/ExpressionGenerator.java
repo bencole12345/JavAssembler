@@ -1,8 +1,6 @@
 package codegen.generators;
 
 import ast.expressions.*;
-import ast.functions.FunctionTable;
-import ast.functions.FunctionTableEntry;
 import ast.literals.*;
 import ast.operations.BinaryOp;
 import ast.statements.Assignment;
@@ -12,6 +10,8 @@ import ast.types.Type;
 import codegen.CodeEmitter;
 import codegen.CodeGenUtil;
 import errors.IncorrectTypeException;
+import util.FunctionTable;
+import util.FunctionTableEntry;
 
 import java.util.List;
 import java.util.stream.Collectors;

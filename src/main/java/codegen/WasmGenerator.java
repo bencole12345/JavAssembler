@@ -1,6 +1,5 @@
 package codegen;
 
-import ast.functions.FunctionTable;
 import ast.structure.ClassMethod;
 import ast.structure.MethodParameter;
 import ast.structure.VariableScope;
@@ -9,6 +8,7 @@ import ast.types.PrimitiveType;
 import ast.types.Type;
 import ast.types.VoidType;
 import codegen.generators.StatementGenerator;
+import util.FunctionTable;
 
 import java.util.List;
 

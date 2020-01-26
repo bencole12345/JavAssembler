@@ -2,12 +2,12 @@ package codegen.generators;
 
 import ast.expressions.NotExpression;
 import ast.expressions.VariableIncrementExpression;
-import ast.functions.FunctionTable;
 import ast.statements.*;
 import ast.structure.CodeBlock;
 import ast.structure.VariableScope;
 import codegen.CodeEmitter;
 import errors.IncorrectTypeException;
+import util.FunctionTable;
 
 import static codegen.generators.ExpressionGenerator.compileExpression;
 
