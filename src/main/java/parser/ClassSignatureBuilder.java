@@ -4,6 +4,7 @@ import ast.types.AccessModifier;
 import ast.types.JavaClass;
 import ast.types.Type;
 import errors.CircularInheritanceException;
+import errors.DuplicateClassAttributeException;
 import errors.DuplicateClassDefinitionException;
 import errors.DuplicateFunctionSignatureException;
 import util.ClassTable;
@@ -32,14 +33,6 @@ public class ClassSignatureBuilder extends JavaFileBaseVisitor<Void> {
     private FunctionTable functionTable;
 
     /**
-     * A map from class parse tree nodes to the name of the class.
-     *
-     * This is needed for updating the function table, since each entry in the
-     * function table has a 'namespace' attribute.
-     */
-    private Map<JavaFileParser.MethodDefinitionContext, String> classNameMap;
-
-    /**
      * Helper sub-visitors to process types and access modifiers.
      */
     private TypeVisitor typeVisitor;
@@ -51,6 +44,7 @@ public class ClassSignatureBuilder extends JavaFileBaseVisitor<Void> {
      */
     private String currentClassName;
     private Set<String> seenClassNames;
+    private List<JavaClass.ClassAttribute> seenClassAttributes;
     private Map<String, String> classExtendsFromMap;
 
     /**
@@ -72,6 +66,7 @@ public class ClassSignatureBuilder extends JavaFileBaseVisitor<Void> {
         this.accessModifierVisitor = new AccessModifierVisitor();
 
         this.seenClassNames = new HashSet<>();
+        this.seenClassAttributes = new ArrayList<>();
         this.classExtendsFromMap = new HashMap<>();
         this.methodParseTreeToClassNameMap = new HashMap<>();
         this.methodParseTrees = new ArrayList<>();
@@ -136,14 +131,18 @@ public class ClassSignatureBuilder extends JavaFileBaseVisitor<Void> {
 
     @Override
     public Void visitClassAttribute(JavaFileParser.ClassAttributeContext ctx) {
-        // TODO: Implement
+        // TODO: Implement or remove
         return super.visitClassAttribute(ctx);
     }
 
     @Override
     public Void visitClassAttributeDeclaration(JavaFileParser.ClassAttributeDeclarationContext ctx) {
-        // TODO: Implement
-        return super.visitClassAttributeDeclaration(ctx);
+        AccessModifier accessModifier = accessModifierVisitor.visitAccessModifier(ctx.accessModifier());
+        Type type = typeVisitor.visit(ctx.type());
+        String name = ctx.IDENTIFIER().getText();
+        JavaClass.ClassAttribute attribute = new JavaClass.ClassAttribute(name, type, accessModifier);
+        seenClassAttributes.add(attribute);
+        return null;
     }
 
     /**
@@ -162,31 +161,19 @@ public class ClassSignatureBuilder extends JavaFileBaseVisitor<Void> {
      */
     public ClassTable getClassTable() {
         ClassTable classTable = new ClassTable();
-        Map<String, Set<String>> edges = new HashMap<>();
-        for (String className : seenClassNames) {
-            Set<String> dependencies = new HashSet<>();
-            if (classExtendsFromMap.containsKey(className))
-                dependencies.add(classExtendsFromMap.get(className));
-            edges.put(className, dependencies);
-        }
-
-        List<String> ordering = null;
-        try {
-            ordering = TopologicalSort.getSerialOrder(seenClassNames, edges);
-        } catch (CircularInheritanceException e) {
-            ParserUtil.reportError(e.getMessage());
-        }
-
+        List<String> ordering = getClassVisitOrder();
         Map<String, JavaClass> classObjects = new HashMap<>();
-        assert ordering != null;
         for (String className : ordering) {
-            JavaClass javaClass;
+            JavaClass parent = null;
             if (classExtendsFromMap.containsKey(className)) {
                 String parentName = classExtendsFromMap.get(className);
-                JavaClass parent = classObjects.get(parentName);
-                javaClass = new JavaClass(className, parent);
-            } else {
-                javaClass = new JavaClass(className);
+                parent = classObjects.get(parentName);
+            }
+            JavaClass javaClass = null;
+            try {
+                javaClass = new JavaClass(className, seenClassAttributes, parent);
+            } catch (DuplicateClassAttributeException e) {
+                ParserUtil.reportError(e.getMessage());
             }
             classObjects.put(className, javaClass);
             try {
@@ -198,6 +185,31 @@ public class ClassSignatureBuilder extends JavaFileBaseVisitor<Void> {
         }
 
         return classTable;
+    }
+
+    /**
+     * Determines a safe order in which to process the classes.
+     *
+     * @return A list of class names in a safe order, guaranteed to be
+     *         consistent with the inheritance graph
+     */
+    private List<String> getClassVisitOrder() {
+        // Set up the graph structure
+        Map<String, Set<String>> edges = new HashMap<>();
+        for (String className : seenClassNames) {
+            Set<String> dependencies = new HashSet<>();
+            if (classExtendsFromMap.containsKey(className))
+                dependencies.add(classExtendsFromMap.get(className));
+            edges.put(className, dependencies);
+        }
+        // Invoke the topological sort algorithm
+        List<String> ordering = null;
+        try {
+            ordering = TopologicalSort.getSerialOrder(seenClassNames, edges);
+        } catch (CircularInheritanceException e) {
+            ParserUtil.reportError(e.getMessage());
+        }
+        return ordering;
     }
 
     /**
