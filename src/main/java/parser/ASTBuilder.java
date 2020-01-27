@@ -7,11 +7,10 @@ import ast.operations.BinaryOp;
 import ast.operations.IncrementOp;
 import ast.statements.*;
 import ast.structure.*;
-import ast.types.*;
-import errors.IncorrectTypeException;
-import errors.InvalidClassNameException;
-import errors.MultipleVariableDeclarationException;
-import errors.UndeclaredFunctionException;
+import ast.types.AccessModifier;
+import ast.types.JavaClass;
+import ast.types.Type;
+import errors.*;
 import org.antlr.v4.runtime.ParserRuleContext;
 import util.ClassTable;
 import util.FunctionTable;
@@ -39,7 +38,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         nameOfCurrentClass = null;
         variableScopeStack = new Stack<>();
 
-        typeVisitor = new TypeVisitor();
+        typeVisitor = new TypeVisitor(classTable);
         accessModifierVisitor = new AccessModifierVisitor();
     }
 
@@ -52,7 +51,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     public ClassMethod visitMethodDefinition(JavaFileParser.MethodDefinitionContext ctx) {
         AccessModifier modifier = accessModifierVisitor.visitAccessModifier(ctx.accessModifier());
         boolean isStatic = ctx.STATIC() != null;
-        Type returnType = (Type) visit(ctx.type());
+        Type returnType = typeVisitor.visit(ctx.type());
         String methodName = ctx.IDENTIFIER().toString();
         MethodParameterList params = (MethodParameterList) visit(ctx.methodParams());
         List<MethodParameter> paramsList = params.getParameters();
@@ -129,7 +128,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public VariableDeclaration visitVariableDeclaration(JavaFileParser.VariableDeclarationContext ctx) {
-        Type type = (Type) visit(ctx.type());
+        Type type = typeVisitor.visit(ctx.type());
         String name = ctx.IDENTIFIER().toString();
         return new VariableDeclaration(type, name);
     }
@@ -190,7 +189,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     @Override
     public DeclarationAndAssignment visitVariableDeclarationAndAssignment(
             JavaFileParser.VariableDeclarationAndAssignmentContext ctx) {
-        Type type = (Type) visit(ctx.type());
+        Type type = typeVisitor.visit(ctx.type());
         String name = ctx.IDENTIFIER().toString();
         Expression expression = (Expression) visit(ctx.expr());
         return new DeclarationAndAssignment(type, name, expression);
@@ -233,6 +232,20 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             ParserUtil.reportError(e.getMessage(), ctx);
         }
         return notExpression;
+    }
+
+    @Override
+    public NewObjectExpression visitNewObjectExpr(JavaFileParser.NewObjectExprContext ctx) {
+        String className = ctx.IDENTIFIER().toString();
+        JavaClass javaClass = null;
+        try {
+            javaClass = classTable.lookupClass(className);
+        } catch (UnknownClassException e) {
+            ParserUtil.reportError(e.getMessage(), ctx);
+        }
+        ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
+        List<Expression> arguments = expressionList.getExpressionList();
+        return new NewObjectExpression(javaClass, arguments);
     }
 
     @Override
@@ -425,7 +438,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         List<MethodParameter> paramList = new ArrayList<>();
         for (int i = 0; i < ctx.IDENTIFIER().size(); i++) {
             String parameterName = ctx.IDENTIFIER(i).toString();
-            Type type = (Type) visit(ctx.type(i));
+            Type type = typeVisitor.visit(ctx.type(i));
             MethodParameter param = new MethodParameter(parameterName, type);
             paramList.add(param);
         }
@@ -596,21 +609,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     @Override
     public Expression visitForLoopUpdater(JavaFileParser.ForLoopUpdaterContext ctx) {
         return (Expression) visit(ctx.expr());
-    }
-
-    @Override
-    public VoidType visitVoidType(JavaFileParser.VoidTypeContext ctx) {
-        return typeVisitor.visitVoidType(ctx);
-    }
-
-    @Override
-    public PrimitiveType visitPrimitiveType(JavaFileParser.PrimitiveTypeContext ctx) {
-        return typeVisitor.visitPrimitiveType(ctx);
-    }
-
-    @Override
-    public NonPrimitiveType visitNonPrimitiveType(JavaFileParser.NonPrimitiveTypeContext ctx) {
-        return typeVisitor.visitNonPrimitiveType(ctx);
     }
 
     @Override

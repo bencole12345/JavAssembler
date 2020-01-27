@@ -2,6 +2,7 @@ package util;
 
 import ast.types.JavaClass;
 import errors.DuplicateClassDefinitionException;
+import errors.UnknownClassException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,11 +23,11 @@ public class ClassTable {
         classes.put(name, javaClass);
     }
 
-    public JavaClass lookupClass(String name) {
+    public JavaClass lookupClass(String name) throws UnknownClassException {
         JavaClass javaClass = classes.get(name);
         if (javaClass == null) {
-            // TODO: Throw an exception or something
-            // (they looked up a class that hasn't been registered)
+            String message = "Unknown class " + name;
+            throw new UnknownClassException(message);
         }
         return javaClass;
     }

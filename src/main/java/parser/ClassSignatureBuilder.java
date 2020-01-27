@@ -68,7 +68,7 @@ public class ClassSignatureBuilder extends JavaFileBaseVisitor<Void> {
         this.functionTable = new FunctionTable();
         this.currentClassName = null;
 
-        this.typeVisitor = new TypeVisitor();
+        this.typeVisitor = new TypeVisitor(null);
         this.accessModifierVisitor = new AccessModifierVisitor();
 
         this.seenClassNames = new HashSet<>();

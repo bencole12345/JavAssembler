@@ -43,4 +43,8 @@ public class Test {
         return Test2.get42FromAnotherClass();
     }
 
+    public static void dynamicallyAllocateMemory() {
+        Test3 test3 = new Test3();
+    }
+
 }

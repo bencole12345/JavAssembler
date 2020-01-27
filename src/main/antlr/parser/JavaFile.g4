@@ -66,6 +66,7 @@ expr
     | LPAREN expr RPAREN                            # ParenthesesExpr
     | MINUS expr                                    # NegateExpr
     | NOT expr                                      # NotExpr
+    | NEW IDENTIFIER LPAREN functionArgs RPAREN     # NewObjectExpr
     | variableIncrementExpr                         # IncrementExpr
     | expr op=(MULTIPLY|DIVIDE) expr                # InfixExpr
     | expr op=(PLUS|MINUS) expr                     # InfixExpr

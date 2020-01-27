@@ -1,14 +1,22 @@
 package parser;
 
-import ast.types.NonPrimitiveType;
+import ast.types.JavaClass;
 import ast.types.PrimitiveType;
 import ast.types.Type;
 import ast.types.VoidType;
+import errors.UnknownClassException;
+import util.ClassTable;
 
 /**
  * Builds a Type object from an AST node.
  */
 public class TypeVisitor extends JavaFileBaseVisitor<Type> {
+
+    private ClassTable classTable;
+
+    public TypeVisitor(ClassTable classTable) {
+        this.classTable = classTable;
+    }
 
     @Override
     public VoidType visitVoidType(JavaFileParser.VoidTypeContext ctx) {
@@ -47,8 +55,14 @@ public class TypeVisitor extends JavaFileBaseVisitor<Type> {
     }
 
     @Override
-    public NonPrimitiveType visitNonPrimitiveType(JavaFileParser.NonPrimitiveTypeContext ctx) {
-        String className = ctx.IDENTIFIER().toString();
-        return new NonPrimitiveType(className);
+    public JavaClass visitNonPrimitiveType(JavaFileParser.NonPrimitiveTypeContext ctx) {
+        String className = ctx.IDENTIFIER().getText();
+        JavaClass javaClass = null;
+        try {
+            javaClass = classTable.lookupClass(className);
+        } catch (UnknownClassException e) {
+            ParserUtil.reportError(e.getMessage(), ctx);
+        }
+        return javaClass;
     }
 }
