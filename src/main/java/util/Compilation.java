@@ -55,7 +55,7 @@ public class Compilation {
         // Now that we have built the AST for every method, we can compile each
         // method into WebAssembly.
         CodeEmitter codeEmitter = new CodeEmitter(outputFileName);
-        WasmGenerator.compileMethods(methodASTs, codeEmitter, functionTable);
+        WasmGenerator.compile(methodASTs, codeEmitter, functionTable, classTable);
 
     }
 }

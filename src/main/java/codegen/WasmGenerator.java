@@ -8,6 +8,7 @@ import ast.types.PrimitiveType;
 import ast.types.Type;
 import ast.types.VoidType;
 import codegen.generators.StatementGenerator;
+import util.ClassTable;
 import util.FunctionTable;
 
 import java.util.List;
@@ -15,15 +16,26 @@ import java.util.List;
 
 public class WasmGenerator {
 
-    public static void compileMethods(List<ClassMethod> methods, CodeEmitter emitter, FunctionTable functionTable) {
+    public static void compile(List<ClassMethod> methods,
+                               CodeEmitter emitter,
+                               FunctionTable functionTable,
+                               ClassTable classTable) {
+
+        // Emit start of module
         emitter.emitLine("(module");
         emitter.increaseIndentationLevel();
 
-        // Compile each method separately
+        // Emit hand-coded WebAssembly functions
+        WasmLibReader.getGlobalsCode().forEach(emitter::emitLine);
+        WasmLibReader.getAllocationCode().forEach(emitter::emitLine);
+
+        // Now compile each method
         for (ClassMethod method : methods) {
+            // TODO: Pass in classTable
             compileMethod(method, functionTable, emitter);
         }
 
+        // End the module
         emitter.decreaseIndentationLevel();
         emitter.emitLine(")");
         emitter.close();
