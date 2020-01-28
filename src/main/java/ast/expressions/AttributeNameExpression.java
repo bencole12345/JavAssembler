@@ -5,12 +5,12 @@ import ast.types.Type;
 import errors.IllegalPrivateAccessException;
 import errors.InvalidAttributeException;
 
-public class AttributeNameExpression implements Expression {
+public class AttributeNameExpression implements VariableExpression {
 
-    private VariableNameExpression object;
+    private LocalVariableExpression object;
     private JavaClass.AllocatedClassAttribute attribute;
 
-    public AttributeNameExpression(VariableNameExpression object,
+    public AttributeNameExpression(LocalVariableExpression object,
                                    String attributeName)
             throws InvalidAttributeException, IllegalPrivateAccessException {
 
@@ -26,7 +26,7 @@ public class AttributeNameExpression implements Expression {
         this.object = object;
     }
 
-    public VariableNameExpression getObject() {
+    public LocalVariableExpression getObject() {
         return object;
     }
 
@@ -37,5 +37,10 @@ public class AttributeNameExpression implements Expression {
 
     public int getMemoryOffset() {
         return attribute.getMemoryOffset();
+    }
+
+    @Override
+    public String toString() {
+        return object.toString() + "." + attribute.getName();
     }
 }

@@ -33,8 +33,8 @@ classAttributeDeclaration
 
 statement
     : variableDeclarationAndAssignment SEMICOLON   # DeclarationAssignmentStatement
-    | variableAssignment SEMICOLON                 # AssignmentStatement
     | variableDeclaration SEMICOLON                # DeclarationStatement
+    | assignment SEMICOLON                         # AssignmentStatement
     | RETURN expr SEMICOLON                        # ReturnStatement
     | variableIncrementExpr                        # VariableIncrementStatement
     | ifStatement                                  # IfStatementWrap
@@ -48,12 +48,17 @@ variableDeclaration
     : type IDENTIFIER
     ;
 
-variableAssignment
-    : IDENTIFIER op=(EQUALS
-        | PLUS_EQUALS
-        | MINUS_EQUALS
-        | MULTIPLY_EQUALS
-        | DIVIDE_EQUALS) expr
+assignment
+    : IDENTIFIER
+        op=(EQUALS
+            | PLUS_EQUALS | MINUS_EQUALS
+            | MULTIPLY_EQUALS | DIVIDE_EQUALS)
+        expr                                        # VariableAssignment
+    | object=IDENTIFIER DOT attribute=IDENTIFIER
+        op=(EQUALS
+            | PLUS_EQUALS | MINUS_EQUALS
+            | MULTIPLY_EQUALS | DIVIDE_EQUALS)
+        expr                                        # AttributeAssignment
     ;
 
 variableDeclarationAndAssignment
@@ -132,7 +137,7 @@ forLoop
 
 forLoopInitialiser
     : variableDeclarationAndAssignment      # ForLoopDeclareAndAssign
-    | variableAssignment                    # ForLoopAssignOnly
+    | assignment                            # ForLoopAssignOnly
     ;
 
 forLoopCondition

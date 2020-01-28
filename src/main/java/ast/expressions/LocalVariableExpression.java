@@ -6,12 +6,12 @@ import ast.types.Type;
 /**
  * This is one of the 'base case' expressions, denoting a variable name.
  */
-public class VariableNameExpression implements Expression {
+public class LocalVariableExpression implements VariableExpression {
 
     private String variableName;
     private VariableScope containingScope;
 
-    public VariableNameExpression(String variableName, VariableScope containingScope) {
+    public LocalVariableExpression(String variableName, VariableScope containingScope) {
         // TODO: Check the variable has been declared; throw exception if not
         // Note: this should be an exception for "referenced before declaration";
         // it should be thrown even if the variable is declared later on, that is,
@@ -30,5 +30,10 @@ public class VariableNameExpression implements Expression {
     @Override
     public Type getType() {
         return containingScope.lookupVariableType(variableName);
+    }
+
+    @Override
+    public String toString() {
+        return variableName;
     }
 }

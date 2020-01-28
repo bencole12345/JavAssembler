@@ -52,8 +52,8 @@ public class ExpressionGenerator {
             compileBopExpression((BinaryOperatorExpression) expression, scope);
         } else if (expression instanceof BinarySelectorExpression) {
             compileBinarySelectorExpression((BinarySelectorExpression) expression, scope);
-        } else if (expression instanceof VariableNameExpression) {
-            compileVariableNameExpression((VariableNameExpression) expression, scope);
+        } else if (expression instanceof LocalVariableExpression) {
+            compileVariableNameExpression((LocalVariableExpression) expression, scope);
         } else if (expression instanceof LiteralValue) {
             LiteralGenerator.getInstance().compileLiteralValue((LiteralValue) expression);
         } else if (expression instanceof FunctionCall) {
@@ -159,10 +159,10 @@ public class ExpressionGenerator {
                                                     VariableScope variableScope) {
         // TODO: Make sure range is preserved
         //       (shouldn't be able to ++ a short to get out of the 16-bit range)
-        int registerNumber = variableScope.lookupRegisterIndexOfVariable(expression.getVariableNameExpression().getVariableName());
-        Expression varNameExpr = expression.getVariableNameExpression();
+        int registerNumber = variableScope.lookupRegisterIndexOfVariable(expression.getLocalVariableExpression().getVariableName());
+        Expression varNameExpr = expression.getLocalVariableExpression();
         Expression one;
-        PrimitiveType variableType = (PrimitiveType) expression.getVariableNameExpression().getType();
+        PrimitiveType variableType = (PrimitiveType) expression.getLocalVariableExpression().getType();
         // TODO: Support the rest of the primitives
         switch (variableType) {
             case Short:
@@ -186,26 +186,26 @@ public class ExpressionGenerator {
             switch (expression.getIncrementOp()) {
                 case PRE_INCREMENT:
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.ADD);
-                    assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
+                    assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
                     StatementGenerator.getInstance().compileStatement(assignment, variableScope);
                     emitter.emitLine("local.get " + registerNumber);
                     break;
                 case PRE_DECREMENT:
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.SUBTRACT);
-                    assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
+                    assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
                     StatementGenerator.getInstance().compileStatement(assignment, variableScope);
                     emitter.emitLine("local.get " + registerNumber);
                     break;
                 case POST_INCREMENT:
                     emitter.emitLine("local.get " + registerNumber);
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.ADD);
-                    assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
+                    assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
                     StatementGenerator.getInstance().compileStatement(assignment, variableScope);
                     break;
                 case POST_DECREMENT:
                     emitter.emitLine("local.get " + registerNumber);
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.SUBTRACT);
-                    assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
+                    assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
                     StatementGenerator.getInstance().compileStatement(assignment, variableScope);
             }
         } catch (IncorrectTypeException e) {
@@ -213,7 +213,7 @@ public class ExpressionGenerator {
         }
     }
 
-    private void compileVariableNameExpression(VariableNameExpression expression,
+    private void compileVariableNameExpression(LocalVariableExpression expression,
                                                VariableScope variableScope) {
         int index = variableScope.lookupRegisterIndexOfVariable(expression.getVariableName());
         emitter.emitLine("local.get " + index);

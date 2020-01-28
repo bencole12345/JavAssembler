@@ -12,6 +12,7 @@ import ast.types.JavaClass;
 import ast.types.Type;
 import errors.*;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
 import util.ClassTable;
 import util.FunctionTable;
 import util.FunctionTableEntry;
@@ -86,7 +87,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public Assignment visitAssignmentStatement(JavaFileParser.AssignmentStatementContext ctx) {
-        return (Assignment) visit(ctx.variableAssignment());
+        return (Assignment) visit(ctx.assignment());
     }
 
     @Override
@@ -135,6 +136,34 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public Assignment visitVariableAssignment(JavaFileParser.VariableAssignmentContext ctx) {
+        String variableName = ctx.IDENTIFIER().getText();
+        VariableScope scope = variableScopeStack.peek();
+        VariableExpression variableExpression = new LocalVariableExpression(variableName, scope);
+        Token op = ctx.op;
+        Expression rhs = (Expression) visit(ctx.expr());
+        return buildAssignment(variableExpression, op, rhs, ctx);
+    }
+
+    @Override
+    public Assignment visitAttributeAssignment(JavaFileParser.AttributeAssignmentContext ctx) {
+        LocalVariableExpression object = (LocalVariableExpression) visit(ctx.IDENTIFIER(0));
+        String attributeName = ctx.attribute.getText();
+        Token op = ctx.op;
+        Expression rhs = (Expression) visit(ctx.expr());
+        AttributeNameExpression attributeNameExpression = null;
+        try {
+            attributeNameExpression = new AttributeNameExpression(object, attributeName);
+        } catch (JavAssemblerException e) {
+            ParserUtil.reportError(e.getMessage(), ctx);
+        }
+        return buildAssignment(attributeNameExpression, op, rhs, ctx);
+    }
+
+    private Assignment buildAssignment(VariableExpression variableExpression,
+                                       Token op,
+                                       Expression rhs,
+                                       JavaFileParser.AssignmentContext ctx) {
+
         // This method covers +=, -=, *=, /=, and also a simple assignment, =
         // The main idea is that we can reduce any of the first 4 into a simple
         // assignment (=) by replacing the expression on the RHS with a binary
@@ -145,10 +174,8 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         // x += 1;      --becomes-->  x = (x + 1);
         // y *= (y/z);  --becomes-->  y = (y * (y/z));
 
-        String name = ctx.IDENTIFIER().toString();
-        Expression expression = (Expression) visit(ctx.expr());
         BinaryOp bop = null;
-        switch (ctx.op.getType()) {
+        switch (op.getType()) {
             case JavaFileParser.PLUS_EQUALS:
                 bop = BinaryOp.ADD;
                 break;
@@ -167,18 +194,16 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
         // Perform substitution if this is not a simple assignment
         if (bop != null) {
-            VariableNameExpression innerVarNameExpr = new VariableNameExpression(name, currentScope);
             try {
-                expression = new BinaryOperatorExpression(innerVarNameExpr, expression, bop);
+                rhs = new BinaryOperatorExpression(variableExpression, rhs, bop);
             } catch (IncorrectTypeException e) {
                 ParserUtil.reportError(e.getMessage(), ctx);
             }
         }
 
-        VariableNameExpression variableNameExpression = new VariableNameExpression(name, currentScope);
         Assignment assignment = null;
         try {
-            assignment = new Assignment(variableNameExpression, expression);
+            assignment = new Assignment(variableExpression, rhs);
         } catch (IncorrectTypeException e) {
             ParserUtil.reportError(e.getMessage(), ctx);
         }
@@ -311,7 +336,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 op = IncrementOp.PRE_DECREMENT;
         }
         VariableScope currentScope = variableScopeStack.peek();
-        VariableNameExpression expression = new VariableNameExpression(variableName, currentScope);
+        LocalVariableExpression expression = new LocalVariableExpression(variableName, currentScope);
         VariableIncrementExpression incrementExpression = null;
         try {
             incrementExpression = new VariableIncrementExpression(expression, op);
@@ -333,7 +358,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 op = IncrementOp.POST_DECREMENT;
         }
         VariableScope currentScope = variableScopeStack.peek();
-        VariableNameExpression expression = new VariableNameExpression(variableName, currentScope);
+        LocalVariableExpression expression = new LocalVariableExpression(variableName, currentScope);
         VariableIncrementExpression incrementExpression = null;
         try {
             incrementExpression = new VariableIncrementExpression(expression, op);
@@ -358,17 +383,17 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public VariableNameExpression visitVariableNameExpr(JavaFileParser.VariableNameExprContext ctx) {
-        return (VariableNameExpression) visit(ctx.variableName());
+    public LocalVariableExpression visitVariableNameExpr(JavaFileParser.VariableNameExprContext ctx) {
+        return (LocalVariableExpression) visit(ctx.variableName());
     }
 
     @Override
     public AttributeNameExpression visitAttributeLookupExpr(JavaFileParser.AttributeLookupExprContext ctx) {
-        VariableNameExpression variableNameExpression = (VariableNameExpression) visit(ctx.object);
+        LocalVariableExpression localVariableExpression = (LocalVariableExpression) visit(ctx.object);
         String attributeName = ctx.attribute.getText();
         AttributeNameExpression result = null;
         try {
-            result = new AttributeNameExpression(variableNameExpression, attributeName);
+            result = new AttributeNameExpression(localVariableExpression, attributeName);
         } catch (JavAssemblerException e) {
             ParserUtil.reportError(e.getMessage(), ctx);
         }
@@ -376,10 +401,10 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public VariableNameExpression visitVariableName(JavaFileParser.VariableNameContext ctx) {
+    public LocalVariableExpression visitVariableName(JavaFileParser.VariableNameContext ctx) {
         String variableName = ctx.IDENTIFIER().toString();
         VariableScope currentScope = variableScopeStack.peek();
-        return new VariableNameExpression(variableName, currentScope);
+        return new LocalVariableExpression(variableName, currentScope);
     }
 
     @Override
@@ -491,7 +516,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 } catch (MultipleVariableDeclarationException e) {
                     ParserUtil.reportError(e.getMessage(), statementCtx);
                 }
-                VariableNameExpression nameExpression = new VariableNameExpression(name, innerScope);
+                LocalVariableExpression nameExpression = new LocalVariableExpression(name, innerScope);
                 Assignment assignment = null;
                 try {
                     assignment = new Assignment(nameExpression, combined.getExpression());
@@ -616,7 +641,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public Assignment visitForLoopAssignOnly(JavaFileParser.ForLoopAssignOnlyContext ctx) {
-        return (Assignment) visit(ctx.variableAssignment());
+        return (Assignment) visit(ctx.assignment());
     }
 
     @Override

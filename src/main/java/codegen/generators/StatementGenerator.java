@@ -1,7 +1,6 @@
 package codegen.generators;
 
-import ast.expressions.NotExpression;
-import ast.expressions.VariableIncrementExpression;
+import ast.expressions.*;
 import ast.statements.*;
 import ast.structure.CodeBlock;
 import ast.structure.VariableScope;
@@ -61,8 +60,14 @@ public class StatementGenerator {
     private void compileAssignment(Assignment assignment,
                                    VariableScope scope) {
         ExpressionGenerator.getInstance().compileExpression(assignment.getExpression(), scope);
-        int registerNum = scope.lookupRegisterIndexOfVariable(assignment.getVariableNameExpression().getVariableName());
-        emitter.emitLine("local.set " + registerNum);
+        VariableExpression variableExpression = assignment.getVariableExpression();
+        if (variableExpression instanceof LocalVariableExpression) {
+            LocalVariableExpression localVariable = (LocalVariableExpression) variableExpression;
+            int registerNum = scope.lookupRegisterIndexOfVariable(localVariable.getVariableName());
+            emitter.emitLine("local.set " + registerNum);
+        } else if (variableExpression instanceof AttributeNameExpression) {
+            // TODO: Implement
+        }
     }
 
     private void compileIfStatementChain(IfStatementChain chain,
