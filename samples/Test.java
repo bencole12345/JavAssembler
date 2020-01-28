@@ -45,6 +45,7 @@ public class Test {
 
     public static void dynamicallyAllocateMemory() {
         Test3 test3 = new Test3();
+        int y = test3.x;
     }
 
 }

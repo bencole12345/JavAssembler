@@ -61,23 +61,28 @@ variableDeclarationAndAssignment
     ;
 
 expr
-    : literal                                       # LiteralExpr
-    | functionCall                                  # FunctionCallExpr
-    | LPAREN expr RPAREN                            # ParenthesesExpr
-    | MINUS expr                                    # NegateExpr
-    | NOT expr                                      # NotExpr
-    | NEW IDENTIFIER LPAREN functionArgs RPAREN     # NewObjectExpr
-    | variableIncrementExpr                         # IncrementExpr
-    | expr op=(MULTIPLY|DIVIDE) expr                # InfixExpr
-    | expr op=(PLUS|MINUS) expr                     # InfixExpr
+    : literal                                           # LiteralExpr
+    | functionCall                                      # FunctionCallExpr
+    | LPAREN expr RPAREN                                # ParenthesesExpr
+    | MINUS expr                                        # NegateExpr
+    | NOT expr                                          # NotExpr
+    | NEW IDENTIFIER LPAREN functionArgs RPAREN         # NewObjectExpr
+    | variableIncrementExpr                             # IncrementExpr
+    | expr op=(MULTIPLY|DIVIDE) expr                    # InfixExpr
+    | expr op=(PLUS|MINUS) expr                         # InfixExpr
     | expr op=(EQUAL_TO
                 | NOT_EQUAL_TO
                 | LESS_THAN
                 | LESS_THAN_EQUAL_TO
                 | GREATER_THAN
-                | GREATER_THAN_EQUAL_TO) expr       # InfixExpr
-    | expr QUESTION_MARK expr COLON expr SEMICOLON  # BinarySelectorExpr
-    | IDENTIFIER                                    # VariableNameExpr
+                | GREATER_THAN_EQUAL_TO) expr           # InfixExpr
+    | expr QUESTION_MARK expr COLON expr SEMICOLON      # BinarySelectorExpr
+    | object=variableName DOT attribute=variableName    # AttributeLookupExpr
+    | variableName                                      # VariableNameExpr
+    ;
+
+variableName
+    : IDENTIFIER
     ;
 
 variableIncrementExpr

@@ -359,6 +359,24 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public VariableNameExpression visitVariableNameExpr(JavaFileParser.VariableNameExprContext ctx) {
+        return (VariableNameExpression) visit(ctx.variableName());
+    }
+
+    @Override
+    public AttributeNameExpression visitAttributeLookupExpr(JavaFileParser.AttributeLookupExprContext ctx) {
+        VariableNameExpression variableNameExpression = (VariableNameExpression) visit(ctx.object);
+        String attributeName = ctx.attribute.getText();
+        AttributeNameExpression result = null;
+        try {
+            result = new AttributeNameExpression(variableNameExpression, attributeName);
+        } catch (JavAssemblerException e) {
+            ParserUtil.reportError(e.getMessage(), ctx);
+        }
+        return result;
+    }
+
+    @Override
+    public VariableNameExpression visitVariableName(JavaFileParser.VariableNameContext ctx) {
         String variableName = ctx.IDENTIFIER().toString();
         VariableScope currentScope = variableScopeStack.peek();
         return new VariableNameExpression(variableName, currentScope);

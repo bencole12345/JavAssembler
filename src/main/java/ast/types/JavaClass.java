@@ -69,7 +69,7 @@ public class JavaClass implements Type {
         for (ClassAttribute attribute : attributes) {
             String attributeName = attribute.getName();
             if (attributeMap.containsKey(attributeName)
-                    || parent.hasPublicAttribute(attributeName)) {
+                    || (parent != null && parent.hasPublicAttribute(attributeName))) {
                 String message = "Duplicate public attribute " + attributeName
                         + " in class " + name;
                 throw new DuplicateClassAttributeException(message);
@@ -131,9 +131,9 @@ public class JavaClass implements Type {
      *                                       accessed externally
      * @return The class attribute that was found
      */
-    public ClassAttribute lookupAttribute(String attributeName, boolean mustBePublic)
+    public AllocatedClassAttribute lookupAttribute(String attributeName, boolean mustBePublic)
             throws InvalidAttributeException, IllegalPrivateAccessException {
-        ClassAttribute attribute = null;
+        AllocatedClassAttribute attribute = null;
         JavaClass currentClass = this;
         while (attribute == null && currentClass != null) {
             if (currentClass.attributesMap.containsKey(attributeName))
