@@ -63,7 +63,9 @@ public class ExpressionGenerator {
         } else if (expression instanceof NotExpression) {
             compileNotExpression((NotExpression) expression, scope);
         } else if (expression instanceof VariableIncrementExpression) {
-            compileVariableIncrementExpression((VariableIncrementExpression) expression, emitter, scope, functionTable);
+            compileVariableIncrementExpression((VariableIncrementExpression) expression, scope);
+        } else if (expression instanceof NewObjectExpression) {
+            compileNewObjectExpression((NewObjectExpression) expression, scope);
         }
     }
 
@@ -231,5 +233,15 @@ public class ExpressionGenerator {
                 .collect(Collectors.toList());
         String functionName = CodeGenUtil.getFunctionNameForOutput(tableEntry, argumentTypes, functionTable);
         emitter.emitLine("call $" + functionName);
+    }
+
+    private void compileNewObjectExpression(NewObjectExpression newObjectExpression,
+                                            VariableScope variableScope) {
+        JavaClass javaClass = newObjectExpression.getType();
+        int size = javaClass.getSize();
+        LiteralGenerator.getInstance().compileLiteralValue(new IntLiteral(size));
+        emitter.emitLine("call $alloc");
+        // TODO: Initialise variables
+        // TODO: Invoke constructor
     }
 }
