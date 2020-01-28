@@ -7,6 +7,8 @@ import ast.types.AccessModifier;
 import ast.types.PrimitiveType;
 import ast.types.Type;
 import ast.types.VoidType;
+import codegen.generators.ExpressionGenerator;
+import codegen.generators.LiteralGenerator;
 import codegen.generators.StatementGenerator;
 import util.ClassTable;
 import util.FunctionTable;
@@ -20,6 +22,13 @@ public class WasmGenerator {
                                CodeEmitter emitter,
                                FunctionTable functionTable,
                                ClassTable classTable) {
+
+        // Notify generators of required state
+        ExpressionGenerator.getInstance().setCodeEmitter(emitter);
+        ExpressionGenerator.getInstance().setTables(functionTable, classTable);
+        StatementGenerator.getInstance().setCodeEmitter(emitter);
+        StatementGenerator.getInstance().setTables(functionTable, classTable);
+        LiteralGenerator.getInstance().setCodeEmitter(emitter);
 
         // Emit start of module
         emitter.emitLine("(module");
@@ -87,7 +96,7 @@ public class WasmGenerator {
         }
 
         // Now compile the body of the function
-        StatementGenerator.compileCodeBlock(method.getBody(), emitter, functionTable);
+        StatementGenerator.getInstance().compileCodeBlock(method.getBody());
         // TODO: Find way to get this on the same line as the last instruction from above
         emitter.emitLine(")");
 

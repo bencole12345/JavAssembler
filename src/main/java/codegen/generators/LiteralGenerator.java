@@ -5,56 +5,72 @@ import codegen.CodeEmitter;
 
 public class LiteralGenerator {
 
-    public static void compileLiteralValue(LiteralValue literal, CodeEmitter emitter) {
+    private static LiteralGenerator INSTANCE;
+
+    public static LiteralGenerator getInstance() {
+        if (INSTANCE == null)
+            INSTANCE = new LiteralGenerator();
+        return INSTANCE;
+    }
+
+    private CodeEmitter emitter;
+
+    private LiteralGenerator() {}
+
+    public void setCodeEmitter(CodeEmitter emitter) {
+        this.emitter = emitter;
+    }
+
+    public void compileLiteralValue(LiteralValue literal) {
         if (literal instanceof IntLiteral) {
-            compileIntLiteral((IntLiteral) literal, emitter);
+            compileIntLiteral((IntLiteral) literal);
         } else if (literal instanceof ShortLiteral) {
-            compileShortLiteral((ShortLiteral) literal, emitter);
+            compileShortLiteral((ShortLiteral) literal);
         } else if (literal instanceof ByteLiteral) {
-            compileByteLiteral((ByteLiteral) literal, emitter);
+            compileByteLiteral((ByteLiteral) literal);
         } else if (literal instanceof LongLiteral) {
-            compileLongLiteral((LongLiteral) literal, emitter);
+            compileLongLiteral((LongLiteral) literal);
         } else if (literal instanceof FloatLiteral) {
-            compileFloatLiteral((FloatLiteral) literal, emitter);
+            compileFloatLiteral((FloatLiteral) literal);
         } else if (literal instanceof DoubleLiteral) {
-            compileDoubleLiteral((DoubleLiteral) literal, emitter);
+            compileDoubleLiteral((DoubleLiteral) literal);
         } else if (literal instanceof BooleanLiteral) {
-            compileBooleanLiteral((BooleanLiteral) literal, emitter);
+            compileBooleanLiteral((BooleanLiteral) literal);
         } else if (literal instanceof CharLiteral) {
-            compileCharLiteral((CharLiteral) literal, emitter);
+            compileCharLiteral((CharLiteral) literal);
         }
     }
 
-    private static void compileIntLiteral(IntLiteral literal, CodeEmitter emitter) {
+    private void compileIntLiteral(IntLiteral literal) {
         emitter.emitLine("i32.const " + literal.getValue());
     }
 
-    private static void compileShortLiteral(ShortLiteral literal, CodeEmitter emitter) {
+    private void compileShortLiteral(ShortLiteral literal) {
         emitter.emitLine("i32.const " + literal.getValue());
     }
 
-    private static void compileByteLiteral(ByteLiteral literal, CodeEmitter emitter) {
+    private void compileByteLiteral(ByteLiteral literal) {
         emitter.emitLine("i32.const " + literal.getValue());
     }
 
-    private static void compileLongLiteral(LongLiteral literal, CodeEmitter emitter) {
+    private void compileLongLiteral(LongLiteral literal) {
         emitter.emitLine("i64.const " + literal.getValue());
     }
 
-    private static void compileFloatLiteral(FloatLiteral literal, CodeEmitter emitter) {
+    private void compileFloatLiteral(FloatLiteral literal) {
         emitter.emitLine("f32.const " + literal.getValue());
     }
 
-    private static void compileDoubleLiteral(DoubleLiteral literal, CodeEmitter emitter) {
+    private void compileDoubleLiteral(DoubleLiteral literal) {
         emitter.emitLine("f64.const " + literal.getValue());
     }
 
-    private static void compileBooleanLiteral(BooleanLiteral literal, CodeEmitter emitter) {
+    private void compileBooleanLiteral(BooleanLiteral literal) {
         int value = literal.getValue() ? 1 : 0;
         emitter.emitLine("i32.const " + value);
     }
 
-    private static void compileCharLiteral(CharLiteral literal, CodeEmitter emitter) {
+    private void compileCharLiteral(CharLiteral literal) {
         emitter.emitLine("i32.const " + literal.getValue());
     }
 }

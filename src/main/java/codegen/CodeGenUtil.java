@@ -5,6 +5,7 @@ import ast.structure.ClassMethod;
 import ast.structure.MethodParameter;
 import ast.types.PrimitiveType;
 import ast.types.Type;
+import codegen.generators.LiteralGenerator;
 import errors.InvalidClassNameException;
 import errors.UndeclaredFunctionException;
 import util.FunctionTable;
@@ -12,8 +13,6 @@ import util.FunctionTableEntry;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static codegen.generators.LiteralGenerator.compileLiteralValue;
 
 public class CodeGenUtil {
 
@@ -56,7 +55,7 @@ public class CodeGenUtil {
         if (type.getSize() != 32 && type.getSize() != 64) {
             int mask = (1 << type.getSize()) - 1;
             IntLiteral literal = new IntLiteral(mask);
-            compileLiteralValue(literal, codeEmitter);
+            LiteralGenerator.getInstance().compileLiteralValue(literal);
             codeEmitter.emitLine("and");
         }
     }

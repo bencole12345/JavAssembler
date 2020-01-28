@@ -5,11 +5,13 @@ import ast.literals.*;
 import ast.operations.BinaryOp;
 import ast.statements.Assignment;
 import ast.structure.VariableScope;
+import ast.types.JavaClass;
 import ast.types.PrimitiveType;
 import ast.types.Type;
 import codegen.CodeEmitter;
 import codegen.CodeGenUtil;
 import errors.IncorrectTypeException;
+import util.ClassTable;
 import util.FunctionTable;
 import util.FunctionTableEntry;
 
@@ -18,35 +20,57 @@ import java.util.stream.Collectors;
 
 public class ExpressionGenerator {
 
-    public static void compileExpression(Expression expression,
-                                         CodeEmitter emitter,
-                                         VariableScope scope,
-                                         FunctionTable functionTable) {
+    private static ExpressionGenerator INSTANCE;
+
+    public static ExpressionGenerator getInstance() {
+        if (INSTANCE == null)
+            INSTANCE = new ExpressionGenerator();
+        return INSTANCE;
+    }
+
+    private CodeEmitter emitter;
+    private FunctionTable functionTable;
+    private ClassTable classTable;
+
+    private ExpressionGenerator() {
+        emitter = null;
+        functionTable = null;
+        classTable = null;
+    }
+
+    public void setCodeEmitter(CodeEmitter emitter) {
+        this.emitter = emitter;
+    }
+
+    public void setTables(FunctionTable functionTable, ClassTable classTable) {
+        this.functionTable = functionTable;
+        this.classTable = classTable;
+    }
+
+    public void compileExpression(Expression expression, VariableScope scope) {
         if (expression instanceof BinaryOperatorExpression) {
-            compileBopExpression((BinaryOperatorExpression) expression, emitter, scope, functionTable);
+            compileBopExpression((BinaryOperatorExpression) expression, scope);
         } else if (expression instanceof BinarySelectorExpression) {
-            compileBinarySelectorExpression((BinarySelectorExpression) expression, emitter, scope, functionTable);
+            compileBinarySelectorExpression((BinarySelectorExpression) expression, scope);
         } else if (expression instanceof VariableNameExpression) {
-            compileVariableNameExpression((VariableNameExpression) expression, emitter, scope);
+            compileVariableNameExpression((VariableNameExpression) expression, scope);
         } else if (expression instanceof LiteralValue) {
-            LiteralGenerator.compileLiteralValue((LiteralValue) expression, emitter);
+            LiteralGenerator.getInstance().compileLiteralValue((LiteralValue) expression);
         } else if (expression instanceof FunctionCall) {
-            compileFunctionCallExpression((FunctionCall) expression, emitter, scope, functionTable);
+            compileFunctionCallExpression((FunctionCall) expression, scope);
         } else if (expression instanceof NegateExpression) {
-            compileNegateExpression((NegateExpression) expression, emitter, scope, functionTable);
+            compileNegateExpression((NegateExpression) expression, scope);
         } else if (expression instanceof NotExpression) {
-            compileNotExpression((NotExpression) expression, emitter, scope, functionTable);
+            compileNotExpression((NotExpression) expression, scope);
         } else if (expression instanceof VariableIncrementExpression) {
             compileVariableIncrementExpression((VariableIncrementExpression) expression, emitter, scope, functionTable);
         }
     }
 
-    private static void compileBopExpression(BinaryOperatorExpression bopExpression,
-                                             CodeEmitter emitter,
-                                             VariableScope variableScope,
-                                             FunctionTable functionTable) {
-        compileExpression(bopExpression.getLeft(), emitter, variableScope, functionTable);
-        compileExpression(bopExpression.getRight(), emitter, variableScope, functionTable);
+    private void compileBopExpression(BinaryOperatorExpression bopExpression,
+                                      VariableScope variableScope) {
+        compileExpression(bopExpression.getLeft(), variableScope);
+        compileExpression(bopExpression.getRight(), variableScope);
         PrimitiveType expressionType = bopExpression.getUnderlyingType();
         String typeString = CodeGenUtil.getTypeForPrimitive(expressionType);
         switch (bopExpression.getOp()) {
@@ -103,42 +127,34 @@ public class ExpressionGenerator {
         }
     }
 
-    private static void compileBinarySelectorExpression(BinarySelectorExpression binarySelectorExpression,
-                                                        CodeEmitter emitter,
-                                                        VariableScope scope,
-                                                        FunctionTable functionTable) {
+    private void compileBinarySelectorExpression(BinarySelectorExpression binarySelectorExpression,
+                                                 VariableScope variableScope) {
         // TODO: Use the if with type construction seen in the table at
         //  https://webassembly.org/docs/text-format/
 
         // EVEN BETTER: See https://webassembly.github.io/spec/core/syntax/instructions.html#parametric-instructions
     }
 
-    private static void compileNegateExpression(NegateExpression negateExpression,
-                                                CodeEmitter emitter,
-                                                VariableScope scope,
-                                                FunctionTable functionTable) {
+    private void compileNegateExpression(NegateExpression negateExpression,
+                                         VariableScope scope) {
         // TODO: Check we haven't broken the range by negating
         // (you have one more negative number available than you do positive numbers)
-        compileExpression(negateExpression.getExpression(), emitter, scope, functionTable);
+        compileExpression(negateExpression.getExpression(), scope);
         PrimitiveType type = negateExpression.getType();
         String typeString = CodeGenUtil.getTypeForPrimitive(type);
         String signedSuffix = type.isIntegralType() ? "_s" : "";
         emitter.emitLine(typeString + ".neg" + signedSuffix);
     }
 
-    private static void compileNotExpression(NotExpression notExpression,
-                                             CodeEmitter emitter,
-                                             VariableScope scope,
-                                             FunctionTable functionTable) {
+    private void compileNotExpression(NotExpression notExpression,
+                                      VariableScope scope) {
         emitter.emitLine("i32.const 1");
-        compileExpression(notExpression.getExpression(), emitter, scope, functionTable);
+        compileExpression(notExpression.getExpression(), scope);
         emitter.emitLine("i32.sub");
     }
 
-    private static void compileVariableIncrementExpression(VariableIncrementExpression expression,
-                                                           CodeEmitter emitter,
-                                                           VariableScope variableScope,
-                                                           FunctionTable functionTable) {
+    private void compileVariableIncrementExpression(VariableIncrementExpression expression,
+                                                    VariableScope variableScope) {
         // TODO: Make sure range is preserved
         //       (shouldn't be able to ++ a short to get out of the 16-bit range)
         int registerNumber = variableScope.lookupRegisterIndexOfVariable(expression.getVariableNameExpression().getVariableName());
@@ -169,45 +185,42 @@ public class ExpressionGenerator {
                 case PRE_INCREMENT:
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.ADD);
                     assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
-                    StatementGenerator.compileStatement(assignment, emitter, variableScope, functionTable);
+                    StatementGenerator.getInstance().compileStatement(assignment, variableScope);
                     emitter.emitLine("local.get " + registerNumber);
                     break;
                 case PRE_DECREMENT:
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.SUBTRACT);
                     assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
-                    StatementGenerator.compileStatement(assignment, emitter, variableScope, functionTable);
+                    StatementGenerator.getInstance().compileStatement(assignment, variableScope);
                     emitter.emitLine("local.get " + registerNumber);
                     break;
                 case POST_INCREMENT:
                     emitter.emitLine("local.get " + registerNumber);
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.ADD);
                     assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
-                    StatementGenerator.compileStatement(assignment, emitter, variableScope, functionTable);
+                    StatementGenerator.getInstance().compileStatement(assignment, variableScope);
                     break;
                 case POST_DECREMENT:
                     emitter.emitLine("local.get " + registerNumber);
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.SUBTRACT);
                     assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
-                    StatementGenerator.compileStatement(assignment, emitter, variableScope, functionTable);
+                    StatementGenerator.getInstance().compileStatement(assignment, variableScope);
             }
         } catch (IncorrectTypeException e) {
             e.printStackTrace();
         }
     }
 
-    private static void compileVariableNameExpression(VariableNameExpression expression,
-                                                      CodeEmitter emitter,
-                                                      VariableScope variableScope) {
+    private void compileVariableNameExpression(VariableNameExpression expression,
+                                               VariableScope variableScope) {
         int index = variableScope.lookupRegisterIndexOfVariable(expression.getVariableName());
         emitter.emitLine("local.get " + index);
     }
 
-    private static void compileFunctionCallExpression(FunctionCall functionCall,
-                                                      CodeEmitter emitter,
-                                                      VariableScope variableScope,
-                                                      FunctionTable functionTable) {
+    private void compileFunctionCallExpression(FunctionCall functionCall,
+                                               VariableScope variableScope) {
         for (Expression expression : functionCall.getArguments()) {
-            compileExpression(expression, emitter, variableScope, functionTable);
+            compileExpression(expression, variableScope);
         }
 
         // TODO: Use function table index not function name
