@@ -40,12 +40,17 @@ public class Test {
     }
 
     public static int callFunctionFromOtherClass() {
-        return Test2.get42FromAnotherClass();
+        return AnotherClass.get42FromAnotherClass();
     }
 
-    public static void dynamicallyAllocateMemory() {
-        Test3 test3 = new Test3();
-        int y = test3.x;
+    public static int dynamicallyAllocateMemory() {
+        ChildClass child = new ChildClass();
+        child.w = 12;
+        return readW(child);
+    }
+
+    public static int readW(ChildClass child) {
+        return child.w;
     }
 
 }
