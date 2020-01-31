@@ -54,7 +54,7 @@ assignment
             | PLUS_EQUALS | MINUS_EQUALS
             | MULTIPLY_EQUALS | DIVIDE_EQUALS)
         expr                                        # VariableAssignment
-    | object=IDENTIFIER DOT attribute=IDENTIFIER
+    | IDENTIFIER DOT IDENTIFIER
         op=(EQUALS
             | PLUS_EQUALS | MINUS_EQUALS
             | MULTIPLY_EQUALS | DIVIDE_EQUALS)

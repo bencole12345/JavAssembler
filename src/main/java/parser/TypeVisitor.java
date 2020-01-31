@@ -1,9 +1,6 @@
 package parser;
 
-import ast.types.JavaClass;
-import ast.types.PrimitiveType;
-import ast.types.Type;
-import ast.types.VoidType;
+import ast.types.*;
 import errors.UnknownClassException;
 import util.ClassTable;
 
@@ -12,10 +9,35 @@ import util.ClassTable;
  */
 public class TypeVisitor extends JavaFileBaseVisitor<Type> {
 
+    /**
+     * Indicates which mode the visitor should be in.
+     */
+    private enum Mode {
+
+        /**
+         * Class references will be checked against the class table. Invalid
+         * class names will cause an error to be displayed.
+         */
+        Validated,
+
+        /**
+         * Class references will not be checked against the class table. We may
+         * end up accepting references to invalid classes.
+         */
+        Unvalidated
+    }
+
     private ClassTable classTable;
+    private Mode mode;
 
     public TypeVisitor(ClassTable classTable) {
         this.classTable = classTable;
+        mode = Mode.Validated;
+    }
+
+    public TypeVisitor() {
+        this.classTable = null;
+        mode = Mode.Unvalidated;
     }
 
     @Override
@@ -55,14 +77,18 @@ public class TypeVisitor extends JavaFileBaseVisitor<Type> {
     }
 
     @Override
-    public JavaClass visitNonPrimitiveType(JavaFileParser.NonPrimitiveTypeContext ctx) {
+    public JavaClassReference visitNonPrimitiveType(JavaFileParser.NonPrimitiveTypeContext ctx) {
         String className = ctx.IDENTIFIER().getText();
-        JavaClass javaClass = null;
-        try {
-            javaClass = classTable.lookupClass(className);
-        } catch (UnknownClassException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+        JavaClassReference reference = null;
+        if (mode == Mode.Validated) {
+            try {
+                reference = classTable.lookupClass(className);
+            } catch (UnknownClassException e) {
+                ParserUtil.reportError(e.getMessage(), ctx);
+            }
+        } else if (mode == Mode.Unvalidated) {
+            reference = new UnvalidatedJavaClassReference(className);
         }
-        return javaClass;
+        return reference;
     }
 }

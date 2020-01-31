@@ -4,7 +4,10 @@ import ast.expressions.*;
 import ast.statements.*;
 import ast.structure.CodeBlock;
 import ast.structure.VariableScope;
+import ast.types.Type;
 import codegen.CodeEmitter;
+import codegen.CodeGenUtil;
+import codegen.WasmType;
 import errors.IncorrectTypeException;
 import util.ClassTable;
 import util.FunctionTable;
@@ -59,14 +62,25 @@ public class StatementGenerator {
 
     private void compileAssignment(Assignment assignment,
                                    VariableScope scope) {
-        ExpressionGenerator.getInstance().compileExpression(assignment.getExpression(), scope);
+        Expression expression = assignment.getExpression();
         VariableExpression variableExpression = assignment.getVariableExpression();
         if (variableExpression instanceof LocalVariableExpression) {
+            ExpressionGenerator.getInstance().compileExpression(expression, scope);
             LocalVariableExpression localVariable = (LocalVariableExpression) variableExpression;
             int registerNum = scope.lookupRegisterIndexOfVariable(localVariable.getVariableName());
             emitter.emitLine("local.set " + registerNum);
         } else if (variableExpression instanceof AttributeNameExpression) {
-            // TODO: Implement
+            AttributeNameExpression attributeNameExpression = (AttributeNameExpression) variableExpression;
+            LocalVariableExpression localVariable = attributeNameExpression.getObject();
+            int registerNum = scope.lookupRegisterIndexOfVariable(localVariable.getVariableName());
+            emitter.emitLine("local.get " + registerNum);
+            int offset = attributeNameExpression.getMemoryOffset();
+            emitter.emitLine("i32.const " + offset);
+            emitter.emitLine("i32.add");
+            ExpressionGenerator.getInstance().compileExpression(expression, scope);
+            Type attributeType = attributeNameExpression.getType();
+            WasmType wasmType = CodeGenUtil.getWasmType(attributeType);
+            emitter.emitLine(wasmType + ".store");
         }
     }
 

@@ -10,6 +10,7 @@ import ast.types.PrimitiveType;
 import ast.types.Type;
 import codegen.CodeEmitter;
 import codegen.CodeGenUtil;
+import codegen.WasmType;
 import errors.IncorrectTypeException;
 import util.ClassTable;
 import util.FunctionTable;
@@ -54,6 +55,8 @@ public class ExpressionGenerator {
             compileBinarySelectorExpression((BinarySelectorExpression) expression, scope);
         } else if (expression instanceof LocalVariableExpression) {
             compileVariableNameExpression((LocalVariableExpression) expression, scope);
+        } else if (expression instanceof AttributeNameExpression) {
+            compileAttributeNameExpression((AttributeNameExpression) expression, scope);
         } else if (expression instanceof LiteralValue) {
             LiteralGenerator.getInstance().compileLiteralValue((LiteralValue) expression);
         } else if (expression instanceof FunctionCall) {
@@ -74,57 +77,57 @@ public class ExpressionGenerator {
         compileExpression(bopExpression.getLeft(), variableScope);
         compileExpression(bopExpression.getRight(), variableScope);
         PrimitiveType expressionType = bopExpression.getUnderlyingType();
-        String typeString = CodeGenUtil.getTypeForPrimitive(expressionType);
+        WasmType wasmType = CodeGenUtil.getWasmType(expressionType);
         switch (bopExpression.getOp()) {
             case ADD:
-                emitter.emitLine(typeString + ".add");
+                emitter.emitLine(wasmType + ".add");
                 CodeGenUtil.emitRangeRestrictionCode(expressionType, emitter);
                 break;
             case SUBTRACT:
-                emitter.emitLine(typeString + ".sub");
+                emitter.emitLine(wasmType + ".sub");
                 CodeGenUtil.emitRangeRestrictionCode(expressionType, emitter);
                 break;
             case MULTIPLY:
                 // TODO: This probably won't work, as multiplying can add more bits
                 // eg i32 * i32 = i64
                 // but it'll do for now...
-                emitter.emitLine(typeString + ".mul");
+                emitter.emitLine(wasmType + ".mul");
                 break;
             case DIVIDE:
-                emitter.emitLine(typeString + ".div");
+                emitter.emitLine(wasmType + ".div");
                 break;
             case EQUAL_TO:
-                emitter.emitLine(typeString + ".eq");
+                emitter.emitLine(wasmType + ".eq");
                 break;
             case NOT_EQUAL_TO:
-                emitter.emitLine(typeString + ".ne");
+                emitter.emitLine(wasmType + ".ne");
                 break;
             case LESS_THAN:
                 if (expressionType.isIntegralType()) {
-                    emitter.emitLine(typeString + ".lt_s");
+                    emitter.emitLine(wasmType + ".lt_s");
                 } else {
-                    emitter.emitLine(typeString + ".lt");
+                    emitter.emitLine(wasmType + ".lt");
                 }
                 break;
             case LESS_THAN_OR_EQUAL_TO:
                 if (expressionType.isIntegralType()) {
-                    emitter.emitLine(typeString + ".le_s");
+                    emitter.emitLine(wasmType + ".le_s");
                 } else {
-                    emitter.emitLine(typeString + ".le");
+                    emitter.emitLine(wasmType + ".le");
                 }
                 break;
             case GREATER_THAN:
                 if (expressionType.isIntegralType()) {
-                    emitter.emitLine(typeString + ".gt_s");
+                    emitter.emitLine(wasmType + ".gt_s");
                 } else {
-                    emitter.emitLine(typeString + ".gt");
+                    emitter.emitLine(wasmType + ".gt");
                 }
                 break;
             case GREATER_THAN_OR_EQUAL_TO:
                 if (expressionType.isIntegralType()) {
-                    emitter.emitLine(typeString + ".ge_s");
+                    emitter.emitLine(wasmType + ".ge_s");
                 } else {
-                    emitter.emitLine(typeString + ".ge");
+                    emitter.emitLine(wasmType + ".ge");
                 }
         }
     }
@@ -143,9 +146,9 @@ public class ExpressionGenerator {
         // (you have one more negative number available than you do positive numbers)
         compileExpression(negateExpression.getExpression(), scope);
         PrimitiveType type = negateExpression.getType();
-        String typeString = CodeGenUtil.getTypeForPrimitive(type);
+        WasmType wasmType = CodeGenUtil.getWasmType(type);
         String signedSuffix = type.isIntegralType() ? "_s" : "";
-        emitter.emitLine(typeString + ".neg" + signedSuffix);
+        emitter.emitLine(wasmType + ".neg" + signedSuffix);
     }
 
     private void compileNotExpression(NotExpression notExpression,
@@ -219,6 +222,27 @@ public class ExpressionGenerator {
         emitter.emitLine("local.get " + index);
     }
 
+    private void compileAttributeNameExpression(AttributeNameExpression attributeNameExpression,
+                                                VariableScope scope) {
+        // TODO: Implement layer of indirection for stack references to heap objects
+
+        // Look up the local variable to leave the heap pointer on the stack
+        compileVariableNameExpression(attributeNameExpression.getObject(), scope);
+
+        // Find the memory offset of the desired attribute
+        int offset = attributeNameExpression.getMemoryOffset();
+
+        // Leave it on the stack
+        LiteralGenerator.getInstance().compileLiteralValue(new IntLiteral(offset));
+
+        // Add the base and offset to find the heap address of the attribute
+        emitter.emitLine("i32.add");
+
+        // Look up this index from the heap
+        WasmType wasmType = CodeGenUtil.getWasmType(attributeNameExpression.getType());
+        emitter.emitLine(wasmType + ".load");
+    }
+
     private void compileFunctionCallExpression(FunctionCall functionCall,
                                                VariableScope variableScope) {
         for (Expression expression : functionCall.getArguments()) {
@@ -238,7 +262,7 @@ public class ExpressionGenerator {
     private void compileNewObjectExpression(NewObjectExpression newObjectExpression,
                                             VariableScope variableScope) {
         JavaClass javaClass = newObjectExpression.getType();
-        int size = javaClass.getSize();
+        int size = javaClass.getHeapSize();
         LiteralGenerator.getInstance().compileLiteralValue(new IntLiteral(size));
         emitter.emitLine("call $alloc");
         // TODO: Initialise variables

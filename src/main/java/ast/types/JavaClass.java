@@ -3,6 +3,9 @@ package ast.types;
 import errors.DuplicateClassAttributeException;
 import errors.IllegalPrivateAccessException;
 import errors.InvalidAttributeException;
+import errors.UnknownClassException;
+import parser.ParserUtil;
+import util.ClassTable;
 
 import java.util.HashMap;
 import java.util.List;
@@ -12,7 +15,7 @@ import java.util.Objects;
 /**
  * Represents a known Java class.
  */
-public class JavaClass implements Type {
+public class JavaClass extends JavaClassReference {
 
     /**
      * The name of the class
@@ -103,8 +106,7 @@ public class JavaClass implements Type {
         return name;
     }
 
-    @Override
-    public int getSize() {
+    public int getHeapSize() {
         return nextFreeAssignmentOffset;
     }
 
@@ -150,6 +152,31 @@ public class JavaClass implements Type {
             throw new IllegalPrivateAccessException(message);
         }
         return attribute;
+    }
+
+    /**
+     * Replaces all UnvalidatedJavaClassReference attributes with JavaClass
+     * references.
+     *
+     * This will report an error and terminate the compiler if any of the
+     * attributes reference a type that does not actually exist.
+     *
+     * @param classTable The class table that has been constructed
+     */
+    public void validateAllClassReferences(ClassTable classTable) {
+        for (String attributeName : attributesMap.keySet()) {
+            ClassAttribute attribute = attributesMap.get(attributeName);
+            if (attribute.type instanceof UnvalidatedJavaClassReference) {
+                String className = ((UnvalidatedJavaClassReference) attribute.type).getClassName();
+                JavaClass validatedClass = null;
+                try {
+                    validatedClass = classTable.lookupClass(className);
+                } catch (UnknownClassException e) {
+                    ParserUtil.reportError(e.getMessage());
+                }
+                attribute.type = validatedClass;
+            }
+        }
     }
 
     /**

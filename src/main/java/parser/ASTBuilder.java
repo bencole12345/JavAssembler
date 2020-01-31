@@ -146,8 +146,10 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public Assignment visitAttributeAssignment(JavaFileParser.AttributeAssignmentContext ctx) {
-        LocalVariableExpression object = (LocalVariableExpression) visit(ctx.IDENTIFIER(0));
-        String attributeName = ctx.attribute.getText();
+        String localVarName = ctx.IDENTIFIER(0).getText();
+        LocalVariableExpression object =
+                new LocalVariableExpression(localVarName, variableScopeStack.peek());
+        String attributeName = ctx.IDENTIFIER(1).getText();
         Token op = ctx.op;
         Expression rhs = (Expression) visit(ctx.expr());
         AttributeNameExpression attributeNameExpression = null;

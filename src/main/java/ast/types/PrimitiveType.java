@@ -12,13 +12,13 @@ public enum PrimitiveType implements Type {
 
     private boolean isIntegralType;
     private boolean isDecimalType;
-    private int size;
+    private int sizeBits;
     private String representation;
 
-    PrimitiveType(boolean isIntegralType, boolean isDecimalType, int size, String representation) {
+    PrimitiveType(boolean isIntegralType, boolean isDecimalType, int sizeBits, String representation) {
         this.isIntegralType = isIntegralType;
         this.isDecimalType = isDecimalType;
-        this.size = size;
+        this.sizeBits = sizeBits;
         this.representation = representation;
     }
 
@@ -50,12 +50,12 @@ public enum PrimitiveType implements Type {
     }
 
     /**
-     * Returns the size of the type, in bits.
+     * Returns the size of the type, in bytes.
      *
-     * @return The size of the type, in bits
+     * @return The size of the type, in bytes
      */
     public int getSize() {
-        return size;
+        return (sizeBits > 32) ? 8 : 4;
     }
 
     @Override

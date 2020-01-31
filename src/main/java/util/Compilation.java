@@ -3,10 +3,7 @@ package util;
 import ast.structure.ClassMethod;
 import codegen.CodeEmitter;
 import codegen.WasmGenerator;
-import parser.ASTBuilder;
-import parser.ClassSignatureBuilder;
-import parser.JavaFileParser;
-import parser.ParserWrapper;
+import parser.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,39 +20,51 @@ public class Compilation {
             parseTrees.add(ParserWrapper.parse(fileName));
         }
 
-        // In the first pass we just extract all function signatures and load
-        // them into the function table. We use the map to track the class name
-        // for each method.
-        ClassSignatureBuilder signatureBuilder = new ClassSignatureBuilder();
+        // First determine the class hierarchy so that we can derive an order
+        // for visiting each class.
+        ClassHierarchyBuilder hierarchyBuilder = new ClassHierarchyBuilder();
         for (JavaFileParser.FileContext parseTree : parseTrees) {
-            signatureBuilder.visit(parseTree);
+            hierarchyBuilder.visit(parseTree);
         }
+        List<JavaFileParser.ClassDefinitionContext> classes =
+                hierarchyBuilder.getSerialClassOrdering();
 
-        // Now that the first pass has completed, we can extract the generated
-        // function table and class table.
-        FunctionTable functionTable = signatureBuilder.getFunctionTable();
-        ClassTable classTable = signatureBuilder.getClassTable();
+        // Now that we have a serial ordering, build up a memory representation
+        // of each class.
+        ClassTableBuilder classTableBuilder = new ClassTableBuilder();
+        for (JavaFileParser.ClassDefinitionContext classDefinitionContext : classes) {
+            classTableBuilder.visit(classDefinitionContext);
+        }
+        ClassTable classTable = classTableBuilder.getConstructedClassTable();
 
-        // Also extract the list of methods to be compiled.
-        List<JavaFileParser.MethodDefinitionContext> methodParseTrees =
-                signatureBuilder.getMethodParseTrees();
-        Map<JavaFileParser.MethodDefinitionContext, String> classNameMap =
-                signatureBuilder.getClassNameMap();
+        // Now that we have built a memory representation of all types in the
+        // program, we can update any class attributes that have not yet been
+        // checked to ensure that they reference a type that actually exists.
+        classTable.validateAllClassReferences();
 
-        // Now that the function table has been built, we can properly construct
-        // an AST for each method.
-        List<ClassMethod> methodASTs = new ArrayList<>();
+        // Now build a function table
+        FunctionTableBuilder functionTableBuilder = new FunctionTableBuilder(classTable);
+        for (JavaFileParser.FileContext parseTree : parseTrees) {
+            functionTableBuilder.visit(parseTree);
+        }
+        FunctionTable functionTable = functionTableBuilder.getConstructedFunctionTable();
+
+        // Convert the parse tree of each method into an AST
         ASTBuilder astBuilder = new ASTBuilder(functionTable, classTable);
-        for (JavaFileParser.MethodDefinitionContext methodCtx : methodParseTrees) {
-            String className = classNameMap.get(methodCtx);
-            ClassMethod methodAST = astBuilder.visitMethod(methodCtx, className);
+        List<JavaFileParser.MethodDefinitionContext> methodParseTrees =
+                functionTableBuilder.getMethodParseTrees();
+        Map<JavaFileParser.MethodDefinitionContext, String> classNameMap =
+                functionTableBuilder.getClassNameMap();
+        List<ClassMethod> methodASTs = new ArrayList<>();
+        for (JavaFileParser.MethodDefinitionContext methodParseTree : methodParseTrees) {
+            String className = classNameMap.get(methodParseTree);
+            ClassMethod methodAST = astBuilder.visitMethod(methodParseTree, className);
             methodASTs.add(methodAST);
         }
 
-        // Now that we have built the AST for every method, we can compile each
-        // method into WebAssembly.
-        CodeEmitter codeEmitter = new CodeEmitter(outputFileName);
-        WasmGenerator.compile(methodASTs, codeEmitter, functionTable, classTable);
+        // Finally, compile each AST into WebAssembly
+        CodeEmitter emitter = new CodeEmitter(outputFileName);
+        WasmGenerator.compile(methodASTs, emitter, functionTable, classTable);
 
     }
 }
