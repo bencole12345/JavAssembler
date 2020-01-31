@@ -1,29 +1,49 @@
 package codegen;
 
-import ast.functions.FunctionTable;
 import ast.structure.ClassMethod;
 import ast.structure.MethodParameter;
 import ast.structure.VariableScope;
 import ast.types.AccessModifier;
-import ast.types.PrimitiveType;
 import ast.types.Type;
 import ast.types.VoidType;
+import codegen.generators.ExpressionGenerator;
+import codegen.generators.LiteralGenerator;
 import codegen.generators.StatementGenerator;
+import util.ClassTable;
+import util.FunctionTable;
 
 import java.util.List;
 
 
 public class WasmGenerator {
 
-    public static void compileMethods(List<ClassMethod> methods, CodeEmitter emitter, FunctionTable functionTable) {
+    public static void compile(List<ClassMethod> methods,
+                               CodeEmitter emitter,
+                               FunctionTable functionTable,
+                               ClassTable classTable) {
+
+        // Notify generators of required state
+        ExpressionGenerator.getInstance().setCodeEmitter(emitter);
+        ExpressionGenerator.getInstance().setTables(functionTable, classTable);
+        StatementGenerator.getInstance().setCodeEmitter(emitter);
+        StatementGenerator.getInstance().setTables(functionTable, classTable);
+        LiteralGenerator.getInstance().setCodeEmitter(emitter);
+
+        // Emit start of module
         emitter.emitLine("(module");
         emitter.increaseIndentationLevel();
 
-        // Compile each method separately
+        // Emit hand-coded WebAssembly functions
+        WasmLibReader.getGlobalsCode().forEach(emitter::emitLine);
+        WasmLibReader.getAllocationCode().forEach(emitter::emitLine);
+
+        // Now compile each method
         for (ClassMethod method : methods) {
+            // TODO: Pass in classTable
             compileMethod(method, functionTable, emitter);
         }
 
+        // End the module
         emitter.decreaseIndentationLevel();
         emitter.emitLine(")");
         emitter.close();
@@ -43,21 +63,15 @@ public class WasmGenerator {
             line.append(param.getParameterName());
             line.append(" ");
             Type paramType = param.getType();
-            if (paramType instanceof PrimitiveType) {
-                String representationType = CodeGenUtil.getTypeForPrimitive((PrimitiveType) paramType);
-                line.append(representationType);
-                line.append(")");
-            } else {
-                // TODO: Implement non-primitive types
-            }
+            line.append(CodeGenUtil.getWasmType(paramType));
+            line.append(")");
         }
 
         // Emit return type, unless it's a void return
         Type returnType = method.getReturnType();
         if (!(returnType instanceof VoidType)) {
             line.append(" (result ");
-            // TODO: This will break for non-primitive types
-            line.append(CodeGenUtil.getTypeForPrimitive((PrimitiveType) returnType));
+            line.append(CodeGenUtil.getWasmType(returnType));
             line.append(")");
         }
 
@@ -66,16 +80,12 @@ public class WasmGenerator {
 
         VariableScope bodyScope = method.getBody().getVariableScope();
         for (Type type : bodyScope.getAllKnownAllocatedTypes()) {
-            if (type instanceof PrimitiveType) {
-                String typeString = CodeGenUtil.getTypeForPrimitive((PrimitiveType) type);
-                emitter.emitLine("(local " + typeString + ")");
-            } else {
-                // TODO: Implement for non-primitive types
-            }
+            WasmType wasmType = CodeGenUtil.getWasmType(type);
+            emitter.emitLine("(local " + wasmType + ")");
         }
 
         // Now compile the body of the function
-        StatementGenerator.compileCodeBlock(method.getBody(), emitter, functionTable);
+        StatementGenerator.getInstance().compileCodeBlock(method.getBody());
         // TODO: Find way to get this on the same line as the last instruction from above
         emitter.emitLine(")");
 

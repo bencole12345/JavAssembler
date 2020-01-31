@@ -1,150 +1,171 @@
 package codegen.generators;
 
 import ast.expressions.*;
-import ast.functions.FunctionTable;
-import ast.functions.FunctionTableEntry;
 import ast.literals.*;
 import ast.operations.BinaryOp;
 import ast.statements.Assignment;
 import ast.structure.VariableScope;
+import ast.types.JavaClass;
 import ast.types.PrimitiveType;
 import ast.types.Type;
 import codegen.CodeEmitter;
 import codegen.CodeGenUtil;
+import codegen.WasmType;
 import errors.IncorrectTypeException;
+import util.ClassTable;
+import util.FunctionTable;
+import util.FunctionTableEntry;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class ExpressionGenerator {
 
-    public static void compileExpression(Expression expression,
-                                         CodeEmitter emitter,
-                                         VariableScope scope,
-                                         FunctionTable functionTable) {
+    private static ExpressionGenerator INSTANCE;
+
+    public static ExpressionGenerator getInstance() {
+        if (INSTANCE == null)
+            INSTANCE = new ExpressionGenerator();
+        return INSTANCE;
+    }
+
+    private CodeEmitter emitter;
+    private FunctionTable functionTable;
+    private ClassTable classTable;
+
+    private ExpressionGenerator() {
+        emitter = null;
+        functionTable = null;
+        classTable = null;
+    }
+
+    public void setCodeEmitter(CodeEmitter emitter) {
+        this.emitter = emitter;
+    }
+
+    public void setTables(FunctionTable functionTable, ClassTable classTable) {
+        this.functionTable = functionTable;
+        this.classTable = classTable;
+    }
+
+    public void compileExpression(Expression expression, VariableScope scope) {
         if (expression instanceof BinaryOperatorExpression) {
-            compileBopExpression((BinaryOperatorExpression) expression, emitter, scope, functionTable);
+            compileBopExpression((BinaryOperatorExpression) expression, scope);
         } else if (expression instanceof BinarySelectorExpression) {
-            compileBinarySelectorExpression((BinarySelectorExpression) expression, emitter, scope, functionTable);
-        } else if (expression instanceof VariableNameExpression) {
-            compileVariableNameExpression((VariableNameExpression) expression, emitter, scope);
+            compileBinarySelectorExpression((BinarySelectorExpression) expression, scope);
+        } else if (expression instanceof LocalVariableExpression) {
+            compileVariableNameExpression((LocalVariableExpression) expression, scope);
+        } else if (expression instanceof AttributeNameExpression) {
+            compileAttributeNameExpression((AttributeNameExpression) expression, scope);
         } else if (expression instanceof LiteralValue) {
-            LiteralGenerator.compileLiteralValue((LiteralValue) expression, emitter);
+            LiteralGenerator.getInstance().compileLiteralValue((LiteralValue) expression);
         } else if (expression instanceof FunctionCall) {
-            compileFunctionCallExpression((FunctionCall) expression, emitter, scope, functionTable);
+            compileFunctionCallExpression((FunctionCall) expression, scope);
         } else if (expression instanceof NegateExpression) {
-            compileNegateExpression((NegateExpression) expression, emitter, scope, functionTable);
+            compileNegateExpression((NegateExpression) expression, scope);
         } else if (expression instanceof NotExpression) {
-            compileNotExpression((NotExpression) expression, emitter, scope, functionTable);
+            compileNotExpression((NotExpression) expression, scope);
         } else if (expression instanceof VariableIncrementExpression) {
-            compileVariableIncrementExpression((VariableIncrementExpression) expression, emitter, scope, functionTable);
+            compileVariableIncrementExpression((VariableIncrementExpression) expression, scope);
+        } else if (expression instanceof NewObjectExpression) {
+            compileNewObjectExpression((NewObjectExpression) expression, scope);
         }
     }
 
-    private static void compileBopExpression(BinaryOperatorExpression bopExpression,
-                                             CodeEmitter emitter,
-                                             VariableScope variableScope,
-                                             FunctionTable functionTable) {
-        compileExpression(bopExpression.getLeft(), emitter, variableScope, functionTable);
-        compileExpression(bopExpression.getRight(), emitter, variableScope, functionTable);
+    private void compileBopExpression(BinaryOperatorExpression bopExpression,
+                                      VariableScope variableScope) {
+        compileExpression(bopExpression.getLeft(), variableScope);
+        compileExpression(bopExpression.getRight(), variableScope);
         PrimitiveType expressionType = bopExpression.getUnderlyingType();
-        String typeString = CodeGenUtil.getTypeForPrimitive(expressionType);
+        WasmType wasmType = CodeGenUtil.getWasmType(expressionType);
         switch (bopExpression.getOp()) {
             case ADD:
-                emitter.emitLine(typeString + ".add");
+                emitter.emitLine(wasmType + ".add");
                 CodeGenUtil.emitRangeRestrictionCode(expressionType, emitter);
                 break;
             case SUBTRACT:
-                emitter.emitLine(typeString + ".sub");
+                emitter.emitLine(wasmType + ".sub");
                 CodeGenUtil.emitRangeRestrictionCode(expressionType, emitter);
                 break;
             case MULTIPLY:
                 // TODO: This probably won't work, as multiplying can add more bits
                 // eg i32 * i32 = i64
                 // but it'll do for now...
-                emitter.emitLine(typeString + ".mul");
+                emitter.emitLine(wasmType + ".mul");
                 break;
             case DIVIDE:
-                emitter.emitLine(typeString + ".div");
+                emitter.emitLine(wasmType + ".div");
                 break;
             case EQUAL_TO:
-                emitter.emitLine(typeString + ".eq");
+                emitter.emitLine(wasmType + ".eq");
                 break;
             case NOT_EQUAL_TO:
-                emitter.emitLine(typeString + ".ne");
+                emitter.emitLine(wasmType + ".ne");
                 break;
             case LESS_THAN:
                 if (expressionType.isIntegralType()) {
-                    emitter.emitLine(typeString + ".lt_s");
+                    emitter.emitLine(wasmType + ".lt_s");
                 } else {
-                    emitter.emitLine(typeString + ".lt");
+                    emitter.emitLine(wasmType + ".lt");
                 }
                 break;
             case LESS_THAN_OR_EQUAL_TO:
                 if (expressionType.isIntegralType()) {
-                    emitter.emitLine(typeString + ".le_s");
+                    emitter.emitLine(wasmType + ".le_s");
                 } else {
-                    emitter.emitLine(typeString + ".le");
+                    emitter.emitLine(wasmType + ".le");
                 }
                 break;
             case GREATER_THAN:
                 if (expressionType.isIntegralType()) {
-                    emitter.emitLine(typeString + ".gt_s");
+                    emitter.emitLine(wasmType + ".gt_s");
                 } else {
-                    emitter.emitLine(typeString + ".gt");
+                    emitter.emitLine(wasmType + ".gt");
                 }
                 break;
             case GREATER_THAN_OR_EQUAL_TO:
                 if (expressionType.isIntegralType()) {
-                    emitter.emitLine(typeString + ".ge_s");
+                    emitter.emitLine(wasmType + ".ge_s");
                 } else {
-                    emitter.emitLine(typeString + ".ge");
+                    emitter.emitLine(wasmType + ".ge");
                 }
         }
     }
 
-    private static void compileBinarySelectorExpression(BinarySelectorExpression binarySelectorExpression,
-                                                        CodeEmitter emitter,
-                                                        VariableScope scope,
-                                                        FunctionTable functionTable) {
+    private void compileBinarySelectorExpression(BinarySelectorExpression binarySelectorExpression,
+                                                 VariableScope variableScope) {
         // TODO: Use the if with type construction seen in the table at
         //  https://webassembly.org/docs/text-format/
 
         // EVEN BETTER: See https://webassembly.github.io/spec/core/syntax/instructions.html#parametric-instructions
     }
 
-    private static void compileNegateExpression(NegateExpression negateExpression,
-                                                CodeEmitter emitter,
-                                                VariableScope scope,
-                                                FunctionTable functionTable) {
+    private void compileNegateExpression(NegateExpression negateExpression,
+                                         VariableScope scope) {
         // TODO: Check we haven't broken the range by negating
         // (you have one more negative number available than you do positive numbers)
-        compileExpression(negateExpression.getExpression(), emitter, scope, functionTable);
+        compileExpression(negateExpression.getExpression(), scope);
         PrimitiveType type = negateExpression.getType();
-        String typeString = CodeGenUtil.getTypeForPrimitive(type);
+        WasmType wasmType = CodeGenUtil.getWasmType(type);
         String signedSuffix = type.isIntegralType() ? "_s" : "";
-        emitter.emitLine(typeString + ".neg" + signedSuffix);
+        emitter.emitLine(wasmType + ".neg" + signedSuffix);
     }
 
-    private static void compileNotExpression(NotExpression notExpression,
-                                             CodeEmitter emitter,
-                                             VariableScope scope,
-                                             FunctionTable functionTable) {
+    private void compileNotExpression(NotExpression notExpression,
+                                      VariableScope scope) {
         emitter.emitLine("i32.const 1");
-        compileExpression(notExpression.getExpression(), emitter, scope, functionTable);
+        compileExpression(notExpression.getExpression(), scope);
         emitter.emitLine("i32.sub");
     }
 
-    private static void compileVariableIncrementExpression(VariableIncrementExpression expression,
-                                                           CodeEmitter emitter,
-                                                           VariableScope variableScope,
-                                                           FunctionTable functionTable) {
+    private void compileVariableIncrementExpression(VariableIncrementExpression expression,
+                                                    VariableScope variableScope) {
         // TODO: Make sure range is preserved
         //       (shouldn't be able to ++ a short to get out of the 16-bit range)
-        int registerNumber = variableScope.lookupRegisterIndexOfVariable(expression.getVariableNameExpression().getVariableName());
-        Expression varNameExpr = expression.getVariableNameExpression();
+        int registerNumber = variableScope.lookupRegisterIndexOfVariable(expression.getLocalVariableExpression().getVariableName());
+        Expression varNameExpr = expression.getLocalVariableExpression();
         Expression one;
-        PrimitiveType variableType = (PrimitiveType) expression.getVariableNameExpression().getType();
+        PrimitiveType variableType = (PrimitiveType) expression.getLocalVariableExpression().getType();
         // TODO: Support the rest of the primitives
         switch (variableType) {
             case Short:
@@ -168,46 +189,64 @@ public class ExpressionGenerator {
             switch (expression.getIncrementOp()) {
                 case PRE_INCREMENT:
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.ADD);
-                    assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
-                    StatementGenerator.compileStatement(assignment, emitter, variableScope, functionTable);
+                    assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
+                    StatementGenerator.getInstance().compileStatement(assignment, variableScope);
                     emitter.emitLine("local.get " + registerNumber);
                     break;
                 case PRE_DECREMENT:
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.SUBTRACT);
-                    assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
-                    StatementGenerator.compileStatement(assignment, emitter, variableScope, functionTable);
+                    assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
+                    StatementGenerator.getInstance().compileStatement(assignment, variableScope);
                     emitter.emitLine("local.get " + registerNumber);
                     break;
                 case POST_INCREMENT:
                     emitter.emitLine("local.get " + registerNumber);
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.ADD);
-                    assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
-                    StatementGenerator.compileStatement(assignment, emitter, variableScope, functionTable);
+                    assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
+                    StatementGenerator.getInstance().compileStatement(assignment, variableScope);
                     break;
                 case POST_DECREMENT:
                     emitter.emitLine("local.get " + registerNumber);
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.SUBTRACT);
-                    assignment = new Assignment(expression.getVariableNameExpression(), bopExpr);
-                    StatementGenerator.compileStatement(assignment, emitter, variableScope, functionTable);
+                    assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
+                    StatementGenerator.getInstance().compileStatement(assignment, variableScope);
             }
         } catch (IncorrectTypeException e) {
             e.printStackTrace();
         }
     }
 
-    private static void compileVariableNameExpression(VariableNameExpression expression,
-                                                      CodeEmitter emitter,
-                                                      VariableScope variableScope) {
+    private void compileVariableNameExpression(LocalVariableExpression expression,
+                                               VariableScope variableScope) {
         int index = variableScope.lookupRegisterIndexOfVariable(expression.getVariableName());
         emitter.emitLine("local.get " + index);
     }
 
-    private static void compileFunctionCallExpression(FunctionCall functionCall,
-                                                      CodeEmitter emitter,
-                                                      VariableScope variableScope,
-                                                      FunctionTable functionTable) {
+    private void compileAttributeNameExpression(AttributeNameExpression attributeNameExpression,
+                                                VariableScope scope) {
+        // TODO: Implement layer of indirection for stack references to heap objects
+
+        // Look up the local variable to leave the heap pointer on the stack
+        compileVariableNameExpression(attributeNameExpression.getObject(), scope);
+
+        // Find the memory offset of the desired attribute
+        int offset = attributeNameExpression.getMemoryOffset();
+
+        // Leave it on the stack
+        LiteralGenerator.getInstance().compileLiteralValue(new IntLiteral(offset));
+
+        // Add the base and offset to find the heap address of the attribute
+        emitter.emitLine("i32.add");
+
+        // Look up this index from the heap
+        WasmType wasmType = CodeGenUtil.getWasmType(attributeNameExpression.getType());
+        emitter.emitLine(wasmType + ".load");
+    }
+
+    private void compileFunctionCallExpression(FunctionCall functionCall,
+                                               VariableScope variableScope) {
         for (Expression expression : functionCall.getArguments()) {
-            compileExpression(expression, emitter, variableScope, functionTable);
+            compileExpression(expression, variableScope);
         }
 
         // TODO: Use function table index not function name
@@ -218,5 +257,15 @@ public class ExpressionGenerator {
                 .collect(Collectors.toList());
         String functionName = CodeGenUtil.getFunctionNameForOutput(tableEntry, argumentTypes, functionTable);
         emitter.emitLine("call $" + functionName);
+    }
+
+    private void compileNewObjectExpression(NewObjectExpression newObjectExpression,
+                                            VariableScope variableScope) {
+        JavaClass javaClass = newObjectExpression.getType();
+        int size = javaClass.getHeapSize();
+        LiteralGenerator.getInstance().compileLiteralValue(new IntLiteral(size));
+        emitter.emitLine("call $alloc");
+        // TODO: Initialise variables
+        // TODO: Invoke constructor
     }
 }

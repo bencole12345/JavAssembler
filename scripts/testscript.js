@@ -1,7 +1,7 @@
 const { readFileSync } = require("fs");
 
-const loadModule = async () => {
-    const testFilePath = process.argv[2];
+const loadModule = async (filepath) => {
+    const testFilePath = filepath;
     const buffer = readFileSync(testFilePath);
     const module = await WebAssembly.compile(buffer);
     const instance = await WebAssembly.instantiate(module);
@@ -9,7 +9,7 @@ const loadModule = async () => {
 };
 
 const runTests = async () => {
-    const module = await loadModule();
+    const module = await loadModule(process.argv[2]);
 
     // Test while loop
     let result = module.Test__sumSquaresWhile(10);
@@ -50,6 +50,11 @@ const runTests = async () => {
     result = module.Test__callFunctionFromOtherClass();
     passFail = result == 42 ? "PASS" : "FAIL";
     console.log(passFail + ": Call function in another class test");
+
+    // Test dynamically allocating memory
+    result = module.Test__dynamicallyAllocateMemory();
+    passFail = result == 12 ? "PASS" : "FAIL";
+    console.log(passFail + ": Dynamic memory allocation test");
     
 };
 

@@ -1,42 +1,43 @@
 package codegen;
 
-import ast.functions.FunctionTable;
-import ast.functions.FunctionTableEntry;
 import ast.literals.IntLiteral;
 import ast.structure.ClassMethod;
 import ast.structure.MethodParameter;
 import ast.types.PrimitiveType;
 import ast.types.Type;
+import codegen.generators.LiteralGenerator;
 import errors.InvalidClassNameException;
 import errors.UndeclaredFunctionException;
+import util.FunctionTable;
+import util.FunctionTableEntry;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static codegen.generators.LiteralGenerator.compileLiteralValue;
 
 public class CodeGenUtil {
 
     /**
      * Returns the wasm type mapping for a given Java primitive type.
      *
-     * @param type The primitive type to use
+     * @param type The type to use
      * @return The wasm type it is represented by
      */
-    public static String getTypeForPrimitive(PrimitiveType type) {
-        switch (type) {
+    public static WasmType getWasmType(Type type) {
+        if (!(type instanceof PrimitiveType))
+            return WasmType.Int32;
+        switch ((PrimitiveType) type) {
             case Int:
             case Short:
             case Char:
             case Byte:
             case Boolean:
-                return "i32";
+                return WasmType.Int32;
             case Long:
-                return "i64";
+                return WasmType.Int64;
             case Float:
-                return "f32";
+                return WasmType.Float32;
             case Double:
-                return "f64";
+                return WasmType.Float64;
         }
         return null;
     }
@@ -53,11 +54,11 @@ public class CodeGenUtil {
      * @param codeEmitter The CodeEmitter to use
      */
     public static void emitRangeRestrictionCode(PrimitiveType type, CodeEmitter codeEmitter) {
-        if (type.getSize() != 32 && type.getSize() != 64) {
-            int mask = (1 << type.getSize()) - 1;
+        if (type.getSize() != 4 && type.getSize() != 8) {
+            int mask = (1 << (type.getSize() * 8)) - 1;
             IntLiteral literal = new IntLiteral(mask);
-            compileLiteralValue(literal, codeEmitter);
-            codeEmitter.emitLine("and");
+            LiteralGenerator.getInstance().compileLiteralValue(literal);
+            codeEmitter.emitLine("i32.and");
         }
     }
 

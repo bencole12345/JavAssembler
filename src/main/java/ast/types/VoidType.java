@@ -12,4 +12,9 @@ public class VoidType implements Type {
     public boolean isSubtypeOf(Type other) {
         return other instanceof VoidType;
     }
+
+    @Override
+    public int getSize() {
+        return 0;
+    }
 }

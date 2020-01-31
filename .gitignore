@@ -44,7 +44,6 @@ bin/*
 # -----------------
 generated_wat
 generated_wasm
-*.wat
 *.classpath
 *.project
 

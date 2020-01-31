@@ -1,4 +1,4 @@
-package ast.functions;
+package util;
 
 import ast.types.AccessModifier;
 import ast.types.Type;

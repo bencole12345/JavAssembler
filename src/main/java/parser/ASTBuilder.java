@@ -2,19 +2,20 @@ package parser;
 
 import ast.ASTNode;
 import ast.expressions.*;
-import ast.functions.FunctionTable;
-import ast.functions.FunctionTableEntry;
 import ast.literals.*;
 import ast.operations.BinaryOp;
 import ast.operations.IncrementOp;
 import ast.statements.*;
 import ast.structure.*;
-import ast.types.*;
-import errors.IncorrectTypeException;
-import errors.InvalidClassNameException;
-import errors.MultipleVariableDeclarationException;
-import errors.UndeclaredFunctionException;
+import ast.types.AccessModifier;
+import ast.types.JavaClass;
+import ast.types.Type;
+import errors.*;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import util.ClassTable;
+import util.FunctionTable;
+import util.FunctionTableEntry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,18 +26,20 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     private Stack<VariableScope> variableScopeStack;
     private FunctionTable functionTable;
+    private ClassTable classTable;
     private Type currentFunctionReturnType;
     private String nameOfCurrentClass;
 
     private TypeVisitor typeVisitor;
     private AccessModifierVisitor accessModifierVisitor;
 
-    public ASTBuilder(FunctionTable functionTable) {
+    public ASTBuilder(FunctionTable functionTable, ClassTable classTable) {
         this.functionTable = functionTable;
+        this.classTable = classTable;
         nameOfCurrentClass = null;
         variableScopeStack = new Stack<>();
 
-        typeVisitor = new TypeVisitor();
+        typeVisitor = new TypeVisitor(classTable);
         accessModifierVisitor = new AccessModifierVisitor();
     }
 
@@ -49,7 +52,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     public ClassMethod visitMethodDefinition(JavaFileParser.MethodDefinitionContext ctx) {
         AccessModifier modifier = accessModifierVisitor.visitAccessModifier(ctx.accessModifier());
         boolean isStatic = ctx.STATIC() != null;
-        Type returnType = (Type) visit(ctx.type());
+        Type returnType = typeVisitor.visit(ctx.type());
         String methodName = ctx.IDENTIFIER().toString();
         MethodParameterList params = (MethodParameterList) visit(ctx.methodParams());
         List<MethodParameter> paramsList = params.getParameters();
@@ -84,7 +87,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public Assignment visitAssignmentStatement(JavaFileParser.AssignmentStatementContext ctx) {
-        return (Assignment) visit(ctx.variableAssignment());
+        return (Assignment) visit(ctx.assignment());
     }
 
     @Override
@@ -126,13 +129,43 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public VariableDeclaration visitVariableDeclaration(JavaFileParser.VariableDeclarationContext ctx) {
-        Type type = (Type) visit(ctx.type());
+        Type type = typeVisitor.visit(ctx.type());
         String name = ctx.IDENTIFIER().toString();
         return new VariableDeclaration(type, name);
     }
 
     @Override
     public Assignment visitVariableAssignment(JavaFileParser.VariableAssignmentContext ctx) {
+        String variableName = ctx.IDENTIFIER().getText();
+        VariableScope scope = variableScopeStack.peek();
+        VariableExpression variableExpression = new LocalVariableExpression(variableName, scope);
+        Token op = ctx.op;
+        Expression rhs = (Expression) visit(ctx.expr());
+        return buildAssignment(variableExpression, op, rhs, ctx);
+    }
+
+    @Override
+    public Assignment visitAttributeAssignment(JavaFileParser.AttributeAssignmentContext ctx) {
+        String localVarName = ctx.IDENTIFIER(0).getText();
+        LocalVariableExpression object =
+                new LocalVariableExpression(localVarName, variableScopeStack.peek());
+        String attributeName = ctx.IDENTIFIER(1).getText();
+        Token op = ctx.op;
+        Expression rhs = (Expression) visit(ctx.expr());
+        AttributeNameExpression attributeNameExpression = null;
+        try {
+            attributeNameExpression = new AttributeNameExpression(object, attributeName);
+        } catch (JavAssemblerException e) {
+            ParserUtil.reportError(e.getMessage(), ctx);
+        }
+        return buildAssignment(attributeNameExpression, op, rhs, ctx);
+    }
+
+    private Assignment buildAssignment(VariableExpression variableExpression,
+                                       Token op,
+                                       Expression rhs,
+                                       JavaFileParser.AssignmentContext ctx) {
+
         // This method covers +=, -=, *=, /=, and also a simple assignment, =
         // The main idea is that we can reduce any of the first 4 into a simple
         // assignment (=) by replacing the expression on the RHS with a binary
@@ -143,10 +176,8 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         // x += 1;      --becomes-->  x = (x + 1);
         // y *= (y/z);  --becomes-->  y = (y * (y/z));
 
-        String name = ctx.IDENTIFIER().toString();
-        Expression expression = (Expression) visit(ctx.expr());
         BinaryOp bop = null;
-        switch (ctx.op.getType()) {
+        switch (op.getType()) {
             case JavaFileParser.PLUS_EQUALS:
                 bop = BinaryOp.ADD;
                 break;
@@ -165,18 +196,16 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
         // Perform substitution if this is not a simple assignment
         if (bop != null) {
-            VariableNameExpression innerVarNameExpr = new VariableNameExpression(name, currentScope);
             try {
-                expression = new BinaryOperatorExpression(innerVarNameExpr, expression, bop);
+                rhs = new BinaryOperatorExpression(variableExpression, rhs, bop);
             } catch (IncorrectTypeException e) {
                 ParserUtil.reportError(e.getMessage(), ctx);
             }
         }
 
-        VariableNameExpression variableNameExpression = new VariableNameExpression(name, currentScope);
         Assignment assignment = null;
         try {
-            assignment = new Assignment(variableNameExpression, expression);
+            assignment = new Assignment(variableExpression, rhs);
         } catch (IncorrectTypeException e) {
             ParserUtil.reportError(e.getMessage(), ctx);
         }
@@ -187,7 +216,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     @Override
     public DeclarationAndAssignment visitVariableDeclarationAndAssignment(
             JavaFileParser.VariableDeclarationAndAssignmentContext ctx) {
-        Type type = (Type) visit(ctx.type());
+        Type type = typeVisitor.visit(ctx.type());
         String name = ctx.IDENTIFIER().toString();
         Expression expression = (Expression) visit(ctx.expr());
         return new DeclarationAndAssignment(type, name, expression);
@@ -230,6 +259,20 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             ParserUtil.reportError(e.getMessage(), ctx);
         }
         return notExpression;
+    }
+
+    @Override
+    public NewObjectExpression visitNewObjectExpr(JavaFileParser.NewObjectExprContext ctx) {
+        String className = ctx.IDENTIFIER().toString();
+        JavaClass javaClass = null;
+        try {
+            javaClass = classTable.lookupClass(className);
+        } catch (UnknownClassException e) {
+            ParserUtil.reportError(e.getMessage(), ctx);
+        }
+        ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
+        List<Expression> arguments = expressionList.getExpressionList();
+        return new NewObjectExpression(javaClass, arguments);
     }
 
     @Override
@@ -295,7 +338,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 op = IncrementOp.PRE_DECREMENT;
         }
         VariableScope currentScope = variableScopeStack.peek();
-        VariableNameExpression expression = new VariableNameExpression(variableName, currentScope);
+        LocalVariableExpression expression = new LocalVariableExpression(variableName, currentScope);
         VariableIncrementExpression incrementExpression = null;
         try {
             incrementExpression = new VariableIncrementExpression(expression, op);
@@ -317,7 +360,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 op = IncrementOp.POST_DECREMENT;
         }
         VariableScope currentScope = variableScopeStack.peek();
-        VariableNameExpression expression = new VariableNameExpression(variableName, currentScope);
+        LocalVariableExpression expression = new LocalVariableExpression(variableName, currentScope);
         VariableIncrementExpression incrementExpression = null;
         try {
             incrementExpression = new VariableIncrementExpression(expression, op);
@@ -342,10 +385,28 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public VariableNameExpression visitVariableNameExpr(JavaFileParser.VariableNameExprContext ctx) {
+    public LocalVariableExpression visitVariableNameExpr(JavaFileParser.VariableNameExprContext ctx) {
+        return (LocalVariableExpression) visit(ctx.variableName());
+    }
+
+    @Override
+    public AttributeNameExpression visitAttributeLookupExpr(JavaFileParser.AttributeLookupExprContext ctx) {
+        LocalVariableExpression localVariableExpression = (LocalVariableExpression) visit(ctx.object);
+        String attributeName = ctx.attribute.getText();
+        AttributeNameExpression result = null;
+        try {
+            result = new AttributeNameExpression(localVariableExpression, attributeName);
+        } catch (JavAssemblerException e) {
+            ParserUtil.reportError(e.getMessage(), ctx);
+        }
+        return result;
+    }
+
+    @Override
+    public LocalVariableExpression visitVariableName(JavaFileParser.VariableNameContext ctx) {
         String variableName = ctx.IDENTIFIER().toString();
         VariableScope currentScope = variableScopeStack.peek();
-        return new VariableNameExpression(variableName, currentScope);
+        return new LocalVariableExpression(variableName, currentScope);
     }
 
     @Override
@@ -422,7 +483,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         List<MethodParameter> paramList = new ArrayList<>();
         for (int i = 0; i < ctx.IDENTIFIER().size(); i++) {
             String parameterName = ctx.IDENTIFIER(i).toString();
-            Type type = (Type) visit(ctx.type(i));
+            Type type = typeVisitor.visit(ctx.type(i));
             MethodParameter param = new MethodParameter(parameterName, type);
             paramList.add(param);
         }
@@ -457,7 +518,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 } catch (MultipleVariableDeclarationException e) {
                     ParserUtil.reportError(e.getMessage(), statementCtx);
                 }
-                VariableNameExpression nameExpression = new VariableNameExpression(name, innerScope);
+                LocalVariableExpression nameExpression = new LocalVariableExpression(name, innerScope);
                 Assignment assignment = null;
                 try {
                     assignment = new Assignment(nameExpression, combined.getExpression());
@@ -582,7 +643,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public Assignment visitForLoopAssignOnly(JavaFileParser.ForLoopAssignOnlyContext ctx) {
-        return (Assignment) visit(ctx.variableAssignment());
+        return (Assignment) visit(ctx.assignment());
     }
 
     @Override
@@ -593,21 +654,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     @Override
     public Expression visitForLoopUpdater(JavaFileParser.ForLoopUpdaterContext ctx) {
         return (Expression) visit(ctx.expr());
-    }
-
-    @Override
-    public VoidType visitVoidType(JavaFileParser.VoidTypeContext ctx) {
-        return typeVisitor.visitVoidType(ctx);
-    }
-
-    @Override
-    public PrimitiveType visitPrimitiveType(JavaFileParser.PrimitiveTypeContext ctx) {
-        return typeVisitor.visitPrimitiveType(ctx);
-    }
-
-    @Override
-    public NonPrimitiveType visitNonPrimitiveType(JavaFileParser.NonPrimitiveTypeContext ctx) {
-        return typeVisitor.visitNonPrimitiveType(ctx);
     }
 
     @Override

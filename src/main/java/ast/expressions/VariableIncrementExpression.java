@@ -8,20 +8,20 @@ import errors.IncorrectTypeException;
 
 public class VariableIncrementExpression implements Expression, Statement {
 
-    private VariableNameExpression variableNameExpression;
+    private LocalVariableExpression localVariableExpression;
     private IncrementOp incrementOp;
 
-    public VariableIncrementExpression(VariableNameExpression variableNameExpression, IncrementOp incrementOp) throws IncorrectTypeException {
-        if (!typeIsValid(variableNameExpression)) {
+    public VariableIncrementExpression(LocalVariableExpression localVariableExpression, IncrementOp incrementOp) throws IncorrectTypeException {
+        if (!typeIsValid(localVariableExpression)) {
             String message = "Operation " + incrementOp + " must be applied to a variable expression";
             throw new IncorrectTypeException(message);
         }
-        this.variableNameExpression = variableNameExpression;
+        this.localVariableExpression = localVariableExpression;
         this.incrementOp = incrementOp;
     }
 
-    public VariableNameExpression getVariableNameExpression() {
-        return variableNameExpression;
+    public LocalVariableExpression getLocalVariableExpression() {
+        return localVariableExpression;
     }
 
     public IncrementOp getIncrementOp() {
@@ -30,11 +30,11 @@ public class VariableIncrementExpression implements Expression, Statement {
 
     @Override
     public Type getType() {
-        return variableNameExpression.getType();
+        return localVariableExpression.getType();
     }
 
-    private boolean typeIsValid(VariableNameExpression variableNameExpression) {
-        Type variableType = variableNameExpression.getType();
+    private boolean typeIsValid(LocalVariableExpression localVariableExpression) {
+        Type variableType = localVariableExpression.getType();
         if (!(variableType instanceof PrimitiveType))
             return false;
         return ((PrimitiveType) variableType).isIntegralType();

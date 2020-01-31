@@ -14,4 +14,14 @@ public interface Type extends ASTNode {
      * @return true if this is a subtype of other; false otherwise
      */
     boolean isSubtypeOf(Type other);
+
+    /**
+     * Reports the total memory size of the type, in bytes.
+     *
+     * This should be the total number of bytes required to store a type - not
+     * a reference to that type.
+     *
+     * @return The memory size of the type, in bytes
+     */
+    int getSize();
 }

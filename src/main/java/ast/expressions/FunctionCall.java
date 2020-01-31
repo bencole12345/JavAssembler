@@ -1,7 +1,7 @@
 package ast.expressions;
 
-import ast.functions.FunctionTableEntry;
 import ast.types.Type;
+import util.FunctionTableEntry;
 
 import java.util.List;
 

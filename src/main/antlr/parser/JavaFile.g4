@@ -17,7 +17,8 @@ imports
 
 classDefinition
     : accessModifier?
-            CLASS IDENTIFIER
+            CLASS className=IDENTIFIER
+            (EXTENDS parentClassName=IDENTIFIER)?
             LBRACE classItem* RBRACE
     ;
 
@@ -32,8 +33,8 @@ classAttributeDeclaration
 
 statement
     : variableDeclarationAndAssignment SEMICOLON   # DeclarationAssignmentStatement
-    | variableAssignment SEMICOLON                 # AssignmentStatement
     | variableDeclaration SEMICOLON                # DeclarationStatement
+    | assignment SEMICOLON                         # AssignmentStatement
     | RETURN expr SEMICOLON                        # ReturnStatement
     | variableIncrementExpr                        # VariableIncrementStatement
     | ifStatement                                  # IfStatementWrap
@@ -47,12 +48,17 @@ variableDeclaration
     : type IDENTIFIER
     ;
 
-variableAssignment
-    : IDENTIFIER op=(EQUALS
-        | PLUS_EQUALS
-        | MINUS_EQUALS
-        | MULTIPLY_EQUALS
-        | DIVIDE_EQUALS) expr
+assignment
+    : IDENTIFIER
+        op=(EQUALS
+            | PLUS_EQUALS | MINUS_EQUALS
+            | MULTIPLY_EQUALS | DIVIDE_EQUALS)
+        expr                                        # VariableAssignment
+    | IDENTIFIER DOT IDENTIFIER
+        op=(EQUALS
+            | PLUS_EQUALS | MINUS_EQUALS
+            | MULTIPLY_EQUALS | DIVIDE_EQUALS)
+        expr                                        # AttributeAssignment
     ;
 
 variableDeclarationAndAssignment
@@ -60,22 +66,28 @@ variableDeclarationAndAssignment
     ;
 
 expr
-    : literal                                       # LiteralExpr
-    | functionCall                                  # FunctionCallExpr
-    | LPAREN expr RPAREN                            # ParenthesesExpr
-    | MINUS expr                                    # NegateExpr
-    | NOT expr                                      # NotExpr
-    | variableIncrementExpr                         # IncrementExpr
-    | expr op=(MULTIPLY|DIVIDE) expr                # InfixExpr
-    | expr op=(PLUS|MINUS) expr                     # InfixExpr
+    : literal                                           # LiteralExpr
+    | functionCall                                      # FunctionCallExpr
+    | LPAREN expr RPAREN                                # ParenthesesExpr
+    | MINUS expr                                        # NegateExpr
+    | NOT expr                                          # NotExpr
+    | NEW IDENTIFIER LPAREN functionArgs RPAREN         # NewObjectExpr
+    | variableIncrementExpr                             # IncrementExpr
+    | expr op=(MULTIPLY|DIVIDE) expr                    # InfixExpr
+    | expr op=(PLUS|MINUS) expr                         # InfixExpr
     | expr op=(EQUAL_TO
                 | NOT_EQUAL_TO
                 | LESS_THAN
                 | LESS_THAN_EQUAL_TO
                 | GREATER_THAN
-                | GREATER_THAN_EQUAL_TO) expr       # InfixExpr
-    | expr QUESTION_MARK expr COLON expr SEMICOLON  # BinarySelectorExpr
-    | IDENTIFIER                                    # VariableNameExpr
+                | GREATER_THAN_EQUAL_TO) expr           # InfixExpr
+    | expr QUESTION_MARK expr COLON expr SEMICOLON      # BinarySelectorExpr
+    | object=variableName DOT attribute=variableName    # AttributeLookupExpr
+    | variableName                                      # VariableNameExpr
+    ;
+
+variableName
+    : IDENTIFIER
     ;
 
 variableIncrementExpr
@@ -125,7 +137,7 @@ forLoop
 
 forLoopInitialiser
     : variableDeclarationAndAssignment      # ForLoopDeclareAndAssign
-    | variableAssignment                    # ForLoopAssignOnly
+    | assignment                            # ForLoopAssignOnly
     ;
 
 forLoopCondition
