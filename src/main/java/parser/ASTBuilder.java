@@ -28,7 +28,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     private FunctionTable functionTable;
     private ClassTable classTable;
     private Type currentFunctionReturnType;
-    private String nameOfCurrentClass;
+    private JavaClass currentClass;
 
     private TypeVisitor typeVisitor;
     private AccessModifierVisitor accessModifierVisitor;
@@ -36,15 +36,15 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     public ASTBuilder(FunctionTable functionTable, ClassTable classTable) {
         this.functionTable = functionTable;
         this.classTable = classTable;
-        nameOfCurrentClass = null;
+        currentClass = null;
         variableScopeStack = new Stack<>();
 
         typeVisitor = new TypeVisitor(classTable);
         accessModifierVisitor = new AccessModifierVisitor();
     }
 
-    public ClassMethod visitMethod(JavaFileParser.MethodDefinitionContext ctx, String className) {
-        nameOfCurrentClass = className;
+    public ClassMethod visitMethod(JavaFileParser.MethodDefinitionContext ctx, JavaClass containingClass) {
+        this.currentClass = containingClass;
         return visitMethodDefinition(ctx);
     }
 
@@ -77,7 +77,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
         // Pop the scope that was created to contain the parameters
         popVariableScope(false);
-        return new ClassMethod(modifier, isStatic, returnType, methodName, paramsList, body, nameOfCurrentClass);
+        return new ClassMethod(modifier, isStatic, returnType, methodName, paramsList, body, currentClass);
     }
 
     @Override
@@ -228,8 +228,8 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public FunctionCall visitFunctionCallExpr(JavaFileParser.FunctionCallExprContext ctx) {
-        return (FunctionCall) visit(ctx.functionCall());
+    public Expression visitFunctionCallExpr(JavaFileParser.FunctionCallExprContext ctx) {
+        return (Expression) visit(ctx.functionCall());
     }
 
     @Override
@@ -391,8 +391,8 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public AttributeNameExpression visitAttributeLookupExpr(JavaFileParser.AttributeLookupExprContext ctx) {
-        LocalVariableExpression localVariableExpression = (LocalVariableExpression) visit(ctx.object);
-        String attributeName = ctx.attribute.getText();
+        LocalVariableExpression localVariableExpression = (LocalVariableExpression) visit(ctx.variableName(0));
+        String attributeName = ctx.variableName(1).getText();
         AttributeNameExpression result = null;
         try {
             result = new AttributeNameExpression(localVariableExpression, attributeName);
@@ -415,45 +415,98 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public FunctionCall visitNamespacedFunctionCall(JavaFileParser.NamespacedFunctionCallContext ctx) {
-        String namespace = ctx.IDENTIFIER(0).toString();
+    public Expression visitQualifiedFunctionCall(JavaFileParser.QualifiedFunctionCallContext ctx) {
+        String qualifier = ctx.IDENTIFIER(0).toString();
         String functionName = ctx.IDENTIFIER(1).toString();
         ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
         List<Expression> arguments = expressionList.getExpressionList();
-        return visitFunctionCall(namespace, functionName, arguments, ctx);
+        VariableScope currentScope = variableScopeStack.peek();
+        if (currentScope.hasMappingFor(qualifier)) {
+            return buildMethodCall(qualifier, functionName, arguments);
+        } else {
+            return visitFunctionCall(qualifier, functionName, arguments, ctx);
+        }
+    }
+
+    private MethodCall buildMethodCall(String localVariableName,
+                                       String methodName,
+                                       List<Expression> argumentsList) {
+        VariableScope currentScope = variableScopeStack.peek();
+        LocalVariableExpression localVariable = new LocalVariableExpression(localVariableName, currentScope);
+        Type variableType = localVariable.getType();
+        if (!(variableType instanceof JavaClass)) {
+            // TODO: uh oh bad happened
+            // (throw an error, you can't call a method on a primitive type)
+        }
+        JavaClass javaClass = (JavaClass) variableType;
+        List<Type> argumentTypes = argumentsList
+                .stream()
+                .map(Expression::getType)
+                .collect(Collectors.toList());
+        Integer vtableIndex = javaClass.getVirtualTableIndex(methodName, argumentTypes);
+        if (vtableIndex == null) {
+            // TODO: uh oh another bad happened
+            // (the type exists but it doesn't have a method with the right signature)
+        }
+        Type returnType = javaClass.getReturnTypeOfMethodAtIndex(vtableIndex);
+        return new MethodCall(localVariable, argumentsList, returnType, vtableIndex);
     }
 
     @Override
-    public FunctionCall visitDirectFunctionCall(JavaFileParser.DirectFunctionCallContext ctx) {
+    public FunctionCall visitUnqualifiedFunctionCall(JavaFileParser.UnqualifiedFunctionCallContext ctx) {
         String functionName = ctx.IDENTIFIER().toString();
         ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
         List<Expression> arguments = expressionList.getExpressionList();
-        return visitFunctionCall(nameOfCurrentClass, functionName, arguments, ctx);
+        return visitFunctionCall(currentClass.toString(), functionName, arguments, ctx);
     }
 
-    private FunctionCall visitFunctionCall(String namespace,
+    private FunctionCall visitFunctionCall(String className,
                                            String functionName,
                                            List<Expression> arguments,
                                            ParserRuleContext ctx) {
-        List<Type> argumentTypes = arguments.stream()
+
+        // Look up the class from the name
+        JavaClass javaClass = null;
+        try {
+            javaClass = classTable.lookupClass(className);
+        } catch (UnknownClassException e) {
+            ParserUtil.reportError(e.getMessage(), ctx);
+        }
+
+        // Get a list of argument types to identify which function to call
+        List<Type> argumentTypes = arguments
+                .stream()
                 .map(Expression::getType)
                 .collect(Collectors.toList());
+
+        // Look up the function table entry from the function's signature
         FunctionTableEntry tableEntry = null;
         try {
-            tableEntry = functionTable.lookupFunction(namespace, functionName, argumentTypes);
+            tableEntry = functionTable.lookupFunction(javaClass, functionName, argumentTypes);
         } catch (InvalidClassNameException | UndeclaredFunctionException e) {
             ParserUtil.reportError(e.getMessage(), ctx);
         }
 
         assert tableEntry != null;
-        if (tableEntry.canBeCalledFrom(nameOfCurrentClass)) {
+        if (tableEntry.canBeCalledFrom(currentClass)) {
             return new FunctionCall(tableEntry, arguments);
         } else {
             String message = "Illegal call to a private method: method "
-                    + functionName + " is declared private in " + namespace + ".";
+                    + functionName + " is declared private in " + javaClass + ".";
             ParserUtil.reportError(message, ctx);
             return null;
         }
+    }
+
+    @Override
+    public FunctionCall visitMethodCallExpr(JavaFileParser.MethodCallExprContext ctx) {
+        LocalVariableExpression localVariableExpression = (LocalVariableExpression) visit(ctx.variableName());
+        String methodName = ctx.IDENTIFIER().getText();
+        ExpressionList args = (ExpressionList) visit(ctx.functionArgs());
+        List<Expression> argsList = args.getExpressionList();
+        // Insert the object reference as the first argument
+        argsList.add(0, localVariableExpression);
+        return visitFunctionCall(currentClass.toString(), methodName, argsList, ctx);
     }
 
     @Override

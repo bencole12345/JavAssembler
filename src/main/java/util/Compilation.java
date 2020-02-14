@@ -1,6 +1,7 @@
 package util;
 
 import ast.structure.ClassMethod;
+import ast.types.JavaClass;
 import codegen.CodeEmitter;
 import codegen.WasmGenerator;
 import parser.*;
@@ -53,12 +54,12 @@ public class Compilation {
         ASTBuilder astBuilder = new ASTBuilder(functionTable, classTable);
         List<JavaFileParser.MethodDefinitionContext> methodParseTrees =
                 functionTableBuilder.getMethodParseTrees();
-        Map<JavaFileParser.MethodDefinitionContext, String> classNameMap =
-                functionTableBuilder.getClassNameMap();
+        Map<JavaFileParser.MethodDefinitionContext, JavaClass> classMap =
+                functionTableBuilder.getMethodParseTreeToContainingClassMap();
         List<ClassMethod> methodASTs = new ArrayList<>();
         for (JavaFileParser.MethodDefinitionContext methodParseTree : methodParseTrees) {
-            String className = classNameMap.get(methodParseTree);
-            ClassMethod methodAST = astBuilder.visitMethod(methodParseTree, className);
+            JavaClass javaClass = classMap.get(methodParseTree);
+            ClassMethod methodAST = astBuilder.visitMethod(methodParseTree, javaClass);
             methodASTs.add(methodAST);
         }
 

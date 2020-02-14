@@ -81,7 +81,7 @@ public class CodeGenUtil {
         FunctionTableEntry functionTableEntry = null;
         try {
             functionTableEntry = functionTable.lookupFunction(
-                    method.getContainingClassName(), method.getName(), parameterTypes);
+                    method.getContainingClass(), method.getName(), parameterTypes);
         } catch (InvalidClassNameException | UndeclaredFunctionException e) {
             e.printStackTrace();
         }
@@ -103,7 +103,7 @@ public class CodeGenUtil {
     public static String getFunctionNameForOutput(FunctionTableEntry entry,
                                                   List<Type> parameterTypes,
                                                   FunctionTable functionTable) {
-        String className = entry.getNamespace();
+        String className = entry.getContainingClass().toString();
         String functionName = entry.getFunctionName();
         String namespacedName = className + "__" + functionName;
         if (functionTable.getNumberOfFunctionsWithName(functionName) == 1) {

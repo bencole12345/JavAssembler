@@ -4,27 +4,32 @@ import ast.types.JavaClass;
 import errors.DuplicateClassDefinitionException;
 import errors.UnknownClassException;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ClassTable {
 
-    private static Map<String, JavaClass> classes;
+    private List<JavaClass> classes;
+    private static Map<String, JavaClass> classesNameMap;
 
     public ClassTable() {
-        classes = new HashMap<>();
+        classes = new ArrayList<>();
+        classesNameMap = new HashMap<>();
     }
 
     public void registerClass(String name, JavaClass javaClass) throws DuplicateClassDefinitionException {
-        if (classes.containsKey(name)) {
+        if (classesNameMap.containsKey(name)) {
             String message = "Multiple definitions of class " + name;
             throw new DuplicateClassDefinitionException(message);
         }
-        classes.put(name, javaClass);
+        classes.add(javaClass);
+        classesNameMap.put(name, javaClass);
     }
 
     public JavaClass lookupClass(String name) throws UnknownClassException {
-        JavaClass javaClass = classes.get(name);
+        JavaClass javaClass = classesNameMap.get(name);
         if (javaClass == null) {
             String message = "Unknown class " + name;
             throw new UnknownClassException(message);
@@ -37,7 +42,7 @@ public class ClassTable {
      * references.
      */
     public void validateAllClassReferences() {
-        for (JavaClass javaClass : classes.values()) {
+        for (JavaClass javaClass : classes) {
             javaClass.validateAllClassReferences(this);
         }
     }

@@ -82,7 +82,9 @@ expr
                 | GREATER_THAN
                 | GREATER_THAN_EQUAL_TO) expr           # InfixExpr
     | expr QUESTION_MARK expr COLON expr SEMICOLON      # BinarySelectorExpr
-    | object=variableName DOT attribute=variableName    # AttributeLookupExpr
+    | variableName DOT IDENTIFIER
+            LPAREN functionArgs RPAREN                  # MethodCallExpr
+    | variableName DOT variableName                     # AttributeLookupExpr
     | variableName                                      # VariableNameExpr
     ;
 
@@ -97,8 +99,8 @@ variableIncrementExpr
 
 functionCall
     : IDENTIFIER DOT IDENTIFIER
-      LPAREN functionArgs RPAREN                    # NamespacedFunctionCall
-    | IDENTIFIER LPAREN functionArgs RPAREN         # DirectFunctionCall
+      LPAREN functionArgs RPAREN                    # QualifiedFunctionCall
+    | IDENTIFIER LPAREN functionArgs RPAREN         # UnqualifiedFunctionCall
     ;
 
 functionArgs

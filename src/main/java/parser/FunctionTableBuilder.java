@@ -1,8 +1,10 @@
 package parser;
 
 import ast.types.AccessModifier;
+import ast.types.JavaClass;
 import ast.types.Type;
 import errors.DuplicateFunctionSignatureException;
+import errors.UnknownClassException;
 import util.ClassTable;
 import util.FunctionTable;
 
@@ -23,6 +25,10 @@ public class FunctionTableBuilder extends JavaFileBaseVisitor<Void> {
     private FunctionTable functionTable;
 
     /**
+     * The class table that was built previously.
+     */
+    private ClassTable classTable;
+    /**
      * A list of the method parse trees encountered.
      */
     private List<JavaFileParser.MethodDefinitionContext> methodParseTrees;
@@ -30,12 +36,12 @@ public class FunctionTableBuilder extends JavaFileBaseVisitor<Void> {
     /**
      * Map of parse trees to the name of the containing class.
      */
-    private Map<JavaFileParser.MethodDefinitionContext, String> classNameMap;
+    private Map<JavaFileParser.MethodDefinitionContext, JavaClass> methodParseTreeToContainingClassMap;
 
     /**
-     * Tracks the name of the current class.
+     * Tracks the class that we are currently processing.
      */
-    private String currentClassName;
+    private JavaClass currentClass;
 
     /**
      * Extra visitor helpers used internally.
@@ -44,12 +50,13 @@ public class FunctionTableBuilder extends JavaFileBaseVisitor<Void> {
     private AccessModifierVisitor accessModifierVisitor;
 
     public FunctionTableBuilder(ClassTable classTable) {
+        this.classTable = classTable;
         functionTable = new FunctionTable();
         methodParseTrees = new ArrayList<>();
-        classNameMap = new HashMap<>();
+        methodParseTreeToContainingClassMap = new HashMap<>();
         typeVisitor = new TypeVisitor(classTable);
         accessModifierVisitor = new AccessModifierVisitor();
-        currentClassName = null;
+        currentClass = null;
     }
 
     @Override
@@ -61,8 +68,12 @@ public class FunctionTableBuilder extends JavaFileBaseVisitor<Void> {
     @Override
     public Void visitClassDefinition(JavaFileParser.ClassDefinitionContext ctx) {
 
-        // Set the current class name
-        currentClassName = ctx.className.getText();
+        // Set the current class
+        try {
+            currentClass = classTable.lookupClass(ctx.className.getText());
+        } catch (UnknownClassException e) {
+            e.printStackTrace();
+        }
 
         // Visit every item in this class
         ctx.classItem().forEach(this::visit);
@@ -80,15 +91,21 @@ public class FunctionTableBuilder extends JavaFileBaseVisitor<Void> {
     public Void visitMethodDefinition(JavaFileParser.MethodDefinitionContext ctx) {
         String methodName = ctx.IDENTIFIER().toString();
         Type returnType = typeVisitor.visit(ctx.type());
+        boolean isStatic = ctx.STATIC() != null;
         List<Type> parameterTypes = (ctx.methodParams() instanceof JavaFileParser.SomeParamsContext)
                 ? visitMethodParams((JavaFileParser.SomeParamsContext) ctx.methodParams())
                 : new ArrayList<>();
         AccessModifier accessModifier = accessModifierVisitor.visit(ctx.accessModifier());
         try {
-            functionTable.registerFunction(currentClassName, methodName,
-                    parameterTypes, returnType, accessModifier);
+            functionTable.registerFunction(
+                    currentClass,
+                    methodName,
+                    parameterTypes,
+                    returnType,
+                    isStatic,
+                    accessModifier);
             methodParseTrees.add(ctx);
-            classNameMap.put(ctx, currentClassName);
+            methodParseTreeToContainingClassMap.put(ctx, currentClass);
         } catch (DuplicateFunctionSignatureException e) {
             ParserUtil.reportError(e.getMessage(), ctx);
         }
@@ -109,7 +126,7 @@ public class FunctionTableBuilder extends JavaFileBaseVisitor<Void> {
         return methodParseTrees;
     }
 
-    public Map<JavaFileParser.MethodDefinitionContext, String> getClassNameMap() {
-        return classNameMap;
+    public Map<JavaFileParser.MethodDefinitionContext, JavaClass> getMethodParseTreeToContainingClassMap() {
+        return methodParseTreeToContainingClassMap;
     }
 }

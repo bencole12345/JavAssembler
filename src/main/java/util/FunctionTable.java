@@ -1,11 +1,13 @@
 package util;
 
 import ast.types.AccessModifier;
+import ast.types.JavaClass;
 import ast.types.Type;
 import errors.DuplicateFunctionSignatureException;
 import errors.InvalidClassNameException;
 import errors.UndeclaredFunctionException;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,10 +16,16 @@ import java.util.stream.Collectors;
 public class FunctionTable {
 
     /**
-     * Contains the map from
-     *      namespace -> function name -> top of the type trie
+     * The list of functions.
      */
-    private Map<String, Map<String, FunctionLookupTreeNode>> namespaceMap;
+    private List<FunctionTableEntry> functions;
+
+    /**
+     * Contains the map from
+     *      class -> function name ->
+     *      (parameter types list -> function table entry) trie
+     */
+    private Map<JavaClass, Map<String, LookupTrie<FunctionTableEntry, Type>>> classesToFunctionsMap;
 
     /**
      * Tracks the next index in the table that we are free to assign.
@@ -32,130 +40,138 @@ public class FunctionTable {
     private Map<String, Integer> functionsWithNameCount;
 
     public FunctionTable() {
-        namespaceMap = new HashMap<>();
+        functions = new ArrayList<>();
+        classesToFunctionsMap = new HashMap<>();
         functionsWithNameCount = new HashMap<>();
         nextIndexToAssign = 0;
     }
 
     /**
+     * Looks up the entry at a given index.
+     *
+     * @param index The index to look up
+     * @return The function table entry at that index
+     */
+    public FunctionTableEntry getEntry(int index) {
+        if (index < functions.size())
+            return functions.get(index);
+        else
+            return null;
+    }
+
+    /**
      * Adds a function to the function table.
      *
+     * @param containingClass The class in which this function is defined
      * @param functionName The name of the function.
      * @param parameterTypes The types of the function's parameters
+     * @param returnType The return type of the function
+     * @param isStatic Whether this is a static function
+     * @param accessModifier The access modifier applied to this function
      * @return The function table entry that was created
      * @throws DuplicateFunctionSignatureException if a function with this signature has already
      *      been declared.
      */
-    public FunctionTableEntry registerFunction(String namespace,
+    public FunctionTableEntry registerFunction(JavaClass containingClass,
                                                String functionName,
                                                List<Type> parameterTypes,
                                                Type returnType,
+                                               boolean isStatic,
                                                AccessModifier accessModifier)
             throws DuplicateFunctionSignatureException {
 
-        FunctionLookupTreeNode node;
+        // Create a function table entry for the new function
+        FunctionTableEntry functionTableEntry = new FunctionTableEntry(
+                nextIndexToAssign++,
+                containingClass,
+                functionName,
+                returnType,
+                isStatic,
+                parameterTypes,
+                accessModifier);
 
-        // Identify which tree to walk down, creating it if this is the first
-        // function entry with this name
-
-        // First lookup the map for this namespace
-        Map<String, FunctionLookupTreeNode> nameMap;
-        if (namespaceMap.containsKey(namespace)) {
-             nameMap = namespaceMap.get(namespace);
+        // Look up or generate an entry for this class
+        Map<String, LookupTrie<FunctionTableEntry, Type>> functionNameMap;
+        if (classesToFunctionsMap.containsKey(containingClass)) {
+            functionNameMap = classesToFunctionsMap.get(containingClass);
         } else {
-            nameMap = new HashMap<>();
-            namespaceMap.put(namespace, nameMap);
+            functionNameMap = new HashMap<>();
+            classesToFunctionsMap.put(containingClass, functionNameMap);
         }
 
-        // Now look up the trie for the function in this namespace
-        if (nameMap.containsKey(functionName)) {
-            node = nameMap.get(functionName);
+        // Look up or generate a trie for this function name
+        LookupTrie<FunctionTableEntry, Type> trie;
+        if (functionNameMap.containsKey(functionName)) {
+            trie = functionNameMap.get(functionName);
         } else {
-            node = new FunctionLookupTreeNode();
-            nameMap.put(functionName, node);
+            trie = new LookupTrie<>();
+            functionNameMap.put(functionName, trie);
         }
 
-        // Walk down the tree
-        boolean inserting = false;
-        for (Type type : parameterTypes) {
-            if (inserting) {
-                FunctionLookupTreeNode newNode = new FunctionLookupTreeNode();
-                node.edges.put(type, newNode);
-                node = newNode;
-            } else {
-                if (node.edges.containsKey(type)) {
-                    node = node.edges.get(type);
-                } else {
-                    inserting = true;
-                    FunctionLookupTreeNode newNode = new FunctionLookupTreeNode();
-                    node.edges.put(type, newNode);
-                    node = newNode;
-                }
-            }
-        }
+        // Attempt to insert the function into the trie
+        boolean success = trie.insert(parameterTypes, functionTableEntry);
 
-        if (node.value != null) {
+        // If the insertion was successful then we need to increment the
+        // count of functions with this name. If it was unsuccessful then
+        // we need to throw an exception to indicate that there are multiple
+        // entries with the same function signature.
+        if (success) {
+            int countWithName = functionsWithNameCount.getOrDefault(functionName, 0);
+            functionsWithNameCount.put(functionName, countWithName + 1);
+        } else {
             String message = "Duplicate functions with signature "
                     + functionSignatureToString(functionName, parameterTypes);
             throw new DuplicateFunctionSignatureException(message);
         }
 
-        // Make a new function table entry and point the current node to it
-        int assignedIndex = nextIndexToAssign++;
-        FunctionTableEntry newEntry = new FunctionTableEntry(
-                assignedIndex, namespace, functionName, returnType, accessModifier);
-        node.value = newEntry;
+        // If the method is static then we also want to register it with the
+        // relevant class so that it can be included in that class's virtual
+        // table.
+        if (!isStatic)
+            containingClass.registerNewMethod(functionTableEntry);
 
-        // Increment the counter for the number of functions with this name
-        int countWithThisName = functionsWithNameCount.getOrDefault(functionName, 0);
-        functionsWithNameCount.put(functionName, countWithThisName + 1);
-
-        return newEntry;
+        return functionTableEntry;
     }
 
     /**
      * Looks up a function from the registry.
      *
-     * @param name The function to look up
+     * @param functionName The function to look up
      * @param parameterTypes The types of the function's parameters
      * @return The index of the function in the function table
      * @throws UndeclaredFunctionException
      */
-    public FunctionTableEntry lookupFunction(String namespace,
-                                             String name,
+    public FunctionTableEntry lookupFunction(JavaClass containingClass,
+                                             String functionName,
                                              List<Type> parameterTypes)
             throws UndeclaredFunctionException, InvalidClassNameException {
 
-        // First look up the map for the requested namespace
-        Map<String, FunctionLookupTreeNode> nameMap = namespaceMap.getOrDefault(namespace, null);
-        if (nameMap == null) {
-            String message = "Invalid class name " + namespace;
+        // Look up the map for the correct class
+        Map<String, LookupTrie<FunctionTableEntry, Type>> functionNameMap =
+                classesToFunctionsMap.getOrDefault(containingClass, null);
+        if (functionNameMap == null) {
+            String message = "Invalid class name " + containingClass;
             throw new InvalidClassNameException(message);
         }
 
-        // Now look up the trie for the function within this namespace
-        FunctionLookupTreeNode node = nameMap.getOrDefault(name, null);
-        if (node == null) {
-            String message = "No function defined with signature "
-                    + functionSignatureToString(name, parameterTypes);
-            throw new UndeclaredFunctionException(message);
-        }
+        // Look up the trie for the name within that class
+        LookupTrie<FunctionTableEntry, Type> trie =
+                functionNameMap.getOrDefault(functionName, null);
 
-        // Now walk down the tree
-        for (Type type : parameterTypes) {
-            node = node.edges.getOrDefault(type, null);
-            if (node == null)
-                break;
-        }
+        // Throw an exception if there's no entry with that function name
+        String errorMessage = "No function defined in class " + containingClass
+                + " with signature " + functionSignatureToString(functionName, parameterTypes);
+        if (trie == null)
+            throw new UndeclaredFunctionException(errorMessage);
 
-        // Check whether we have arrived at a node with a value
-        if (node == null || node.value == null) {
-            String message = "No function defined with signature "
-                    + functionSignatureToString(name, parameterTypes);
-            throw new UndeclaredFunctionException(message);
-        } else {
-            return node.value;
-        }
+        // Call the lookup method on that trie
+        FunctionTableEntry entry = trie.lookup(parameterTypes);
+
+        // Throw an exception if there's no entry with those types as parameters
+        if (entry == null)
+            throw new UndeclaredFunctionException(errorMessage);
+
+        return entry;
     }
 
     /**

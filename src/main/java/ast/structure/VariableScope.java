@@ -121,6 +121,21 @@ public class VariableScope {
     }
 
     /**
+     * Determines whether this scope has a mapping for a given variable name.
+     *
+     * @param name The name to look up
+     * @return true if this scope has a mapping; false otherwise
+     */
+    public boolean hasMappingFor(String name) {
+        if (allocations.containsKey(name))
+            return true;
+        if (containingScope != null)
+            return containingScope.hasMappingFor(name);
+        else
+            return false;
+    }
+
+    /**
      * Looks up the type of a variable from its name.
      *
      * @param name The name of the variable to look up
