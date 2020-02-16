@@ -9,7 +9,6 @@ import parser.*;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class Compilation {
 
@@ -32,40 +31,41 @@ public class Compilation {
 
         // Now that we have a serial ordering, build up a memory representation
         // of each class.
-        ClassTableBuilder classTableBuilder = new ClassTableBuilder();
+        FunctionAndClassTableBuilder functionAndClassTableBuilder = new FunctionAndClassTableBuilder();
         for (JavaFileParser.ClassDefinitionContext classDefinitionContext : classes) {
-            classTableBuilder.visit(classDefinitionContext);
+            functionAndClassTableBuilder.visit(classDefinitionContext);
         }
-        ClassTable classTable = classTableBuilder.getConstructedClassTable();
+        ClassTable classTable = functionAndClassTableBuilder.getClassTable();
 
         // Now that we have built a memory representation of all types in the
         // program, we can update any class attributes that have not yet been
         // checked to ensure that they reference a type that actually exists.
-        classTable.validateAllClassReferences();
+        classTable.validateAllTypes();
 
         // Now build a function table
-        FunctionTableBuilder functionTableBuilder = new FunctionTableBuilder(classTable);
-        for (JavaFileParser.FileContext parseTree : parseTrees) {
-            functionTableBuilder.visit(parseTree);
-        }
-        FunctionTable functionTable = functionTableBuilder.getConstructedFunctionTable();
+        FunctionTable functionTable = functionAndClassTableBuilder.getFunctionTable();
+        functionTable.validateAllTypes(classTable);
 
         // Convert the parse tree of each method into an AST
         ASTBuilder astBuilder = new ASTBuilder(functionTable, classTable);
-        List<JavaFileParser.MethodDefinitionContext> methodParseTrees =
-                functionTableBuilder.getMethodParseTrees();
-        Map<JavaFileParser.MethodDefinitionContext, JavaClass> classMap =
-                functionTableBuilder.getMethodParseTreeToContainingClassMap();
+        List<JavaFileParser.MethodDefinitionContext> methodParseTrees = functionAndClassTableBuilder.getMethodParseTrees();
+        List<JavaClass> containingClasses = functionAndClassTableBuilder.getContainingClasses();
         List<ClassMethod> methodASTs = new ArrayList<>();
-        for (JavaFileParser.MethodDefinitionContext methodParseTree : methodParseTrees) {
-            JavaClass javaClass = classMap.get(methodParseTree);
-            ClassMethod methodAST = astBuilder.visitMethod(methodParseTree, javaClass);
+
+        // Parse each method, also passing in the containing class
+        for (int i = 0; i < methodParseTrees.size(); i++) {
+            JavaFileParser.MethodDefinitionContext methodParseTree = methodParseTrees.get(i);
+            JavaClass containingClass = containingClasses.get(i);
+            ClassMethod methodAST = astBuilder.visitMethod(methodParseTree, containingClass);
             methodASTs.add(methodAST);
         }
 
+        // Build a virtual table now that all classes have been seen
+        VirtualTable virtualTable = classTable.buildCombinedVirtualTable();
+
         // Finally, compile each AST into WebAssembly
         CodeEmitter emitter = new CodeEmitter(outputFileName);
-        WasmGenerator.compile(methodASTs, emitter, functionTable, classTable);
+        WasmGenerator.compile(methodASTs, emitter, functionTable, classTable, virtualTable);
 
     }
 }

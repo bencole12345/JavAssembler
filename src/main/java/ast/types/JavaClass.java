@@ -62,11 +62,16 @@ public class JavaClass extends JavaClassReference {
             throws DuplicateClassAttributeException {
         this.name = name;
         this.parent = parent;
-        this.attributesMap = buildAttributeMap(attributes);
         vtableIndexLookupTrieMap = new HashMap<>();
         virtualTable = new ArrayList<>();
-        if (parent != null)
+        if (parent == null) {
+            // Save 4 bytes for storing the vtable pointer
+            nextFreeAssignmentOffset = 4;
+        } else {
+            nextFreeAssignmentOffset = parent.nextFreeAssignmentOffset;
             virtualTable.addAll(parent.virtualTable);
+        }
+        this.attributesMap = buildAttributeMap(attributes);
     }
 
     /**
@@ -211,24 +216,56 @@ public class JavaClass extends JavaClassReference {
             vtableIndexLookupTrieMap.put(methodName, new LookupTrie<>());
         LookupTrie<Integer, Type> vtableIndexLookupTrie = vtableIndexLookupTrieMap.get(methodName);
 
-        // Determine whether this new method is actually an override of a
-        // method defined in a parent class. If it is, then we don't want to
-        // use a new virtual table entry: rather, we want to override the
-        // entry used in the parent's vtable.
+        // Attempt to find the vtable index from the parent class. If the parent
+        // already has an entry for a method with this signature then this must
+        // be an override, so we want to update the existing location in the
+        // virtual table. Otherwise, this must be a new method, in which case
+        // we want to add a new entry to the virtual table.
+        Integer vtableIndex = null;
         if (parent != null) {
-            Integer vtableIndex = parent.getVirtualTableIndex(methodName, parameterTypes);
+            vtableIndex = parent.getVirtualTableIndex(methodName, parameterTypes);
+        }
+
+
+        // If we didn't find an existing entry then we need to insert a new
+        // entry to the vtable for this class. If we did then we want to
+        // override the existing entry instead.
+        if (vtableIndex == null) {
+            vtableIndex = virtualTable.size();
+            virtualTable.add(functionTableEntry);
+        } else {
+            virtualTable.set(vtableIndex, functionTableEntry);
+        }
+
+        // Update the lookup trie so that we can quickly look up this method
+        // in the future.
+        vtableIndexLookupTrie.insert(parameterTypes, vtableIndex);
+    }
+
+    /**
+     * Looks up a method with a given signature.
+     *
+     * @param name The name of the method
+     * @param parameterTypes The types of the parameters for that method
+     * @return The function table entry for the method
+     */
+    public FunctionTableEntry lookupMethod(String name, List<Type> parameterTypes) {
+        FunctionTableEntry entry = null;
+        if (vtableIndexLookupTrieMap.containsKey(name)) {
+            LookupTrie<Integer, Type> trie = vtableIndexLookupTrieMap.get(name);
+            Integer vtableIndex = trie.lookup(parameterTypes);
             if (vtableIndex != null) {
-                // The parent DOES have a mapping for this signature - in other
-                // words, this new method is an override.
-                vtableIndexLookupTrie.insert(parameterTypes, vtableIndex);
-                return;
+                entry = virtualTable.get(vtableIndex);
             }
         }
 
-        // If execution reaches this stage then this must be a new method,
-        // so insert it into both the lookup trie and the virtual table.
-        vtableIndexLookupTrie.insert(parameterTypes, virtualTable.size());
-        virtualTable.add(functionTableEntry);
+        if (entry == null) {
+            if (parent != null) {
+                return parent.lookupMethod(name, parameterTypes);
+            }
+        }
+
+        return entry;
     }
 
     /**

@@ -11,6 +11,7 @@ import codegen.WasmType;
 import errors.IncorrectTypeException;
 import util.ClassTable;
 import util.FunctionTable;
+import util.VirtualTable;
 
 public class StatementGenerator {
 
@@ -25,6 +26,7 @@ public class StatementGenerator {
     private CodeEmitter emitter;
     private FunctionTable functionTable;
     private ClassTable classTable;
+    private VirtualTable virtualTable;
 
     private StatementGenerator() {}
 
@@ -32,9 +34,12 @@ public class StatementGenerator {
         this.emitter = emitter;
     }
 
-    public void setTables(FunctionTable functionTable, ClassTable classTable) {
+    public void setTables(FunctionTable functionTable,
+                          ClassTable classTable,
+                          VirtualTable virtualTable) {
         this.functionTable = functionTable;
         this.classTable = classTable;
+        this.virtualTable = virtualTable;
     }
 
     public void compileStatement(Statement statement,

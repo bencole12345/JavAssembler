@@ -7,7 +7,6 @@ import ast.statements.Assignment;
 import ast.structure.VariableScope;
 import ast.types.JavaClass;
 import ast.types.PrimitiveType;
-import ast.types.Type;
 import codegen.CodeEmitter;
 import codegen.CodeGenUtil;
 import codegen.WasmType;
@@ -15,9 +14,7 @@ import errors.IncorrectTypeException;
 import util.ClassTable;
 import util.FunctionTable;
 import util.FunctionTableEntry;
-
-import java.util.List;
-import java.util.stream.Collectors;
+import util.VirtualTable;
 
 public class ExpressionGenerator {
 
@@ -32,6 +29,7 @@ public class ExpressionGenerator {
     private CodeEmitter emitter;
     private FunctionTable functionTable;
     private ClassTable classTable;
+    private VirtualTable virtualTable;
 
     private ExpressionGenerator() {
         emitter = null;
@@ -43,9 +41,12 @@ public class ExpressionGenerator {
         this.emitter = emitter;
     }
 
-    public void setTables(FunctionTable functionTable, ClassTable classTable) {
+    public void setTables(FunctionTable functionTable,
+                          ClassTable classTable,
+                          VirtualTable virtualTable) {
         this.functionTable = functionTable;
         this.classTable = classTable;
+        this.virtualTable = virtualTable;
     }
 
     public void compileExpression(Expression expression, VariableScope scope) {
@@ -54,13 +55,15 @@ public class ExpressionGenerator {
         } else if (expression instanceof BinarySelectorExpression) {
             compileBinarySelectorExpression((BinarySelectorExpression) expression, scope);
         } else if (expression instanceof LocalVariableExpression) {
-            compileVariableNameExpression((LocalVariableExpression) expression, scope);
+            compileLocalVariableNameExpression((LocalVariableExpression) expression, scope);
         } else if (expression instanceof AttributeNameExpression) {
             compileAttributeNameExpression((AttributeNameExpression) expression, scope);
         } else if (expression instanceof LiteralValue) {
             LiteralGenerator.getInstance().compileLiteralValue((LiteralValue) expression);
         } else if (expression instanceof FunctionCall) {
             compileFunctionCallExpression((FunctionCall) expression, scope);
+        } else if (expression instanceof MethodCall) {
+            compileMethodCallExpression((MethodCall) expression, scope);
         } else if (expression instanceof NegateExpression) {
             compileNegateExpression((NegateExpression) expression, scope);
         } else if (expression instanceof NotExpression) {
@@ -216,8 +219,8 @@ public class ExpressionGenerator {
         }
     }
 
-    private void compileVariableNameExpression(LocalVariableExpression expression,
-                                               VariableScope variableScope) {
+    private void compileLocalVariableNameExpression(LocalVariableExpression expression,
+                                                    VariableScope variableScope) {
         int index = variableScope.lookupRegisterIndexOfVariable(expression.getVariableName());
         emitter.emitLine("local.get " + index);
     }
@@ -227,7 +230,7 @@ public class ExpressionGenerator {
         // TODO: Implement layer of indirection for stack references to heap objects
 
         // Look up the local variable to leave the heap pointer on the stack
-        compileVariableNameExpression(attributeNameExpression.getObject(), scope);
+        compileLocalVariableNameExpression(attributeNameExpression.getObject(), scope);
 
         // Find the memory offset of the desired attribute
         int offset = attributeNameExpression.getMemoryOffset();
@@ -251,19 +254,47 @@ public class ExpressionGenerator {
 
         // TODO: Use function table index not function name
         FunctionTableEntry tableEntry = functionCall.getFunctionTableEntry();
-        List<Type> argumentTypes = functionCall.getArguments()
-                .stream()
-                .map(Expression::getType)
-                .collect(Collectors.toList());
-        String functionName = CodeGenUtil.getFunctionNameForOutput(tableEntry, argumentTypes, functionTable);
+        String functionName = CodeGenUtil.getFunctionNameForOutput(tableEntry, functionTable);
         emitter.emitLine("call $" + functionName);
+    }
+
+    private void compileMethodCallExpression(MethodCall methodCall,
+                                             VariableScope scope) {
+        // Put the reference to the object on the stack; this is
+        // the first argument to the function.
+        compileLocalVariableNameExpression(methodCall.getLocalVariable(), scope);
+
+        // Put the rest of the expressions on the stack
+        for (Expression expression : methodCall.getArguments()) {
+            compileExpression(expression, scope);
+        }
+
+        // Look up the variable
+        compileLocalVariableNameExpression(methodCall.getLocalVariable(), scope);
+
+        // Extract its vtable pointer
+        emitter.emitLine("i32.load");
+
+        // Add the offset for this particular method
+        int vtableOffset = methodCall.getVirtualTableOffset();
+        emitter.emitLine("i32.const " + vtableOffset);
+        emitter.emitLine("i32.add");
+
+        // Look up the type annotation for the indirect call
+        String fullMethodName = CodeGenUtil.getFunctionNameForOutput(methodCall.getStaticFunctionEntry(), functionTable);
+        String typeAnnotation = "(type $func_" + fullMethodName + ")";
+
+        // Call the method
+        emitter.emitLine("call_indirect " + typeAnnotation);
     }
 
     private void compileNewObjectExpression(NewObjectExpression newObjectExpression,
                                             VariableScope variableScope) {
         JavaClass javaClass = newObjectExpression.getType();
         int size = javaClass.getHeapSize();
-        LiteralGenerator.getInstance().compileLiteralValue(new IntLiteral(size));
+        int vtableIndex = virtualTable.getVirtualTablePosition(javaClass);
+        emitter.emitLine("i32.const " + size);
+        emitter.emitLine("i32.const " + vtableIndex);
         emitter.emitLine("call $alloc");
         // TODO: Initialise variables
         // TODO: Invoke constructor

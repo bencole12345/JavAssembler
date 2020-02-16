@@ -3,9 +3,11 @@ package util;
 import ast.types.AccessModifier;
 import ast.types.JavaClass;
 import ast.types.Type;
-import errors.DuplicateFunctionSignatureException;
+import ast.types.UnvalidatedJavaClassReference;
 import errors.InvalidClassNameException;
 import errors.UndeclaredFunctionException;
+import errors.UnknownClassException;
+import parser.ParserUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,7 +27,7 @@ public class FunctionTable {
      *      class -> function name ->
      *      (parameter types list -> function table entry) trie
      */
-    private Map<JavaClass, Map<String, LookupTrie<FunctionTableEntry, Type>>> classesToFunctionsMap;
+    private Map<JavaClass, Map<String, LookupTrie<FunctionTableEntry, Type>>> classesToStaticFunctionsMap;
 
     /**
      * Tracks the next index in the table that we are free to assign.
@@ -41,7 +43,7 @@ public class FunctionTable {
 
     public FunctionTable() {
         functions = new ArrayList<>();
-        classesToFunctionsMap = new HashMap<>();
+        classesToStaticFunctionsMap = null;
         functionsWithNameCount = new HashMap<>();
         nextIndexToAssign = 0;
     }
@@ -62,23 +64,22 @@ public class FunctionTable {
     /**
      * Adds a function to the function table.
      *
-     * @param containingClass The class in which this function is defined
-     * @param functionName The name of the function.
+     * @param containingClass The class that contains this method
+     * @param functionName The name of the function
      * @param parameterTypes The types of the function's parameters
      * @param returnType The return type of the function
      * @param isStatic Whether this is a static function
      * @param accessModifier The access modifier applied to this function
      * @return The function table entry that was created
-     * @throws DuplicateFunctionSignatureException if a function with this signature has already
-     *      been declared.
      */
     public FunctionTableEntry registerFunction(JavaClass containingClass,
                                                String functionName,
                                                List<Type> parameterTypes,
                                                Type returnType,
                                                boolean isStatic,
-                                               AccessModifier accessModifier)
-            throws DuplicateFunctionSignatureException {
+                                               AccessModifier accessModifier) {
+
+        // TODO: Handle case that a function with this signature has already been declared
 
         // Create a function table entry for the new function
         FunctionTableEntry functionTableEntry = new FunctionTableEntry(
@@ -90,46 +91,14 @@ public class FunctionTable {
                 parameterTypes,
                 accessModifier);
 
-        // Look up or generate an entry for this class
-        Map<String, LookupTrie<FunctionTableEntry, Type>> functionNameMap;
-        if (classesToFunctionsMap.containsKey(containingClass)) {
-            functionNameMap = classesToFunctionsMap.get(containingClass);
-        } else {
-            functionNameMap = new HashMap<>();
-            classesToFunctionsMap.put(containingClass, functionNameMap);
+        // Add it to the table
+        functions.add(functionTableEntry);
+
+        if (isStatic) {
+            int occurrences = functionsWithNameCount.getOrDefault(functionName, 0);
+            functionsWithNameCount.put(functionName, occurrences + 1);
         }
-
-        // Look up or generate a trie for this function name
-        LookupTrie<FunctionTableEntry, Type> trie;
-        if (functionNameMap.containsKey(functionName)) {
-            trie = functionNameMap.get(functionName);
-        } else {
-            trie = new LookupTrie<>();
-            functionNameMap.put(functionName, trie);
-        }
-
-        // Attempt to insert the function into the trie
-        boolean success = trie.insert(parameterTypes, functionTableEntry);
-
-        // If the insertion was successful then we need to increment the
-        // count of functions with this name. If it was unsuccessful then
-        // we need to throw an exception to indicate that there are multiple
-        // entries with the same function signature.
-        if (success) {
-            int countWithName = functionsWithNameCount.getOrDefault(functionName, 0);
-            functionsWithNameCount.put(functionName, countWithName + 1);
-        } else {
-            String message = "Duplicate functions with signature "
-                    + functionSignatureToString(functionName, parameterTypes);
-            throw new DuplicateFunctionSignatureException(message);
-        }
-
-        // If the method is static then we also want to register it with the
-        // relevant class so that it can be included in that class's virtual
-        // table.
-        if (!isStatic)
-            containingClass.registerNewMethod(functionTableEntry);
-
+        
         return functionTableEntry;
     }
 
@@ -146,9 +115,13 @@ public class FunctionTable {
                                              List<Type> parameterTypes)
             throws UndeclaredFunctionException, InvalidClassNameException {
 
+        if (classesToStaticFunctionsMap == null) {
+            classesToStaticFunctionsMap = buildStaticFunctionLookupTrie();
+        }
+
         // Look up the map for the correct class
         Map<String, LookupTrie<FunctionTableEntry, Type>> functionNameMap =
-                classesToFunctionsMap.getOrDefault(containingClass, null);
+                classesToStaticFunctionsMap.getOrDefault(containingClass, null);
         if (functionNameMap == null) {
             String message = "Invalid class name " + containingClass;
             throw new InvalidClassNameException(message);
@@ -174,6 +147,23 @@ public class FunctionTable {
         return entry;
     }
 
+    private Map<JavaClass, Map<String, LookupTrie<FunctionTableEntry, Type>>> buildStaticFunctionLookupTrie() {
+        Map<JavaClass, Map<String, LookupTrie<FunctionTableEntry, Type>>> map = new HashMap<>();
+        for (FunctionTableEntry entry : functions) {
+            if (!map.containsKey(entry.getContainingClass())) {
+                map.put(entry.getContainingClass(), new HashMap<>());
+            }
+            Map<String, LookupTrie<FunctionTableEntry, Type>> nameMap = map.get(entry.getContainingClass());
+            if (!nameMap.containsKey(entry.getFunctionName())) {
+                nameMap.put(entry.getFunctionName(), new LookupTrie<>());
+            }
+            LookupTrie<FunctionTableEntry, Type> trie = nameMap.get(entry.getFunctionName());
+            boolean success = trie.insert(entry.getParameterTypes(), entry);
+            // TODO: Handle failure (already an entry)
+        }
+        return map;
+    }
+
     /**
      * Returns the number of functions registered with a given name.
      *
@@ -192,28 +182,32 @@ public class FunctionTable {
     }
 
     /**
-     * Represents a node in the tree of functions.
+     * Validates all types used in method signatures.
      *
-     * The purpose of this is to perform method resolution when there are
-     * overloaded functions. Example:
-     *
-     * Functions: f(), f(int), f(int, int), f(int, float)
-     *
-     *                  root [0]
-     *                   | int
-     *                   . [1]
-     *              int / \ float
-     *             [2] .   . [3]
-     *
+     * @param classTable The class table to use for validation
      */
-    private static class FunctionLookupTreeNode {
-
-        public FunctionTableEntry value;
-        public Map<Type, FunctionLookupTreeNode> edges;
-
-        public FunctionLookupTreeNode() {
-            value = null;
-            edges = new HashMap<>();
+    public void validateAllTypes(ClassTable classTable) {
+        for (FunctionTableEntry entry : functions) {
+            List<Type> parameterTypes = entry.getParameterTypes();
+            for (int i = 0; i < parameterTypes.size(); i++) {
+                Type type = parameterTypes.get(i);
+                if (type instanceof UnvalidatedJavaClassReference) {
+                    UnvalidatedJavaClassReference unvalidatedReference = (UnvalidatedJavaClassReference) type;
+                    try {
+                        JavaClass validatedClass = classTable.lookupClass(unvalidatedReference.getClassName());
+                        parameterTypes.set(i, validatedClass);
+                    } catch (UnknownClassException e) {
+                        ParserUtil.reportError(e.getMessage());
+                    }
+                }
+            }
         }
+    }
+
+    /**
+     * @return A list of all functions in the table
+     */
+    public List<FunctionTableEntry> getFunctions() {
+        return functions;
     }
 }

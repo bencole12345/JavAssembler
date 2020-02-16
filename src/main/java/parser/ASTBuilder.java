@@ -449,7 +449,11 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             // (the type exists but it doesn't have a method with the right signature)
         }
         Type returnType = javaClass.getReturnTypeOfMethodAtIndex(vtableIndex);
-        return new MethodCall(localVariable, argumentsList, returnType, vtableIndex);
+
+        // Look up static method signature
+        FunctionTableEntry tableEntry = javaClass.lookupMethod(methodName, argumentTypes);
+
+        return new MethodCall(localVariable, argumentsList, returnType, vtableIndex, tableEntry);
     }
 
     @Override

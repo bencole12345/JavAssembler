@@ -101,16 +101,6 @@ public class LookupTrie<ValueType, EdgeType> {
             return null;
     }
 
-    public LookupTrie<ValueType, EdgeType> merge(LookupTrie<ValueType, EdgeType> other) {
-        // TODO: Implement
-        return null;
-    }
-
-    public List<ValueType> getSerialList() {
-        // TODO: Return a tree traversal in any order
-        return null;
-    }
-
     /**
      * Returns the number of entries in the trie.
      *

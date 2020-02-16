@@ -85,7 +85,7 @@ public class CodeGenUtil {
         } catch (InvalidClassNameException | UndeclaredFunctionException e) {
             e.printStackTrace();
         }
-        return getFunctionNameForOutput(functionTableEntry, parameterTypes, functionTable);
+        return getFunctionNameForOutput(functionTableEntry, functionTable);
     }
 
     /**
@@ -96,23 +96,23 @@ public class CodeGenUtil {
      * name mangling with the types will be applied.
      *
      * @param entry The function table entry for the method under compilation
-     * @param parameterTypes The type of each parameter
      * @param functionTable The function table
      * @return The name to be emitted
      */
     public static String getFunctionNameForOutput(FunctionTableEntry entry,
-                                                  List<Type> parameterTypes,
                                                   FunctionTable functionTable) {
+        String delimiter = "_";
         String className = entry.getContainingClass().toString();
         String functionName = entry.getFunctionName();
-        String namespacedName = className + "__" + functionName;
-        if (functionTable.getNumberOfFunctionsWithName(functionName) == 1) {
+        String namespacedName = className + delimiter + functionName;
+        List<Type> parameterTypes = entry.getParameterTypes();
+        if (functionTable.getNumberOfFunctionsWithName(functionName) <= 1) {
             return namespacedName;
         } else {
             List<String> typeNames = parameterTypes.stream()
                     .map(Object::toString)
                     .collect(Collectors.toList());
-            return namespacedName + "__" + String.join("_", typeNames);
+            return namespacedName + delimiter + String.join(delimiter, typeNames);
         }
     }
 }
