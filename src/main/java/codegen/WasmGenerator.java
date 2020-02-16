@@ -39,7 +39,6 @@ public class WasmGenerator {
 
         // Now compile each method
         for (ClassMethod method : methods) {
-            // TODO: Pass in classTable
             compileMethod(method, functionTable, emitter);
         }
 
@@ -52,31 +51,22 @@ public class WasmGenerator {
     private static void compileMethod(ClassMethod method, FunctionTable functionTable, CodeEmitter emitter) {
 
         // Emit the function declaration
-        StringBuilder line = new StringBuilder();
-        line.append("(func $");
         String functionName = CodeGenUtil.getFunctionNameForOutput(method, functionTable);
-        line.append(functionName);
+        emitter.emitLine("(func $" + functionName);
+        emitter.increaseIndentationLevel();
 
         // List the parameters
         for (MethodParameter param : method.getParams()) {
-            line.append(" (param $");
-            line.append(param.getParameterName());
-            line.append(" ");
-            Type paramType = param.getType();
-            line.append(CodeGenUtil.getWasmType(paramType));
-            line.append(")");
+            String paramName = param.getParameterName();
+            WasmType paramType = CodeGenUtil.getWasmType(param.getType());
+            emitter.emitLine("(param $" + paramName + " " + paramType + ")");
         }
 
         // Emit return type, unless it's a void return
         Type returnType = method.getReturnType();
         if (!(returnType instanceof VoidType)) {
-            line.append(" (result ");
-            line.append(CodeGenUtil.getWasmType(returnType));
-            line.append(")");
+            emitter.emitLine("(result " + CodeGenUtil.getWasmType(returnType) + ")");
         }
-
-        emitter.emitLine(line.toString());
-        emitter.increaseIndentationLevel();
 
         VariableScope bodyScope = method.getBody().getVariableScope();
         for (Type type : bodyScope.getAllKnownAllocatedTypes()) {
