@@ -50,3 +50,4 @@ generated_wasm
 # Binary for performing assembly
 # ------------------------------
 scripts/wat2wasm
+/.vscode/

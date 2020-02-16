@@ -53,4 +53,9 @@ public class Test {
         return child.w;
     }
 
+    public static int callMethod() {
+        ParentClass childClass = new ChildClass();
+        return childClass.getNumber();
+    }
+
 }
