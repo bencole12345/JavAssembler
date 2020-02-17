@@ -7,6 +7,7 @@ import errors.DuplicateClassAttributeException;
 import errors.DuplicateClassDefinitionException;
 import errors.UnknownClassException;
 import util.ClassTable;
+import util.ErrorReporting;
 import util.FunctionTable;
 import util.FunctionTableEntry;
 
@@ -80,7 +81,7 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
             try {
                 parent = classTable.lookupClass(ctx.parentClassName.getText());
             } catch (UnknownClassException e) {
-                ParserUtil.reportError(e.getMessage());
+                ErrorReporting.reportError(e.getMessage());
             }
         }
 
@@ -88,7 +89,7 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
         try {
             currentClass = new JavaClass(className, classAttributes, parent);
         } catch (DuplicateClassAttributeException e) {
-            ParserUtil.reportError(e.getMessage());
+            ErrorReporting.reportError(e.getMessage());
         }
 
         // Now add all the methods
@@ -116,7 +117,7 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
         try {
             classTable.registerClass(className, currentClass);
         } catch (DuplicateClassDefinitionException e) {
-            ParserUtil.reportError(e.getMessage());
+            ErrorReporting.reportError(e.getMessage());
         }
 
         return null;

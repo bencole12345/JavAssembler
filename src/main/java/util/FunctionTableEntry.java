@@ -5,6 +5,7 @@ import ast.types.JavaClass;
 import ast.types.Type;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Contains data about a single function.
@@ -75,5 +76,17 @@ public class FunctionTableEntry {
             return true;
         else
             return javaClass.equals(containingClass);
+    }
+
+    public String getQualifiedName() {
+        return containingClass + "::" + functionName;
+    }
+
+    public String getQualifiedSignature() {
+        List<String> typeStrings = parameterTypes
+                .stream()
+                .map(Type::toString)
+                .collect(Collectors.toList());
+        return getQualifiedName() + "(" + String.join(", ", typeStrings) + ")";
     }
 }

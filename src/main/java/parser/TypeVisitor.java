@@ -3,6 +3,7 @@ package parser;
 import ast.types.*;
 import errors.UnknownClassException;
 import util.ClassTable;
+import util.ErrorReporting;
 
 /**
  * Builds a Type object from an AST node.
@@ -98,7 +99,7 @@ public class TypeVisitor extends JavaFileBaseVisitor<Type> {
             try {
                 reference = classTable.lookupClass(className);
             } catch (UnknownClassException e) {
-                ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
+                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
             }
         } else if (mode == Mode.Unvalidated) {
             reference = new UnvalidatedJavaClassReference(className);

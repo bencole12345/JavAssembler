@@ -2,6 +2,7 @@ package parser;
 
 
 import errors.CircularInheritanceException;
+import util.ErrorReporting;
 import util.TopologicalSort;
 
 import java.util.*;
@@ -41,7 +42,7 @@ public class ClassHierarchyBuilder extends JavaFileBaseVisitor<Void> {
         String className = ctx.className.getText();
         if (seenClasses.containsKey(className)) {
             String message = "Duplicate definition for class " + className;
-            ParserUtil.reportError(message);
+            ErrorReporting.reportError(message);
         }
         seenClasses.put(className, ctx);
 
@@ -77,7 +78,7 @@ public class ClassHierarchyBuilder extends JavaFileBaseVisitor<Void> {
         try {
             ordering = TopologicalSort.getSerialOrder(vertices, edges);
         } catch (CircularInheritanceException e) {
-            ParserUtil.reportError(e.getMessage());
+            ErrorReporting.reportError(e.getMessage());
         }
         assert ordering != null;
         return ordering

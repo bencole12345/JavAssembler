@@ -4,8 +4,8 @@ import errors.DuplicateClassAttributeException;
 import errors.IllegalPrivateAccessException;
 import errors.InvalidAttributeException;
 import errors.UnknownClassException;
-import parser.ParserUtil;
 import util.ClassTable;
+import util.ErrorReporting;
 import util.FunctionTableEntry;
 import util.LookupTrie;
 
@@ -192,7 +192,7 @@ public class JavaClass extends JavaClassReference {
                 try {
                     validatedClass = classTable.lookupClass(className);
                 } catch (UnknownClassException e) {
-                    ParserUtil.reportError(e.getMessage());
+                    ErrorReporting.reportError(e.getMessage());
                 }
                 attribute.type = validatedClass;
             }

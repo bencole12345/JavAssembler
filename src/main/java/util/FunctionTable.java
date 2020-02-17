@@ -7,13 +7,11 @@ import ast.types.UnvalidatedJavaClassReference;
 import errors.InvalidClassNameException;
 import errors.UndeclaredFunctionException;
 import errors.UnknownClassException;
-import parser.ParserUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class FunctionTable {
 
@@ -79,8 +77,6 @@ public class FunctionTable {
                                                boolean isStatic,
                                                AccessModifier accessModifier) {
 
-        // TODO: Handle case that a function with this signature has already been declared
-
         // Create a function table entry for the new function
         FunctionTableEntry functionTableEntry = new FunctionTableEntry(
                 nextIndexToAssign++,
@@ -133,7 +129,7 @@ public class FunctionTable {
 
         // Throw an exception if there's no entry with that function name
         String errorMessage = "No function defined in class " + containingClass
-                + " with signature " + functionSignatureToString(functionName, parameterTypes);
+                + " with signature " + ErrorReporting.getFunctionSignatureOutput(functionName, parameterTypes);
         if (trie == null)
             throw new UndeclaredFunctionException(errorMessage);
 
@@ -159,7 +155,11 @@ public class FunctionTable {
             }
             LookupTrie<FunctionTableEntry, Type> trie = nameMap.get(entry.getFunctionName());
             boolean success = trie.insert(entry.getParameterTypes(), entry);
-            // TODO: Handle failure (already an entry)
+            if (!success) {
+                String signature = entry.getQualifiedSignature();
+                String errorMessage = "Duplicate functions with signature " + signature;
+                ErrorReporting.reportError(errorMessage);
+            }
         }
         return map;
     }
@@ -172,13 +172,6 @@ public class FunctionTable {
      */
     public int getNumberOfFunctionsWithName(String name) {
         return functionsWithNameCount.getOrDefault(name, 0);
-    }
-
-    private String functionSignatureToString(String name, List<Type> parameterTypes) {
-        List<String> typeNames = parameterTypes.stream()
-                .map(Object::toString)
-                .collect(Collectors.toList());
-        return name + "(" + String.join(", ", typeNames) + ")";
     }
 
     /**
@@ -197,7 +190,7 @@ public class FunctionTable {
                         JavaClass validatedClass = classTable.lookupClass(unvalidatedReference.getClassName());
                         parameterTypes.set(i, validatedClass);
                     } catch (UnknownClassException e) {
-                        ParserUtil.reportError(e.getMessage());
+                        ErrorReporting.reportError(e.getMessage());
                     }
                 }
             }
