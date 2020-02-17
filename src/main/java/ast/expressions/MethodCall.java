@@ -21,9 +21,6 @@ public class MethodCall implements Expression {
                       Type returnType,
                       int virtualTableOffset,
                       FunctionTableEntry staticFunctionEntry) {
-        // TODO: Validate types
-        // In particular, check that the local variable is a JavaClass, and
-        // maybe check that the parameters are correct for that method?
         this.localVariable = localVariable;
         this.arguments = arguments;
         this.returnType = returnType;

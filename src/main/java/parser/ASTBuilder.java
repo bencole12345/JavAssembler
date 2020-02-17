@@ -434,7 +434,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         List<Expression> arguments = expressionList.getExpressionList();
         VariableScope currentScope = variableScopeStack.peek();
         if (currentScope.hasMappingFor(qualifier)) {
-            return buildMethodCall(qualifier, functionName, arguments);
+            return buildMethodCall(qualifier, functionName, arguments, ctx);
         } else {
             return visitFunctionCall(qualifier, functionName, arguments, ctx);
         }
@@ -442,13 +442,21 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     private MethodCall buildMethodCall(String localVariableName,
                                        String methodName,
-                                       List<Expression> argumentsList) {
+                                       List<Expression> argumentsList,
+                                       JavaFileParser.QualifiedFunctionCallContext ctx) {
         VariableScope currentScope = variableScopeStack.peek();
         LocalVariableExpression localVariable = new LocalVariableExpression(localVariableName, currentScope);
         Type variableType = localVariable.getType();
+        List<String> variableTypeStrings = argumentsList
+                .stream()
+                .map(Expression::getType)
+                .map(Type::toString)
+                .collect(Collectors.toList());
+        String errorMessageIfNotFound = "Method " + methodName + "("
+                + String.join(", ", variableTypeStrings) + ")"
+                + " is not defined in static context " + variableType;
         if (!(variableType instanceof JavaClass)) {
-            // TODO: uh oh bad happened
-            // (throw an error, you can't call a method on a primitive type)
+            ParserUtil.reportError(errorMessageIfNotFound, ctx);
         }
         JavaClass javaClass = (JavaClass) variableType;
         List<Type> argumentTypes = argumentsList
@@ -457,8 +465,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 .collect(Collectors.toList());
         Integer vtableIndex = javaClass.getVirtualTableIndex(methodName, argumentTypes);
         if (vtableIndex == null) {
-            // TODO: uh oh another bad happened
-            // (the type exists but it doesn't have a method with the right signature)
+            ParserUtil.reportError(errorMessageIfNotFound, ctx);
         }
         Type returnType = javaClass.getReturnTypeOfMethodAtIndex(vtableIndex);
 
@@ -512,17 +519,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             ParserUtil.reportError(message, ctx);
             return null;
         }
-    }
-
-    @Override
-    public FunctionCall visitMethodCallExpr(JavaFileParser.MethodCallExprContext ctx) {
-        LocalVariableExpression localVariableExpression = (LocalVariableExpression) visit(ctx.variableName());
-        String methodName = ctx.IDENTIFIER().getText();
-        ExpressionList args = (ExpressionList) visit(ctx.functionArgs());
-        List<Expression> argsList = args.getExpressionList();
-        // Insert the object reference as the first argument
-        argsList.add(0, localVariableExpression);
-        return visitFunctionCall(currentClass.toString(), methodName, argsList, ctx);
     }
 
     @Override
