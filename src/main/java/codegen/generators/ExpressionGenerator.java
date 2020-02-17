@@ -248,11 +248,13 @@ public class ExpressionGenerator {
 
     private void compileFunctionCallExpression(FunctionCall functionCall,
                                                VariableScope variableScope) {
+
+        // Put arguments on the stack
         for (Expression expression : functionCall.getArguments()) {
             compileExpression(expression, variableScope);
         }
 
-        // TODO: Use function table index not function name
+        // Call the function
         FunctionTableEntry tableEntry = functionCall.getFunctionTableEntry();
         String functionName = CodeGenUtil.getFunctionNameForOutput(tableEntry, functionTable);
         emitter.emitLine("call $" + functionName);

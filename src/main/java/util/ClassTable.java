@@ -63,5 +63,4 @@ public class ClassTable {
         }
         return new VirtualTable(table, startIndexMap);
     }
-
 }

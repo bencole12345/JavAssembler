@@ -291,7 +291,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public ASTNode visitIncrementExpr(JavaFileParser.IncrementExprContext ctx) {
-        // TODO: Check this
         return super.visitIncrementExpr(ctx);
     }
 
@@ -700,9 +699,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         return forLoop;
     }
 
-    // TODO: Think about how to handle this
-    // Remember that, normally, a DeclarationAndAssignment is split into two statements.
-    // Really, we want this declaration to be added to the code block belonging to that for loop.
     @Override
     public DeclarationAndAssignment visitForLoopDeclareAndAssign(JavaFileParser.ForLoopDeclareAndAssignContext ctx) {
         return (DeclarationAndAssignment) visit(ctx.variableDeclarationAndAssignment());
