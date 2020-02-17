@@ -61,6 +61,18 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         // to contain the method's parameters.
         variableScopeStack.clear();
         VariableScope scopeForParameters = pushNewVariableScope();
+
+        // If it's a non-static method, insert a reference to the object as the
+        // first parameter.
+        if (!isStatic) {
+            try {
+                scopeForParameters.registerVariable("this", currentClass);
+            } catch (MultipleVariableDeclarationException e) {
+                ParserUtil.reportError(e.getMessage(), ctx);
+            }
+        }
+
+        // Add all method parameters to the stack
         for (MethodParameter param : paramsList) {
             String name = param.getParameterName();
             Type type = param.getType();

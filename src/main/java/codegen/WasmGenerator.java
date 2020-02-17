@@ -149,9 +149,8 @@ public class WasmGenerator {
 
         // Emit the rest of the parameters
         for (MethodParameter param : method.getParams()) {
-            String paramName = param.getParameterName();
             WasmType paramType = CodeGenUtil.getWasmType(param.getType());
-            emitter.emitLine("(param $" + paramName + " " + paramType + ")");
+            emitter.emitLine("(param " + paramType + ")");
         }
 
         // Emit return type, unless it's a void return
