@@ -6,4 +6,8 @@ public class ParentClass {
     public int getNumber() {
         return 10;
     }
+
+    public void incrementX() {
+        this.x = this.x + 1;
+    }
 }

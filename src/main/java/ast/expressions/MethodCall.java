@@ -1,5 +1,6 @@
 package ast.expressions;
 
+import ast.statements.Statement;
 import ast.types.Type;
 import util.FunctionTableEntry;
 
@@ -8,7 +9,7 @@ import java.util.List;
 /**
  * Represents a call to a method on an object.
  */
-public class MethodCall implements Expression {
+public class MethodCall implements Expression, Statement {
 
     private LocalVariableExpression localVariable;
     private List<Expression> arguments;

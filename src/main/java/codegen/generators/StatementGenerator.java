@@ -5,6 +5,7 @@ import ast.statements.*;
 import ast.structure.CodeBlock;
 import ast.structure.VariableScope;
 import ast.types.Type;
+import ast.types.VoidType;
 import codegen.CodeEmitter;
 import codegen.CodeGenUtil;
 import codegen.WasmType;
@@ -56,6 +57,10 @@ public class StatementGenerator {
             compileForLoop((ForLoop) statement);
         } else if (statement instanceof VariableIncrementExpression) {
             ExpressionGenerator.getInstance().compileExpression((VariableIncrementExpression) statement, scope);
+        } else if (statement instanceof FunctionCall) {
+            compileFunctionCallStatement((FunctionCall) statement, scope);
+        } else if (statement instanceof MethodCall) {
+            compileMethodCallStatement((MethodCall) statement, scope);
         }
     }
 
@@ -192,6 +197,30 @@ public class StatementGenerator {
         emitter.emitLine(")");
         emitter.decreaseIndentationLevel();
         emitter.emitLine(")");
+    }
+
+    private void compileFunctionCallStatement(FunctionCall functionCall, VariableScope scope) {
+
+        // Emit the function call.
+        ExpressionGenerator.getInstance().compileExpression(functionCall, scope);
+
+        // If it's not a void type then we need to remove its return value
+        // from the stack.
+        if (!(functionCall.getType() instanceof VoidType)) {
+            emitter.emitLine("drop");
+        }
+    }
+
+    private void compileMethodCallStatement(MethodCall methodCall, VariableScope scope) {
+
+        // Emit the method call.
+        ExpressionGenerator.getInstance().compileExpression(methodCall, scope);
+
+        // Like with function calls, if it's not a void type then we need to
+        // remove the return value from the stack.
+        if (!(methodCall.getType() instanceof VoidType)) {
+            emitter.emitLine("drop");
+        }
     }
 
     public void compileCodeBlock(CodeBlock codeBlock) {

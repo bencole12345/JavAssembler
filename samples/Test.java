@@ -58,4 +58,11 @@ public class Test {
         return childClass.getNumber();
     }
 
+    public static int testThis() {
+        ParentClass parent = new ParentClass();
+        parent.x = 1;
+        parent.incrementX();
+        return parent.x;
+    }
+
 }

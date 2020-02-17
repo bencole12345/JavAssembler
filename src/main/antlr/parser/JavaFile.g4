@@ -49,12 +49,12 @@ variableDeclaration
     ;
 
 assignment
-    : IDENTIFIER
+    : variableName
         op=(EQUALS
             | PLUS_EQUALS | MINUS_EQUALS
             | MULTIPLY_EQUALS | DIVIDE_EQUALS)
         expr                                        # VariableAssignment
-    | IDENTIFIER DOT IDENTIFIER
+    | variableName DOT IDENTIFIER
         op=(EQUALS
             | PLUS_EQUALS | MINUS_EQUALS
             | MULTIPLY_EQUALS | DIVIDE_EQUALS)
@@ -89,7 +89,8 @@ expr
     ;
 
 variableName
-    : IDENTIFIER
+    : THIS                                          # ThisReference
+    | IDENTIFIER                                    # VariableReference
     ;
 
 variableIncrementExpr

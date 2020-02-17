@@ -137,8 +137,8 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public FunctionCall visitFunctionCallStatement(JavaFileParser.FunctionCallStatementContext ctx) {
-        return (FunctionCall) visit(ctx.functionCall());
+    public Expression visitFunctionCallStatement(JavaFileParser.FunctionCallStatementContext ctx) {
+        return (Expression) visit(ctx.functionCall());
     }
 
     @Override
@@ -150,7 +150,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public Assignment visitVariableAssignment(JavaFileParser.VariableAssignmentContext ctx) {
-        String variableName = ctx.IDENTIFIER().getText();
+        String variableName = ctx.variableName().getText();
         VariableScope scope = variableScopeStack.peek();
         VariableExpression variableExpression = new LocalVariableExpression(variableName, scope);
         Token op = ctx.op;
@@ -160,10 +160,10 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public Assignment visitAttributeAssignment(JavaFileParser.AttributeAssignmentContext ctx) {
-        String localVarName = ctx.IDENTIFIER(0).getText();
+        String localVarName = ctx.variableName().getText();
         LocalVariableExpression object =
                 new LocalVariableExpression(localVarName, variableScopeStack.peek());
-        String attributeName = ctx.IDENTIFIER(1).getText();
+        String attributeName = ctx.IDENTIFIER().getText();
         Token op = ctx.op;
         Expression rhs = (Expression) visit(ctx.expr());
         AttributeNameExpression attributeNameExpression = null;
@@ -416,10 +416,15 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public LocalVariableExpression visitVariableName(JavaFileParser.VariableNameContext ctx) {
+    public LocalVariableExpression visitVariableReference(JavaFileParser.VariableReferenceContext ctx) {
         String variableName = ctx.IDENTIFIER().toString();
         VariableScope currentScope = variableScopeStack.peek();
         return new LocalVariableExpression(variableName, currentScope);
+    }
+
+    @Override
+    public LocalVariableExpression visitThisReference(JavaFileParser.ThisReferenceContext ctx) {
+        return new LocalVariableExpression("this", variableScopeStack.peek());
     }
 
     @Override

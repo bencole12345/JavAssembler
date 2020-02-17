@@ -165,6 +165,7 @@ public class ExpressionGenerator {
                                                     VariableScope variableScope) {
         // TODO: Make sure range is preserved
         //       (shouldn't be able to ++ a short to get out of the 16-bit range)
+        // TODO: Support applying increments to attributes as well as local variables
         int registerNumber = variableScope.lookupRegisterIndexOfVariable(expression.getLocalVariableExpression().getVariableName());
         Expression varNameExpr = expression.getLocalVariableExpression();
         Expression one;

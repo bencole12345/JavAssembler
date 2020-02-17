@@ -60,6 +60,11 @@ const runTests = async () => {
     result = module.Test_callMethod();
     passFail = result == 20 ? "PASS" : "FAIL";
     console.log(passFail + ": Dynamic method dispatch test");
+
+    // Test 'this' keyword
+    result = module.Test_testThis();
+    passFail = result == 2 ? "PASS" : "FAIL";
+    console.log(passFail + ": 'this' keyword test");
     
 };
 

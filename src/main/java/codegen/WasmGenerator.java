@@ -98,7 +98,7 @@ public class WasmGenerator {
             }
 
             // Return type
-            if (!entry.getReturnType().equals(new VoidType())) {
+            if (!(entry.getReturnType() instanceof VoidType)) {
                 typeString += " (result " + CodeGenUtil.getWasmType(entry.getReturnType()) + ")";
             }
 
