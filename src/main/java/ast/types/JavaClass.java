@@ -4,13 +4,13 @@ import errors.DuplicateClassAttributeException;
 import errors.IllegalPrivateAccessException;
 import errors.InvalidAttributeException;
 import errors.UnknownClassException;
-import parser.ParserUtil;
 import util.ClassTable;
+import util.ErrorReporting;
+import util.FunctionTableEntry;
+import util.LookupTrie;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Represents a known Java class.
@@ -46,11 +46,31 @@ public class JavaClass extends JavaClassReference {
      */
     private int nextFreeAssignmentOffset;
 
+    /**
+     * The virtual table for this class.
+     */
+    private List<FunctionTableEntry> virtualTable;
+
+    /**
+     * A map of strings (function names) to tries used for efficiently looking
+     * up the virtual table index of a method, given its name and type
+     * signature.
+     */
+    private Map<String, LookupTrie<Integer, Type>> vtableIndexLookupTrieMap;
+
     public JavaClass(String name, List<ClassAttribute> attributes, JavaClass parent)
             throws DuplicateClassAttributeException {
         this.name = name;
         this.parent = parent;
-        this.nextFreeAssignmentOffset = (parent == null) ? 0 : parent.nextFreeAssignmentOffset;
+        vtableIndexLookupTrieMap = new HashMap<>();
+        virtualTable = new ArrayList<>();
+        if (parent == null) {
+            // Save 4 bytes for storing the vtable pointer
+            nextFreeAssignmentOffset = 4;
+        } else {
+            nextFreeAssignmentOffset = parent.nextFreeAssignmentOffset;
+            virtualTable.addAll(parent.virtualTable);
+        }
         this.attributesMap = buildAttributeMap(attributes);
     }
 
@@ -172,11 +192,127 @@ public class JavaClass extends JavaClassReference {
                 try {
                     validatedClass = classTable.lookupClass(className);
                 } catch (UnknownClassException e) {
-                    ParserUtil.reportError(e.getMessage());
+                    ErrorReporting.reportError(e.getMessage());
                 }
                 attribute.type = validatedClass;
             }
         }
+    }
+
+    /**
+     * Adds a new method to the virtual table for this class.
+     *
+     * @param functionTableEntry The function table entry to register as a
+     *                           method of this class
+     */
+    public void registerNewMethod(FunctionTableEntry functionTableEntry) {
+
+        // Extract information about the method
+        String methodName = functionTableEntry.getFunctionName();
+        List<Type> parameterTypes = functionTableEntry.getParameterTypes();
+
+        // Look up the trie for this class, creating it if necessary
+        if (!vtableIndexLookupTrieMap.containsKey(methodName))
+            vtableIndexLookupTrieMap.put(methodName, new LookupTrie<>());
+        LookupTrie<Integer, Type> vtableIndexLookupTrie = vtableIndexLookupTrieMap.get(methodName);
+
+        // Attempt to find the vtable index from the parent class. If the parent
+        // already has an entry for a method with this signature then this must
+        // be an override, so we want to update the existing location in the
+        // virtual table. Otherwise, this must be a new method, in which case
+        // we want to add a new entry to the virtual table.
+        Integer vtableIndex = null;
+        if (parent != null) {
+            vtableIndex = parent.getVirtualTableIndex(methodName, parameterTypes);
+        }
+
+
+        // If we didn't find an existing entry then we need to insert a new
+        // entry to the vtable for this class. If we did then we want to
+        // override the existing entry instead.
+        if (vtableIndex == null) {
+            vtableIndex = virtualTable.size();
+            virtualTable.add(functionTableEntry);
+        } else {
+            virtualTable.set(vtableIndex, functionTableEntry);
+        }
+
+        // Update the lookup trie so that we can quickly look up this method
+        // in the future.
+        vtableIndexLookupTrie.insert(parameterTypes, vtableIndex);
+    }
+
+    /**
+     * Looks up a method with a given signature.
+     *
+     * @param name The name of the method
+     * @param parameterTypes The types of the parameters for that method
+     * @return The function table entry for the method
+     */
+    public FunctionTableEntry lookupMethod(String name, List<Type> parameterTypes) {
+        FunctionTableEntry entry = null;
+        if (vtableIndexLookupTrieMap.containsKey(name)) {
+            LookupTrie<Integer, Type> trie = vtableIndexLookupTrieMap.get(name);
+            Integer vtableIndex = trie.lookup(parameterTypes);
+            if (vtableIndex != null) {
+                entry = virtualTable.get(vtableIndex);
+            }
+        }
+
+        if (entry == null) {
+            if (parent != null) {
+                return parent.lookupMethod(name, parameterTypes);
+            }
+        }
+
+        return entry;
+    }
+
+    /**
+     * Returns the list of function table indices that forms the virtual table
+     * for this class.
+     *
+     * @return The list of function table indices for the methods in this class
+     */
+    public List<Integer> getVirtualTable() {
+        return virtualTable
+                .stream()
+                .map(FunctionTableEntry::getIndex)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns the return type of the method at the requested position in the
+     * virtual table.
+     *
+     * @param index The index of the virtual table to look up
+     * @return The return type of that method, or null if there is no such
+     *      method
+     */
+    public Type getReturnTypeOfMethodAtIndex(int index) {
+        if (index < virtualTable.size())
+            return virtualTable.get(index).getReturnType();
+        else
+            return null;
+    }
+
+    /**
+     * Looks up the virtual table index of a given method.
+     *
+     * @param name The name of the method
+     * @param parameterTypes The types of the parameters of the method
+     * @return The virtual table index of the method, or null if the method
+     *      does not exist
+     */
+    public Integer getVirtualTableIndex(String name, List<Type> parameterTypes) {
+        LookupTrie<Integer, Type> functionLookupTrie =
+                vtableIndexLookupTrieMap.getOrDefault(name, null);
+        if (functionLookupTrie == null)
+            return null;
+        Integer vtableIndex = functionLookupTrie.lookup(parameterTypes);
+        if (vtableIndex == null && parent != null)
+            return parent.getVirtualTableIndex(name, parameterTypes);
+        return vtableIndex;
     }
 
     /**

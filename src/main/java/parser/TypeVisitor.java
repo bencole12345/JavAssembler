@@ -3,6 +3,7 @@ package parser;
 import ast.types.*;
 import errors.UnknownClassException;
 import util.ClassTable;
+import util.ErrorReporting;
 
 /**
  * Builds a Type object from an AST node.
@@ -29,15 +30,29 @@ public class TypeVisitor extends JavaFileBaseVisitor<Type> {
 
     private ClassTable classTable;
     private Mode mode;
+    private JavaClass currentClass;
 
     public TypeVisitor(ClassTable classTable) {
         this.classTable = classTable;
         mode = Mode.Validated;
+        currentClass = null;
     }
 
     public TypeVisitor() {
         this.classTable = null;
         mode = Mode.Unvalidated;
+        currentClass = null;
+    }
+
+    /**
+     * Sets the class that we are currently parsing.
+     *
+     * This is only used to give more informative error messages.
+     *
+     * @param currentClass The class currently being processed
+     */
+    public void setCurrentClass(JavaClass currentClass) {
+        this.currentClass = currentClass;
     }
 
     @Override
@@ -84,7 +99,7 @@ public class TypeVisitor extends JavaFileBaseVisitor<Type> {
             try {
                 reference = classTable.lookupClass(className);
             } catch (UnknownClassException e) {
-                ParserUtil.reportError(e.getMessage(), ctx);
+                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
             }
         } else if (mode == Mode.Unvalidated) {
             reference = new UnvalidatedJavaClassReference(className);

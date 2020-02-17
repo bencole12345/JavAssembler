@@ -1,7 +1,11 @@
 package util;
 
 import ast.types.AccessModifier;
+import ast.types.JavaClass;
 import ast.types.Type;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Contains data about a single function.
@@ -9,20 +13,26 @@ import ast.types.Type;
 public class FunctionTableEntry {
 
     private int index;
-    private String namespace;
+    private JavaClass containingClass;
     private String functionName;
     private Type returnType;
+    private boolean isStatic;
+    private List<Type> parameterTypes;
     private AccessModifier accessModifier;
 
     public FunctionTableEntry(int index,
-                              String namespace,
+                              JavaClass containingClass,
                               String functionName,
                               Type returnType,
+                              boolean isStatic,
+                              List<Type> parameterTypes,
                               AccessModifier accessModifier) {
         this.index = index;
-        this.namespace = namespace;
+        this.containingClass = containingClass;
         this.functionName = functionName;
         this.returnType = returnType;
+        this.isStatic = isStatic;
+        this.parameterTypes = parameterTypes;
         this.accessModifier = accessModifier;
     }
 
@@ -30,8 +40,8 @@ public class FunctionTableEntry {
         return index;
     }
 
-    public String getNamespace() {
-        return namespace;
+    public JavaClass getContainingClass() {
+        return containingClass;
     }
 
     public String getFunctionName() {
@@ -42,6 +52,14 @@ public class FunctionTableEntry {
         return returnType;
     }
 
+    public boolean getIsStatic() {
+        return isStatic;
+    }
+
+    public List<Type> getParameterTypes() {
+        return parameterTypes;
+    }
+
     /**
      * Determines whether the method referenced by this table entry can be
      * executed from the given context.
@@ -50,13 +68,25 @@ public class FunctionTableEntry {
      * methods, it will return true only if the function is called from the
      * same class.
      *
-     * @param context The name of the class from which the method is called
+     * @param javaClass The class from which the method is called
      * @return true if the method can legally be executed; false otherwise
      */
-    public boolean canBeCalledFrom(String context) {
+    public boolean canBeCalledFrom(JavaClass javaClass) {
         if (accessModifier.equals(AccessModifier.PUBLIC))
             return true;
         else
-            return context.equals(namespace);
+            return javaClass.equals(containingClass);
+    }
+
+    public String getQualifiedName() {
+        return containingClass + "::" + functionName;
+    }
+
+    public String getQualifiedSignature() {
+        List<String> typeStrings = parameterTypes
+                .stream()
+                .map(Type::toString)
+                .collect(Collectors.toList());
+        return getQualifiedName() + "(" + String.join(", ", typeStrings) + ")";
     }
 }

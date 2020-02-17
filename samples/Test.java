@@ -53,4 +53,16 @@ public class Test {
         return child.w;
     }
 
+    public static int callMethod() {
+        ParentClass childClass = new ChildClass();
+        return childClass.getNumber();
+    }
+
+    public static int testThis() {
+        ParentClass parent = new ParentClass();
+        parent.x = 1;
+        parent.incrementX();
+        return parent.x;
+    }
+
 }

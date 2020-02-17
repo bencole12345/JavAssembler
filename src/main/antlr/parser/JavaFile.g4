@@ -49,12 +49,12 @@ variableDeclaration
     ;
 
 assignment
-    : IDENTIFIER
+    : variableName
         op=(EQUALS
             | PLUS_EQUALS | MINUS_EQUALS
             | MULTIPLY_EQUALS | DIVIDE_EQUALS)
         expr                                        # VariableAssignment
-    | IDENTIFIER DOT IDENTIFIER
+    | variableName DOT IDENTIFIER
         op=(EQUALS
             | PLUS_EQUALS | MINUS_EQUALS
             | MULTIPLY_EQUALS | DIVIDE_EQUALS)
@@ -82,12 +82,15 @@ expr
                 | GREATER_THAN
                 | GREATER_THAN_EQUAL_TO) expr           # InfixExpr
     | expr QUESTION_MARK expr COLON expr SEMICOLON      # BinarySelectorExpr
-    | object=variableName DOT attribute=variableName    # AttributeLookupExpr
+    | variableName DOT IDENTIFIER
+            LPAREN functionArgs RPAREN                  # MethodCallExpr
+    | variableName DOT variableName                     # AttributeLookupExpr
     | variableName                                      # VariableNameExpr
     ;
 
 variableName
-    : IDENTIFIER
+    : THIS                                          # ThisReference
+    | IDENTIFIER                                    # VariableReference
     ;
 
 variableIncrementExpr
@@ -97,8 +100,8 @@ variableIncrementExpr
 
 functionCall
     : IDENTIFIER DOT IDENTIFIER
-      LPAREN functionArgs RPAREN                    # NamespacedFunctionCall
-    | IDENTIFIER LPAREN functionArgs RPAREN         # DirectFunctionCall
+      LPAREN functionArgs RPAREN                    # QualifiedFunctionCall
+    | IDENTIFIER LPAREN functionArgs RPAREN         # UnqualifiedFunctionCall
     ;
 
 functionArgs

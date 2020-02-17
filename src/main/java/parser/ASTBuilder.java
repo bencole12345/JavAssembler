@@ -14,6 +14,7 @@ import errors.*;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import util.ClassTable;
+import util.ErrorReporting;
 import util.FunctionTable;
 import util.FunctionTableEntry;
 
@@ -28,7 +29,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     private FunctionTable functionTable;
     private ClassTable classTable;
     private Type currentFunctionReturnType;
-    private String nameOfCurrentClass;
+    private JavaClass currentClass;
 
     private TypeVisitor typeVisitor;
     private AccessModifierVisitor accessModifierVisitor;
@@ -36,15 +37,16 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     public ASTBuilder(FunctionTable functionTable, ClassTable classTable) {
         this.functionTable = functionTable;
         this.classTable = classTable;
-        nameOfCurrentClass = null;
+        currentClass = null;
         variableScopeStack = new Stack<>();
 
         typeVisitor = new TypeVisitor(classTable);
         accessModifierVisitor = new AccessModifierVisitor();
     }
 
-    public ClassMethod visitMethod(JavaFileParser.MethodDefinitionContext ctx, String className) {
-        nameOfCurrentClass = className;
+    public ClassMethod visitMethod(JavaFileParser.MethodDefinitionContext ctx, JavaClass containingClass) {
+        this.currentClass = containingClass;
+        typeVisitor.setCurrentClass(containingClass);
         return visitMethodDefinition(ctx);
     }
 
@@ -61,13 +63,25 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         // to contain the method's parameters.
         variableScopeStack.clear();
         VariableScope scopeForParameters = pushNewVariableScope();
+
+        // If it's a non-static method, insert a reference to the object as the
+        // first parameter.
+        if (!isStatic) {
+            try {
+                scopeForParameters.registerVariable("this", currentClass);
+            } catch (MultipleVariableDeclarationException e) {
+                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+            }
+        }
+
+        // Add all method parameters to the stack
         for (MethodParameter param : paramsList) {
             String name = param.getParameterName();
             Type type = param.getType();
             try {
                 scopeForParameters.registerVariable(name, type);
             } catch (MultipleVariableDeclarationException e) {
-                ParserUtil.reportError(e.getMessage(), ctx);
+                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
             }
         }
 
@@ -77,7 +91,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
         // Pop the scope that was created to contain the parameters
         popVariableScope(false);
-        return new ClassMethod(modifier, isStatic, returnType, methodName, paramsList, body, nameOfCurrentClass);
+        return new ClassMethod(modifier, isStatic, returnType, methodName, paramsList, body, currentClass);
     }
 
     @Override
@@ -102,7 +116,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             returnStatement = new ReturnStatement(expression, currentFunctionReturnType);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return returnStatement;
     }
@@ -123,8 +137,8 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public FunctionCall visitFunctionCallStatement(JavaFileParser.FunctionCallStatementContext ctx) {
-        return (FunctionCall) visit(ctx.functionCall());
+    public Expression visitFunctionCallStatement(JavaFileParser.FunctionCallStatementContext ctx) {
+        return (Expression) visit(ctx.functionCall());
     }
 
     @Override
@@ -136,7 +150,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public Assignment visitVariableAssignment(JavaFileParser.VariableAssignmentContext ctx) {
-        String variableName = ctx.IDENTIFIER().getText();
+        String variableName = ctx.variableName().getText();
         VariableScope scope = variableScopeStack.peek();
         VariableExpression variableExpression = new LocalVariableExpression(variableName, scope);
         Token op = ctx.op;
@@ -146,17 +160,17 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public Assignment visitAttributeAssignment(JavaFileParser.AttributeAssignmentContext ctx) {
-        String localVarName = ctx.IDENTIFIER(0).getText();
+        String localVarName = ctx.variableName().getText();
         LocalVariableExpression object =
                 new LocalVariableExpression(localVarName, variableScopeStack.peek());
-        String attributeName = ctx.IDENTIFIER(1).getText();
+        String attributeName = ctx.IDENTIFIER().getText();
         Token op = ctx.op;
         Expression rhs = (Expression) visit(ctx.expr());
         AttributeNameExpression attributeNameExpression = null;
         try {
             attributeNameExpression = new AttributeNameExpression(object, attributeName);
         } catch (JavAssemblerException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return buildAssignment(attributeNameExpression, op, rhs, ctx);
     }
@@ -199,7 +213,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             try {
                 rhs = new BinaryOperatorExpression(variableExpression, rhs, bop);
             } catch (IncorrectTypeException e) {
-                ParserUtil.reportError(e.getMessage(), ctx);
+                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
             }
         }
 
@@ -207,7 +221,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             assignment = new Assignment(variableExpression, rhs);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
 
         return assignment;
@@ -228,8 +242,8 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public FunctionCall visitFunctionCallExpr(JavaFileParser.FunctionCallExprContext ctx) {
-        return (FunctionCall) visit(ctx.functionCall());
+    public Expression visitFunctionCallExpr(JavaFileParser.FunctionCallExprContext ctx) {
+        return (Expression) visit(ctx.functionCall());
     }
 
     @Override
@@ -244,7 +258,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             negExpression = new NegateExpression(expression);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return negExpression;
     }
@@ -256,7 +270,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             notExpression = new NotExpression(expression);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return notExpression;
     }
@@ -268,7 +282,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             javaClass = classTable.lookupClass(className);
         } catch (UnknownClassException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
         List<Expression> arguments = expressionList.getExpressionList();
@@ -277,7 +291,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public ASTNode visitIncrementExpr(JavaFileParser.IncrementExprContext ctx) {
-        // TODO: Check this
         return super.visitIncrementExpr(ctx);
     }
 
@@ -321,7 +334,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             bopExpression = new BinaryOperatorExpression(left, right, op);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return bopExpression;
     }
@@ -343,7 +356,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             incrementExpression = new VariableIncrementExpression(expression, op);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return incrementExpression;
     }
@@ -365,7 +378,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             incrementExpression = new VariableIncrementExpression(expression, op);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return incrementExpression;
     }
@@ -379,7 +392,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             expression = new BinarySelectorExpression(condition, trueExpression, falseExpression);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return expression;
     }
@@ -391,22 +404,27 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public AttributeNameExpression visitAttributeLookupExpr(JavaFileParser.AttributeLookupExprContext ctx) {
-        LocalVariableExpression localVariableExpression = (LocalVariableExpression) visit(ctx.object);
-        String attributeName = ctx.attribute.getText();
+        LocalVariableExpression localVariableExpression = (LocalVariableExpression) visit(ctx.variableName(0));
+        String attributeName = ctx.variableName(1).getText();
         AttributeNameExpression result = null;
         try {
             result = new AttributeNameExpression(localVariableExpression, attributeName);
         } catch (JavAssemblerException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return result;
     }
 
     @Override
-    public LocalVariableExpression visitVariableName(JavaFileParser.VariableNameContext ctx) {
+    public LocalVariableExpression visitVariableReference(JavaFileParser.VariableReferenceContext ctx) {
         String variableName = ctx.IDENTIFIER().toString();
         VariableScope currentScope = variableScopeStack.peek();
         return new LocalVariableExpression(variableName, currentScope);
+    }
+
+    @Override
+    public LocalVariableExpression visitThisReference(JavaFileParser.ThisReferenceContext ctx) {
+        return new LocalVariableExpression("this", variableScopeStack.peek());
     }
 
     @Override
@@ -415,43 +433,96 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public FunctionCall visitNamespacedFunctionCall(JavaFileParser.NamespacedFunctionCallContext ctx) {
-        String namespace = ctx.IDENTIFIER(0).toString();
+    public Expression visitQualifiedFunctionCall(JavaFileParser.QualifiedFunctionCallContext ctx) {
+        String qualifier = ctx.IDENTIFIER(0).toString();
         String functionName = ctx.IDENTIFIER(1).toString();
         ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
         List<Expression> arguments = expressionList.getExpressionList();
-        return visitFunctionCall(namespace, functionName, arguments, ctx);
+        VariableScope currentScope = variableScopeStack.peek();
+        if (currentScope.hasMappingFor(qualifier)) {
+            return buildMethodCall(qualifier, functionName, arguments, ctx);
+        } else {
+            return visitFunctionCall(qualifier, functionName, arguments, ctx);
+        }
+    }
+
+    private MethodCall buildMethodCall(String localVariableName,
+                                       String methodName,
+                                       List<Expression> argumentsList,
+                                       JavaFileParser.QualifiedFunctionCallContext ctx) {
+        VariableScope currentScope = variableScopeStack.peek();
+        LocalVariableExpression localVariable = new LocalVariableExpression(localVariableName, currentScope);
+        Type variableType = localVariable.getType();
+        List<String> variableTypeStrings = argumentsList
+                .stream()
+                .map(Expression::getType)
+                .map(Type::toString)
+                .collect(Collectors.toList());
+        String errorMessageIfNotFound = "Method " + methodName + "("
+                + String.join(", ", variableTypeStrings) + ")"
+                + " is not defined in static context " + variableType;
+        if (!(variableType instanceof JavaClass)) {
+            ErrorReporting.reportError(errorMessageIfNotFound, ctx, currentClass.toString());
+        }
+        JavaClass javaClass = (JavaClass) variableType;
+        List<Type> argumentTypes = argumentsList
+                .stream()
+                .map(Expression::getType)
+                .collect(Collectors.toList());
+        Integer vtableIndex = javaClass.getVirtualTableIndex(methodName, argumentTypes);
+        if (vtableIndex == null) {
+            ErrorReporting.reportError(errorMessageIfNotFound, ctx, currentClass.toString());
+        }
+        Type returnType = javaClass.getReturnTypeOfMethodAtIndex(vtableIndex);
+
+        // Look up static method signature
+        FunctionTableEntry tableEntry = javaClass.lookupMethod(methodName, argumentTypes);
+
+        return new MethodCall(localVariable, argumentsList, returnType, vtableIndex, tableEntry);
     }
 
     @Override
-    public FunctionCall visitDirectFunctionCall(JavaFileParser.DirectFunctionCallContext ctx) {
+    public FunctionCall visitUnqualifiedFunctionCall(JavaFileParser.UnqualifiedFunctionCallContext ctx) {
         String functionName = ctx.IDENTIFIER().toString();
         ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
         List<Expression> arguments = expressionList.getExpressionList();
-        return visitFunctionCall(nameOfCurrentClass, functionName, arguments, ctx);
+        return visitFunctionCall(currentClass.toString(), functionName, arguments, ctx);
     }
 
-    private FunctionCall visitFunctionCall(String namespace,
+    private FunctionCall visitFunctionCall(String className,
                                            String functionName,
                                            List<Expression> arguments,
                                            ParserRuleContext ctx) {
-        List<Type> argumentTypes = arguments.stream()
+
+        // Look up the class from the name
+        JavaClass javaClass = null;
+        try {
+            javaClass = classTable.lookupClass(className);
+        } catch (UnknownClassException e) {
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+        }
+
+        // Get a list of argument types to identify which function to call
+        List<Type> argumentTypes = arguments
+                .stream()
                 .map(Expression::getType)
                 .collect(Collectors.toList());
+
+        // Look up the function table entry from the function's signature
         FunctionTableEntry tableEntry = null;
         try {
-            tableEntry = functionTable.lookupFunction(namespace, functionName, argumentTypes);
+            tableEntry = functionTable.lookupFunction(javaClass, functionName, argumentTypes);
         } catch (InvalidClassNameException | UndeclaredFunctionException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
 
         assert tableEntry != null;
-        if (tableEntry.canBeCalledFrom(nameOfCurrentClass)) {
+        if (tableEntry.canBeCalledFrom(currentClass)) {
             return new FunctionCall(tableEntry, arguments);
         } else {
             String message = "Illegal call to a private method: method "
-                    + functionName + " is declared private in " + namespace + ".";
-            ParserUtil.reportError(message, ctx);
+                    + functionName + " is declared private in " + javaClass + ".";
+            ErrorReporting.reportError(message, ctx, currentClass.toString());
             return null;
         }
     }
@@ -507,7 +578,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 try {
                     innerScope.registerVariable(name, type);
                 } catch (MultipleVariableDeclarationException e) {
-                    ParserUtil.reportError(e.getMessage(), statementCtx);
+                    ErrorReporting.reportError(e.getMessage(), statementCtx, currentClass.toString());
                 }
             } else if (statementNode instanceof DeclarationAndAssignment) {
                 DeclarationAndAssignment combined = (DeclarationAndAssignment) statementNode;
@@ -516,14 +587,14 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 try {
                     innerScope.registerVariable(name, type);
                 } catch (MultipleVariableDeclarationException e) {
-                    ParserUtil.reportError(e.getMessage(), statementCtx);
+                    ErrorReporting.reportError(e.getMessage(), statementCtx, currentClass.toString());
                 }
                 LocalVariableExpression nameExpression = new LocalVariableExpression(name, innerScope);
                 Assignment assignment = null;
                 try {
                     assignment = new Assignment(nameExpression, combined.getExpression());
                 } catch (IncorrectTypeException e) {
-                    ParserUtil.reportError(e.getMessage(), ctx);
+                    ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
                 }
                 statements.add(assignment);
             } else if (!(statementNode instanceof EmptyStatement)) {
@@ -568,7 +639,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             whileLoop = new WhileLoop(condition, codeBlock);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return whileLoop;
     }
@@ -605,7 +676,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             try {
                 newScope.registerVariable(decAndAssign.getVariableName(), decAndAssign.getType());
             } catch (MultipleVariableDeclarationException e) {
-                ParserUtil.reportError(e.getMessage(), ctx);
+                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
             }
         }
 
@@ -628,14 +699,11 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             forLoop = new ForLoop(initialiser, condition, updater, codeBlock);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return forLoop;
     }
 
-    // TODO: Think about how to handle this
-    // Remember that, normally, a DeclarationAndAssignment is split into two statements.
-    // Really, we want this declaration to be added to the code block belonging to that for loop.
     @Override
     public DeclarationAndAssignment visitForLoopDeclareAndAssign(JavaFileParser.ForLoopDeclareAndAssignContext ctx) {
         return (DeclarationAndAssignment) visit(ctx.variableDeclarationAndAssignment());

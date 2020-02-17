@@ -2,6 +2,7 @@ package ast.structure;
 
 import ast.ASTNode;
 import ast.types.AccessModifier;
+import ast.types.JavaClass;
 import ast.types.Type;
 
 import java.util.List;
@@ -14,7 +15,7 @@ public class ClassMethod implements ASTNode {
     private String name;
     private List<MethodParameter> params;
     private CodeBlock body;
-    private String containingClassName;
+    private JavaClass containingClass;
 
     public ClassMethod(AccessModifier accessModifier,
                        boolean isStatic,
@@ -22,14 +23,14 @@ public class ClassMethod implements ASTNode {
                        String name,
                        List<MethodParameter> params,
                        CodeBlock body,
-                       String containingClassName) {
+                       JavaClass containingClass ) {
         this.accessModifier = accessModifier;
         this.isStatic = isStatic;
         this.returnType = returnType;
         this.name = name;
         this.params = params;
         this.body = body;
-        this.containingClassName = containingClassName;
+        this.containingClass = containingClass;
     }
 
     public AccessModifier getAccessModifier() {
@@ -56,8 +57,8 @@ public class ClassMethod implements ASTNode {
         return body;
     }
 
-    public String getContainingClassName() {
-        return containingClassName;
+    public JavaClass getContainingClass() {
+        return containingClass;
     }
 
     /**

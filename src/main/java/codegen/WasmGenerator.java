@@ -11,8 +11,12 @@ import codegen.generators.LiteralGenerator;
 import codegen.generators.StatementGenerator;
 import util.ClassTable;
 import util.FunctionTable;
+import util.FunctionTableEntry;
+import util.VirtualTable;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 
 public class WasmGenerator {
@@ -20,18 +24,25 @@ public class WasmGenerator {
     public static void compile(List<ClassMethod> methods,
                                CodeEmitter emitter,
                                FunctionTable functionTable,
-                               ClassTable classTable) {
+                               ClassTable classTable,
+                               VirtualTable virtualTable) {
 
         // Notify generators of required state
         ExpressionGenerator.getInstance().setCodeEmitter(emitter);
-        ExpressionGenerator.getInstance().setTables(functionTable, classTable);
+        ExpressionGenerator.getInstance().setTables(functionTable, classTable, virtualTable);
         StatementGenerator.getInstance().setCodeEmitter(emitter);
-        StatementGenerator.getInstance().setTables(functionTable, classTable);
+        StatementGenerator.getInstance().setTables(functionTable, classTable, virtualTable);
         LiteralGenerator.getInstance().setCodeEmitter(emitter);
 
         // Emit start of module
         emitter.emitLine("(module");
         emitter.increaseIndentationLevel();
+
+        // Emit the list of function types
+        emitFunctionTypes(emitter, functionTable);
+
+        // Emit virtual tables
+        emitVirtualTables(emitter, functionTable, virtualTable);
 
         // Emit hand-coded WebAssembly functions
         WasmLibReader.getGlobalsCode().forEach(emitter::emitLine);
@@ -39,7 +50,6 @@ public class WasmGenerator {
 
         // Now compile each method
         for (ClassMethod method : methods) {
-            // TODO: Pass in classTable
             compileMethod(method, functionTable, emitter);
         }
 
@@ -49,35 +59,107 @@ public class WasmGenerator {
         emitter.close();
     }
 
-    private static void compileMethod(ClassMethod method, FunctionTable functionTable, CodeEmitter emitter) {
+    /**
+     * Emits the types of all non-static methods.
+     *
+     * These are required so that indirect function calls can still be
+     * type-checked.
+     *
+     * @param emitter The code emitter
+     * @param functionTable The function table
+     */
+    private static void emitFunctionTypes(CodeEmitter emitter,
+                                          FunctionTable functionTable) {
+
+        for (FunctionTableEntry entry : functionTable.getFunctions()) {
+
+            // No need to emit types for static methods since they will never
+            // be called indirectly.
+            if (entry.getIsStatic()) continue;
+
+            // Build up a string for the type for this function.
+            String typeString = "(type $func_"
+                    + CodeGenUtil.getFunctionNameForOutput(entry, functionTable)
+                    + " (func ";
+
+            // Add parameter for the reference to the object
+            typeString += "(param i32)";
+
+            // Add each parameter to the function
+            String parameters = entry.getParameterTypes()
+                    .stream()
+                    .map(CodeGenUtil::getWasmType)
+                    .filter(Objects::nonNull)
+                    .map(WasmType::toString)
+                    .map(wasmType -> "(param " + wasmType + ")")
+                    .collect(Collectors.joining(" "));
+            if (parameters.length() > 0) {
+                typeString += " " + parameters;
+            }
+
+            // Return type
+            if (!(entry.getReturnType() instanceof VoidType)) {
+                typeString += " (result " + CodeGenUtil.getWasmType(entry.getReturnType()) + ")";
+            }
+
+            // End the line
+            typeString += "))";
+            emitter.emitLine(typeString);
+        }
+    }
+
+    /**
+     * Emits the concatenation of all virtual tables for all classes.
+     *
+     * @param emitter The code emitter
+     * @param functionTable The function table
+     * @param virtualTable The virtual table to emit
+     */
+    private static void emitVirtualTables(CodeEmitter emitter,
+                                          FunctionTable functionTable,
+                                          VirtualTable virtualTable) {
+
+        int numEntries = virtualTable.getEntries().size();
+        emitter.emitLine("(table " + numEntries + " anyfunc)");
+        emitter.increaseIndentationLevel();
+        emitter.emitLine("(elem (i32.const 0)");
+        emitter.increaseIndentationLevel();
+        for (String functionName : virtualTable.getEntriesSymbolic(functionTable)) {
+            emitter.emitLine("$" + functionName);
+        }
+        emitter.decreaseIndentationLevel();
+        emitter.emitLine(")");
+        emitter.decreaseIndentationLevel();
+    }
+
+    private static void compileMethod(ClassMethod method,
+                                      FunctionTable functionTable,
+                                      CodeEmitter emitter) {
 
         // Emit the function declaration
-        StringBuilder line = new StringBuilder();
-        line.append("(func $");
         String functionName = CodeGenUtil.getFunctionNameForOutput(method, functionTable);
-        line.append(functionName);
+        emitter.emitLine("(func $" + functionName);
+        emitter.increaseIndentationLevel();
 
-        // List the parameters
+        // If it's not a static method then pass a reference to the class as the
+        // first parameter.
+        if (!method.isStatic()) {
+            emitter.emitLine("(param $this i32)");
+        }
+
+        // Emit the rest of the parameters
         for (MethodParameter param : method.getParams()) {
-            line.append(" (param $");
-            line.append(param.getParameterName());
-            line.append(" ");
-            Type paramType = param.getType();
-            line.append(CodeGenUtil.getWasmType(paramType));
-            line.append(")");
+            WasmType paramType = CodeGenUtil.getWasmType(param.getType());
+            emitter.emitLine("(param " + paramType + ")");
         }
 
         // Emit return type, unless it's a void return
         Type returnType = method.getReturnType();
         if (!(returnType instanceof VoidType)) {
-            line.append(" (result ");
-            line.append(CodeGenUtil.getWasmType(returnType));
-            line.append(")");
+            emitter.emitLine("(result " + CodeGenUtil.getWasmType(returnType) + ")");
         }
 
-        emitter.emitLine(line.toString());
-        emitter.increaseIndentationLevel();
-
+        // Declare all local variables
         VariableScope bodyScope = method.getBody().getVariableScope();
         for (Type type : bodyScope.getAllKnownAllocatedTypes()) {
             WasmType wasmType = CodeGenUtil.getWasmType(type);
@@ -86,9 +168,9 @@ public class WasmGenerator {
 
         // Now compile the body of the function
         StatementGenerator.getInstance().compileCodeBlock(method.getBody());
-        // TODO: Find way to get this on the same line as the last instruction from above
-        emitter.emitLine(")");
 
+        // End the body
+        emitter.emitLine(")");
         emitter.decreaseIndentationLevel();
 
         // Export the function if it's declared public
