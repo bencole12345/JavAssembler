@@ -41,7 +41,7 @@ public class ClassHierarchyBuilder extends JavaFileBaseVisitor<Void> {
         String className = ctx.className.getText();
         if (seenClasses.containsKey(className)) {
             String message = "Duplicate definition for class " + className;
-            ParserUtil.reportError(message, ctx);
+            ParserUtil.reportError(message);
         }
         seenClasses.put(className, ctx);
 

@@ -12,12 +12,17 @@ public class ParserUtil {
      *
      * @param errorMessage The error to report
      * @param ctx The ParserRuleContext at which the error occurred
+     * @param location The file in which the error occurred
      */
-    static void reportError(String errorMessage, ParserRuleContext ctx) {
-        // TODO: Report which file
+    static void reportError(String errorMessage, ParserRuleContext ctx, String location) {
+        // TODO: Fix error reporting when it's a local variable declaration
+        // (the problem is that we process it at the start of the method so
+        // the error is reported for the line of the method declaration rather
+        // than actually the line of the variable declaration)
         int line = ctx.start.getLine();
         int col = ctx.start.getCharPositionInLine();
-        String message = "Error on line " + line
+        String message = "Error in " + location + ".java"
+                + " on line " + line
                 + ", column " + col
                 + ": " + errorMessage;
         System.err.println(message);

@@ -45,6 +45,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     public ClassMethod visitMethod(JavaFileParser.MethodDefinitionContext ctx, JavaClass containingClass) {
         this.currentClass = containingClass;
+        typeVisitor.setCurrentClass(containingClass);
         return visitMethodDefinition(ctx);
     }
 
@@ -68,7 +69,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             try {
                 scopeForParameters.registerVariable("this", currentClass);
             } catch (MultipleVariableDeclarationException e) {
-                ParserUtil.reportError(e.getMessage(), ctx);
+                ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
             }
         }
 
@@ -79,7 +80,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             try {
                 scopeForParameters.registerVariable(name, type);
             } catch (MultipleVariableDeclarationException e) {
-                ParserUtil.reportError(e.getMessage(), ctx);
+                ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
             }
         }
 
@@ -114,7 +115,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             returnStatement = new ReturnStatement(expression, currentFunctionReturnType);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return returnStatement;
     }
@@ -168,7 +169,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             attributeNameExpression = new AttributeNameExpression(object, attributeName);
         } catch (JavAssemblerException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return buildAssignment(attributeNameExpression, op, rhs, ctx);
     }
@@ -211,7 +212,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             try {
                 rhs = new BinaryOperatorExpression(variableExpression, rhs, bop);
             } catch (IncorrectTypeException e) {
-                ParserUtil.reportError(e.getMessage(), ctx);
+                ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
             }
         }
 
@@ -219,7 +220,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             assignment = new Assignment(variableExpression, rhs);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
 
         return assignment;
@@ -256,7 +257,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             negExpression = new NegateExpression(expression);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return negExpression;
     }
@@ -268,7 +269,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             notExpression = new NotExpression(expression);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return notExpression;
     }
@@ -280,7 +281,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             javaClass = classTable.lookupClass(className);
         } catch (UnknownClassException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
         List<Expression> arguments = expressionList.getExpressionList();
@@ -333,7 +334,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             bopExpression = new BinaryOperatorExpression(left, right, op);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return bopExpression;
     }
@@ -355,7 +356,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             incrementExpression = new VariableIncrementExpression(expression, op);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return incrementExpression;
     }
@@ -377,7 +378,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             incrementExpression = new VariableIncrementExpression(expression, op);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return incrementExpression;
     }
@@ -391,7 +392,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             expression = new BinarySelectorExpression(condition, trueExpression, falseExpression);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return expression;
     }
@@ -409,7 +410,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             result = new AttributeNameExpression(localVariableExpression, attributeName);
         } catch (JavAssemblerException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return result;
     }
@@ -456,7 +457,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 + String.join(", ", variableTypeStrings) + ")"
                 + " is not defined in static context " + variableType;
         if (!(variableType instanceof JavaClass)) {
-            ParserUtil.reportError(errorMessageIfNotFound, ctx);
+            ParserUtil.reportError(errorMessageIfNotFound, ctx, currentClass.toString());
         }
         JavaClass javaClass = (JavaClass) variableType;
         List<Type> argumentTypes = argumentsList
@@ -465,7 +466,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 .collect(Collectors.toList());
         Integer vtableIndex = javaClass.getVirtualTableIndex(methodName, argumentTypes);
         if (vtableIndex == null) {
-            ParserUtil.reportError(errorMessageIfNotFound, ctx);
+            ParserUtil.reportError(errorMessageIfNotFound, ctx, currentClass.toString());
         }
         Type returnType = javaClass.getReturnTypeOfMethodAtIndex(vtableIndex);
 
@@ -493,7 +494,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             javaClass = classTable.lookupClass(className);
         } catch (UnknownClassException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
 
         // Get a list of argument types to identify which function to call
@@ -507,7 +508,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             tableEntry = functionTable.lookupFunction(javaClass, functionName, argumentTypes);
         } catch (InvalidClassNameException | UndeclaredFunctionException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
 
         assert tableEntry != null;
@@ -516,7 +517,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         } else {
             String message = "Illegal call to a private method: method "
                     + functionName + " is declared private in " + javaClass + ".";
-            ParserUtil.reportError(message, ctx);
+            ParserUtil.reportError(message, ctx, currentClass.toString());
             return null;
         }
     }
@@ -572,7 +573,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 try {
                     innerScope.registerVariable(name, type);
                 } catch (MultipleVariableDeclarationException e) {
-                    ParserUtil.reportError(e.getMessage(), statementCtx);
+                    ParserUtil.reportError(e.getMessage(), statementCtx, currentClass.toString());
                 }
             } else if (statementNode instanceof DeclarationAndAssignment) {
                 DeclarationAndAssignment combined = (DeclarationAndAssignment) statementNode;
@@ -581,14 +582,14 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 try {
                     innerScope.registerVariable(name, type);
                 } catch (MultipleVariableDeclarationException e) {
-                    ParserUtil.reportError(e.getMessage(), statementCtx);
+                    ParserUtil.reportError(e.getMessage(), statementCtx, currentClass.toString());
                 }
                 LocalVariableExpression nameExpression = new LocalVariableExpression(name, innerScope);
                 Assignment assignment = null;
                 try {
                     assignment = new Assignment(nameExpression, combined.getExpression());
                 } catch (IncorrectTypeException e) {
-                    ParserUtil.reportError(e.getMessage(), ctx);
+                    ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
                 }
                 statements.add(assignment);
             } else if (!(statementNode instanceof EmptyStatement)) {
@@ -633,7 +634,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             whileLoop = new WhileLoop(condition, codeBlock);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return whileLoop;
     }
@@ -670,7 +671,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             try {
                 newScope.registerVariable(decAndAssign.getVariableName(), decAndAssign.getType());
             } catch (MultipleVariableDeclarationException e) {
-                ParserUtil.reportError(e.getMessage(), ctx);
+                ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
             }
         }
 
@@ -693,7 +694,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         try {
             forLoop = new ForLoop(initialiser, condition, updater, codeBlock);
         } catch (IncorrectTypeException e) {
-            ParserUtil.reportError(e.getMessage(), ctx);
+            ParserUtil.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return forLoop;
     }
