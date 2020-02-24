@@ -9,6 +9,7 @@ import ast.statements.*;
 import ast.structure.*;
 import ast.types.AccessModifier;
 import ast.types.JavaClass;
+import ast.types.ObjectArray;
 import ast.types.Type;
 import errors.*;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -291,15 +292,28 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
     @Override
     public NewArrayExpression visitNewArrayExpr(JavaFileParser.NewArrayExprContext ctx) {
+
+        // Identify the base element type
         String identifier = ctx.IDENTIFIER().getText();
-        NewArrayExpression result = null;
+        Type currentType = null;
         try {
-            JavaClass javaClass = classTable.lookupClass(identifier);
-            Expression lengthExpression = (Expression) visit(ctx.expr());
-            result = new NewArrayExpression(javaClass, lengthExpression);
-        } catch (JavAssemblerException e) {
+            currentType = classTable.lookupClass(identifier);
+        } catch (UnknownClassException e) {
             ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
+
+        // Iterate over each axis of the array
+        NewArrayExpression result = null;
+        for (int i = 0; i < ctx.expr().size(); i++) {
+            Expression lengthExpression = (Expression) visit(ctx.expr(i));
+            try {
+                result = new NewArrayExpression(currentType, lengthExpression);
+            } catch (IncorrectTypeException e) {
+                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+            }
+            currentType = new ObjectArray(currentType);
+        }
+
         return result;
     }
 
@@ -412,16 +426,25 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public ArrayLookupExpression visitArrayLookupExpr(JavaFileParser.ArrayLookupExprContext ctx) {
-        Expression array = (Expression) visit(ctx.expr(0));
-        Expression index = (Expression) visit(ctx.expr(1));
-        ArrayLookupExpression result = null;
-        try {
-            result = new ArrayLookupExpression(array, index);
-        } catch (IncorrectTypeException e) {
-            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+    public ASTNode visitArrayLookupExpr(JavaFileParser.ArrayLookupExprContext ctx) {
+
+        // Start with the array itself
+        Expression lookupExpression = (Expression) visit(ctx.expr(0));
+
+        // Recurse over the indices
+        // For example, for 'a[1][2]' this loop will run twice
+        // We also get a guarantee from the grammar that it will run at least
+        // once.
+        for (int i = 1; i < ctx.expr().size(); i++) {
+            Expression indexExpression = (Expression) visit(ctx.expr(i));
+            try {
+                lookupExpression = new ArrayLookupExpression(lookupExpression, indexExpression);
+            } catch (IncorrectTypeException e) {
+                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+            }
         }
-        return result;
+
+        return lookupExpression;
     }
 
     @Override

@@ -4,6 +4,7 @@ import ast.structure.ClassMethod;
 import ast.types.JavaClass;
 import codegen.CodeEmitter;
 import codegen.WasmGenerator;
+import errors.SyntaxErrorException;
 import parser.*;
 
 import java.io.IOException;
@@ -17,7 +18,11 @@ public class Compilation {
         // First use ANTLR to generate a parse tree for every file.
         List<JavaFileParser.FileContext> parseTrees = new ArrayList<>();
         for (String fileName : fileNames) {
-            parseTrees.add(ParserWrapper.parse(fileName));
+            try {
+                parseTrees.add(ParserWrapper.parse(fileName));
+            } catch (SyntaxErrorException e) {
+                ErrorReporting.reportError(e.getMessage());
+            }
         }
 
         // First determine the class hierarchy so that we can derive an order

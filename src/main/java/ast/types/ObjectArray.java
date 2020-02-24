@@ -21,7 +21,7 @@ public class ObjectArray extends HeapObjectReference {
         if (!(other instanceof ObjectArray))
             return false;
         ObjectArray otherArray = (ObjectArray) other;
-        return elementType.equals(otherArray.elementType);
+        return elementType.isSubtypeOf(otherArray.elementType);
     }
 
     @Override

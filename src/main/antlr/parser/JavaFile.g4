@@ -72,7 +72,7 @@ expr
     | MINUS expr                                        # NegateExpr
     | NOT expr                                          # NotExpr
     | NEW IDENTIFIER LPAREN functionArgs RPAREN         # NewObjectExpr
-    | NEW IDENTIFIER LSQBRACKET expr RSQBRACKET         # NewArrayExpr
+    | NEW IDENTIFIER (LSQBRACKET expr RSQBRACKET)+      # NewArrayExpr
     | variableIncrementExpr                             # IncrementExpr
     | expr op=(MULTIPLY|DIVIDE) expr                    # InfixExpr
     | expr op=(PLUS|MINUS) expr                         # InfixExpr
@@ -83,7 +83,7 @@ expr
                 | GREATER_THAN
                 | GREATER_THAN_EQUAL_TO) expr           # InfixExpr
     | expr QUESTION_MARK expr COLON expr SEMICOLON      # BinarySelectorExpr
-    | expr LSQBRACKET expr RSQBRACKET                   # ArrayLookupExpr
+    | expr (LSQBRACKET expr RSQBRACKET)+                # ArrayLookupExpr
     | variableName DOT IDENTIFIER
             LPAREN functionArgs RPAREN                  # MethodCallExpr
     | variableName DOT variableName                     # AttributeLookupExpr
