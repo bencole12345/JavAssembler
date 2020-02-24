@@ -1,22 +1,26 @@
 package ast.types;
 
-public class ObjectArrayType extends HeapObjectReference {
+public class ObjectArray extends HeapObjectReference {
 
     /**
      * The type of each element.
      */
     private Type elementType;
 
-    public ObjectArrayType(Type elementType) {
+    public ObjectArray(Type elementType) {
         this.elementType = elementType;
+    }
+
+    public Type getElementType() {
+        return elementType;
     }
 
     @Override
     public boolean isSubtypeOf(Type other) {
         // TODO: Implement correct subtyping behaviour (look up whether should be covariant vs contravariant)
-        if (!(other instanceof ObjectArrayType))
+        if (!(other instanceof ObjectArray))
             return false;
-        ObjectArrayType otherArray = (ObjectArrayType) other;
+        ObjectArray otherArray = (ObjectArray) other;
         return elementType.equals(otherArray.elementType);
     }
 

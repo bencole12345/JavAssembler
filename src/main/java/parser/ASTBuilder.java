@@ -412,6 +412,19 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
+    public ArrayLookupExpression visitArrayLookupExpr(JavaFileParser.ArrayLookupExprContext ctx) {
+        Expression array = (Expression) visit(ctx.expr(0));
+        Expression index = (Expression) visit(ctx.expr(1));
+        ArrayLookupExpression result = null;
+        try {
+            result = new ArrayLookupExpression(array, index);
+        } catch (IncorrectTypeException e) {
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+        }
+        return result;
+    }
+
+    @Override
     public LocalVariableExpression visitVariableNameExpr(JavaFileParser.VariableNameExprContext ctx) {
         return (LocalVariableExpression) visit(ctx.variableName());
     }

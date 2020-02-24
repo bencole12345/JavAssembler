@@ -83,6 +83,7 @@ expr
                 | GREATER_THAN
                 | GREATER_THAN_EQUAL_TO) expr           # InfixExpr
     | expr QUESTION_MARK expr COLON expr SEMICOLON      # BinarySelectorExpr
+    | expr LSQBRACKET expr RSQBRACKET                   # ArrayLookupExpr
     | variableName DOT IDENTIFIER
             LPAREN functionArgs RPAREN                  # MethodCallExpr
     | variableName DOT variableName                     # AttributeLookupExpr

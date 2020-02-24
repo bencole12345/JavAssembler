@@ -1,6 +1,6 @@
 package ast.expressions;
 
-import ast.types.ObjectArrayType;
+import ast.types.ObjectArray;
 import ast.types.PrimitiveType;
 import ast.types.Type;
 import errors.IncorrectTypeException;
@@ -9,7 +9,7 @@ public class NewArrayExpression implements Expression {
 
     private Type elementType;
     private Expression lengthExpression;
-    private ObjectArrayType arrayType;
+    private ObjectArray arrayType;
 
     public NewArrayExpression(Type elementType, Expression lengthExpression) throws IncorrectTypeException {
         if (!lengthExpression.getType().equals(PrimitiveType.Int)) {
@@ -18,7 +18,7 @@ public class NewArrayExpression implements Expression {
         }
         this.elementType = elementType;
         this.lengthExpression = lengthExpression;
-        arrayType = new ObjectArrayType(elementType);
+        arrayType = new ObjectArray(elementType);
     }
 
     public Type getElementType() {

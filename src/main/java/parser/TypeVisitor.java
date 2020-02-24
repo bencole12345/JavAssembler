@@ -110,6 +110,6 @@ public class TypeVisitor extends JavaFileBaseVisitor<Type> {
     @Override
     public Type visitArrayType(JavaFileParser.ArrayTypeContext ctx) {
         Type elementType = visit(ctx.type());
-        return new ObjectArrayType(elementType);
+        return new ObjectArray(elementType);
     }
 }

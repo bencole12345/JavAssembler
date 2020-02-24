@@ -67,6 +67,7 @@ public class Test {
 
     public static int testArrays() {
         ParentClass[] parents = new ParentClass[4];
+        ParentClass parent = parents[2];
     }
 
 }
