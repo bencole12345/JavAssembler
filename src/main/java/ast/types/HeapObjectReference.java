@@ -1,6 +1,6 @@
 package ast.types;
 
-public abstract class JavaClassReference implements Type {
+public abstract class HeapObjectReference implements Type {
     @Override
     public int getSize() {
         // References are always 32-bits

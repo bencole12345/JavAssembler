@@ -92,9 +92,9 @@ public class TypeVisitor extends JavaFileBaseVisitor<Type> {
     }
 
     @Override
-    public JavaClassReference visitNonPrimitiveType(JavaFileParser.NonPrimitiveTypeContext ctx) {
+    public HeapObjectReference visitNonPrimitiveType(JavaFileParser.NonPrimitiveTypeContext ctx) {
         String className = ctx.IDENTIFIER().getText();
-        JavaClassReference reference = null;
+        HeapObjectReference reference = null;
         if (mode == Mode.Validated) {
             try {
                 reference = classTable.lookupClass(className);
@@ -105,5 +105,11 @@ public class TypeVisitor extends JavaFileBaseVisitor<Type> {
             reference = new UnvalidatedJavaClassReference(className);
         }
         return reference;
+    }
+
+    @Override
+    public Type visitArrayType(JavaFileParser.ArrayTypeContext ctx) {
+        Type elementType = visit(ctx.type());
+        return new ObjectArrayType(elementType);
     }
 }

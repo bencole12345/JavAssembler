@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 /**
  * Represents a known Java class.
  */
-public class JavaClass extends JavaClassReference {
+public class JavaClass extends HeapObjectReference {
 
     /**
      * The name of the class

@@ -290,6 +290,20 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
+    public NewArrayExpression visitNewArrayExpr(JavaFileParser.NewArrayExprContext ctx) {
+        String identifier = ctx.IDENTIFIER().getText();
+        NewArrayExpression result = null;
+        try {
+            JavaClass javaClass = classTable.lookupClass(identifier);
+            Expression lengthExpression = (Expression) visit(ctx.expr());
+            result = new NewArrayExpression(javaClass, lengthExpression);
+        } catch (JavAssemblerException e) {
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+        }
+        return result;
+    }
+
+    @Override
     public ASTNode visitIncrementExpr(JavaFileParser.IncrementExprContext ctx) {
         return super.visitIncrementExpr(ctx);
     }

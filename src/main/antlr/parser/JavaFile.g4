@@ -72,6 +72,7 @@ expr
     | MINUS expr                                        # NegateExpr
     | NOT expr                                          # NotExpr
     | NEW IDENTIFIER LPAREN functionArgs RPAREN         # NewObjectExpr
+    | NEW IDENTIFIER LSQBRACKET expr RSQBRACKET         # NewArrayExpr
     | variableIncrementExpr                             # IncrementExpr
     | expr op=(MULTIPLY|DIVIDE) expr                    # InfixExpr
     | expr op=(PLUS|MINUS) expr                         # InfixExpr
@@ -156,7 +157,8 @@ accessModifier
     ;
 
 type
-    : VOID                                                             # VoidType
+    : type LSQBRACKET RSQBRACKET                                       # ArrayType
+    | VOID                                                             # VoidType
     | primitiveType=(INT|SHORT|LONG|BYTE|CHAR|BOOLEAN|FLOAT|DOUBLE)    # PrimitiveType
     | nonPrimitiveType=IDENTIFIER                                      # NonPrimitiveType
     ;

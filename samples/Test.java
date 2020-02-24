@@ -65,4 +65,8 @@ public class Test {
         return parent.x;
     }
 
+    public static int testArrays() {
+        ParentClass[] parents = new ParentClass[4];
+    }
+
 }
