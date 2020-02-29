@@ -18,10 +18,11 @@ public interface Type extends ASTNode {
     /**
      * Reports the total memory size of the type, in bytes.
      *
-     * This should be the total number of bytes required to store a type - not
-     * a reference to that type.
+     * For heap objects, this should be the size of the reference to the object,
+     * not the size of the object of itself.
      *
      * @return The memory size of the type, in bytes
      */
-    int getSize();
+    int getStackSize();
+
 }

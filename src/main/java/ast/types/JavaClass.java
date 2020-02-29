@@ -343,7 +343,7 @@ public class JavaClass extends HeapObjectReference {
         }
 
         public int getSize() {
-            return type.getSize();
+            return type.getStackSize();
         }
     }
 

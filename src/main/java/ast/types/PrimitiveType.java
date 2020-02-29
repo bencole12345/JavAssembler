@@ -54,8 +54,13 @@ public enum PrimitiveType implements Type {
      *
      * @return The size of the type, in bytes
      */
-    public int getSize() {
-        return (sizeBits > 32) ? 8 : 4;
+//    public int getStackSize() {
+//        return (sizeBits > 32) ? 8 : 4;
+//    }
+
+    @Override
+    public int getStackSize() {
+        return sizeBits / 8;
     }
 
     @Override

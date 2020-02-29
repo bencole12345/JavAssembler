@@ -59,6 +59,11 @@ assignment
             | PLUS_EQUALS | MINUS_EQUALS
             | MULTIPLY_EQUALS | DIVIDE_EQUALS)
         expr                                        # AttributeAssignment
+    | expr LSQBRACKET expr RSQBRACKET
+        op=(EQUALS
+            | PLUS_EQUALS | MINUS_EQUALS
+            | MULTIPLY_EQUALS | DIVIDE_EQUALS)
+        expr                                        # ArrayIndexAssignment
     ;
 
 variableDeclarationAndAssignment

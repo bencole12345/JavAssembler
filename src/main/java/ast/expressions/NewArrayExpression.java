@@ -1,5 +1,6 @@
 package ast.expressions;
 
+import ast.types.HeapObjectReference;
 import ast.types.ObjectArray;
 import ast.types.PrimitiveType;
 import ast.types.Type;
@@ -7,7 +8,7 @@ import errors.IncorrectTypeException;
 
 public class NewArrayExpression implements Expression {
 
-    private Type elementType;
+    private HeapObjectReference elementType;
     private Expression lengthExpression;
     private ObjectArray arrayType;
 
@@ -16,12 +17,16 @@ public class NewArrayExpression implements Expression {
             String message = "Invalid type: array length must be an integer.";
             throw new IncorrectTypeException(message);
         }
-        this.elementType = elementType;
+        if (!(elementType instanceof HeapObjectReference)) {
+            String message = "Invalid type: cannot have array of primitive types.";
+            throw new IncorrectTypeException(message);
+        }
+        this.elementType = (HeapObjectReference) elementType;
         this.lengthExpression = lengthExpression;
         arrayType = new ObjectArray(elementType);
     }
 
-    public Type getElementType() {
+    public HeapObjectReference getElementType() {
         return elementType;
     }
 

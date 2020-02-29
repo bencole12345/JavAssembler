@@ -5,12 +5,12 @@ import ast.types.PrimitiveType;
 import ast.types.Type;
 import errors.IncorrectTypeException;
 
-public class ArrayLookupExpression implements VariableExpression {
+public class ArrayIndexExpression implements VariableExpression {
 
     private Expression arrayExpression;
     private Expression indexExpression;
 
-    public ArrayLookupExpression(Expression arrayExpression, Expression indexExpression) throws IncorrectTypeException {
+    public ArrayIndexExpression(Expression arrayExpression, Expression indexExpression) throws IncorrectTypeException {
         if (!(arrayExpression.getType() instanceof ObjectArray)) {
             String message = "Cannot perform indexed lookup on non-array type "
                     + arrayExpression.getType();

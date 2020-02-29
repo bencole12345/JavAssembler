@@ -26,7 +26,7 @@ public class UnvalidatedJavaClassReference extends HeapObjectReference {
     }
 
     @Override
-    public int getSize() {
+    public int getStackSize() {
         // All references are 32-bit
         return 4;
     }

@@ -67,6 +67,7 @@ fragment TRUE: 'true' ;
 fragment FALSE: 'false' ;
 
 fragment DIGITS: [0-9]+ ;
+// TODO: Fix the fact that '2-1' parses to ['2', '-1'] (it sees -1 as a SIGNED_INTEGER)
 fragment SIGNED_INTEGER: MINUS? DIGITS ;
 fragment DECIMAL: DIGITS DOT DIGITS ;
 

@@ -2,8 +2,8 @@ package ast.types;
 
 public abstract class HeapObjectReference implements Type {
     @Override
-    public int getSize() {
+    public int getStackSize() {
         // References are always 32-bits
-        return 32;
+        return 4;
     }
 }

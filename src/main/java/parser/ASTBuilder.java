@@ -176,6 +176,23 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         return buildAssignment(attributeNameExpression, op, rhs, ctx);
     }
 
+    @Override
+    public ASTNode visitArrayIndexAssignment(JavaFileParser.ArrayIndexAssignmentContext ctx) {
+        Expression arrayExpression = (Expression) visit(ctx.expr(0));
+        Expression indexExpression = (Expression) visit(ctx.expr(1));
+        Expression rhs = (Expression) visit(ctx.expr(2));
+        Token op = ctx.op;
+
+        ArrayIndexExpression lhs = null;
+        try {
+            lhs = new ArrayIndexExpression(arrayExpression, indexExpression);
+        } catch (IncorrectTypeException e) {
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+        }
+
+        return buildAssignment(lhs, op, rhs, ctx);
+    }
+
     private Assignment buildAssignment(VariableExpression variableExpression,
                                        Token op,
                                        Expression rhs,
@@ -438,7 +455,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         for (int i = 1; i < ctx.expr().size(); i++) {
             Expression indexExpression = (Expression) visit(ctx.expr(i));
             try {
-                lookupExpression = new ArrayLookupExpression(lookupExpression, indexExpression);
+                lookupExpression = new ArrayIndexExpression(lookupExpression, indexExpression);
             } catch (IncorrectTypeException e) {
                 ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
             }
