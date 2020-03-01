@@ -19,11 +19,12 @@ public class ObjectArray extends HeapObjectReference {
 
     @Override
     public boolean isSubtypeOf(Type other) {
-        // TODO: Implement correct subtyping behaviour (look up whether should be covariant vs contravariant)
+        // TODO: Implement correct covariant array subtyping
+        // and check types on write
         if (!(other instanceof ObjectArray))
             return false;
         ObjectArray otherArray = (ObjectArray) other;
-        return elementType.isSubtypeOf(otherArray.elementType);
+        return elementType.equals(otherArray.elementType);
     }
 
     @Override
