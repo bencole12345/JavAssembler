@@ -8,6 +8,7 @@ import errors.IncorrectTypeException;
 
 public class VariableIncrementExpression implements Expression, Statement {
 
+    // TODO: Swap to VariableExpression
     private LocalVariableExpression localVariableExpression;
     private IncrementOp incrementOp;
 

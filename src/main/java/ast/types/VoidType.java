@@ -14,7 +14,7 @@ public class VoidType implements Type {
     }
 
     @Override
-    public int getSize() {
+    public int getStackSize() {
         return 0;
     }
 }

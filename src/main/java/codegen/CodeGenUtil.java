@@ -54,8 +54,8 @@ public class CodeGenUtil {
      * @param codeEmitter The CodeEmitter to use
      */
     public static void emitRangeRestrictionCode(PrimitiveType type, CodeEmitter codeEmitter) {
-        if (type.getSize() != 4 && type.getSize() != 8) {
-            int mask = (1 << (type.getSize() * 8)) - 1;
+        if (type.getStackSize() != 4 && type.getStackSize() != 8) {
+            int mask = (1 << (type.getStackSize() * 8)) - 1;
             IntLiteral literal = new IntLiteral(mask);
             LiteralGenerator.getInstance().compileLiteralValue(literal);
             codeEmitter.emitLine("i32.and");

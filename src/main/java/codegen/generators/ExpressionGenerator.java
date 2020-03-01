@@ -72,6 +72,10 @@ public class ExpressionGenerator {
             compileVariableIncrementExpression((VariableIncrementExpression) expression, scope);
         } else if (expression instanceof NewObjectExpression) {
             compileNewObjectExpression((NewObjectExpression) expression, scope);
+        } else if (expression instanceof NewArrayExpression) {
+            compileNewArrayExpression((NewArrayExpression) expression, scope);
+        } else if (expression instanceof ArrayIndexExpression) {
+            compileArrayLookupExpression((ArrayIndexExpression) expression, scope);
         }
     }
 
@@ -298,8 +302,45 @@ public class ExpressionGenerator {
         int vtableIndex = virtualTable.getVirtualTablePosition(javaClass);
         emitter.emitLine("i32.const " + size);
         emitter.emitLine("i32.const " + vtableIndex);
-        emitter.emitLine("call $alloc");
+        emitter.emitLine("call $alloc_and_set_vtable");
         // TODO: Initialise variables
         // TODO: Invoke constructor
+    }
+
+    public void compileNewArrayExpression(NewArrayExpression newArrayExpression,
+                                          VariableScope scope) {
+        // TODO: Add the size for the header overhead to the argument passed
+        // to alloc
+
+        // Determine how big the array will be, by evaluating the expression
+        // for its length and multiplying by element size, which will always
+        // be 4 since arrays can only hold pointers.
+        emitter.emitLine("i32.const 4");
+        compileExpression(newArrayExpression.getLengthExpression(), scope);
+        emitter.emitLine("i32.mul");
+
+        // Now allocate the memory
+        emitter.emitLine("call $alloc");
+    }
+
+    private void compileArrayLookupExpression(ArrayIndexExpression lookupExpression,
+                                              VariableScope scope) {
+
+        // Put the address of the start of the array on the stack
+        Expression array = lookupExpression.getArrayExpression();
+        compileExpression(array, scope);
+
+        // Add 4 * index to this value to get the address to look up
+        // (because references are all 32-bit/4-byte, and arrays can only
+        // hold references)
+        Expression index = lookupExpression.getIndexExpression();
+        compileExpression(index, scope);
+        emitter.emitLine("i32.const 4");
+        emitter.emitLine("i32.mul"); // Because references are 4 bytes
+        emitter.emitLine("i32.add");
+
+        // Look up the value at this address
+        WasmType type = CodeGenUtil.getWasmType(lookupExpression.getType());
+        emitter.emitLine(type + ".load");
     }
 }

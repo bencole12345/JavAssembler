@@ -9,6 +9,7 @@ import ast.statements.*;
 import ast.structure.*;
 import ast.types.AccessModifier;
 import ast.types.JavaClass;
+import ast.types.ObjectArray;
 import ast.types.Type;
 import errors.*;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -175,6 +176,23 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         return buildAssignment(attributeNameExpression, op, rhs, ctx);
     }
 
+    @Override
+    public ASTNode visitArrayIndexAssignment(JavaFileParser.ArrayIndexAssignmentContext ctx) {
+        Expression arrayExpression = (Expression) visit(ctx.expr(0));
+        Expression indexExpression = (Expression) visit(ctx.expr(1));
+        Expression rhs = (Expression) visit(ctx.expr(2));
+        Token op = ctx.op;
+
+        ArrayIndexExpression lhs = null;
+        try {
+            lhs = new ArrayIndexExpression(arrayExpression, indexExpression);
+        } catch (IncorrectTypeException e) {
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+        }
+
+        return buildAssignment(lhs, op, rhs, ctx);
+    }
+
     private Assignment buildAssignment(VariableExpression variableExpression,
                                        Token op,
                                        Expression rhs,
@@ -290,6 +308,33 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
+    public NewArrayExpression visitNewArrayExpr(JavaFileParser.NewArrayExprContext ctx) {
+
+        // Identify the base element type
+        String identifier = ctx.IDENTIFIER().getText();
+        Type currentType = null;
+        try {
+            currentType = classTable.lookupClass(identifier);
+        } catch (UnknownClassException e) {
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+        }
+
+        // Iterate over each axis of the array
+        NewArrayExpression result = null;
+        for (int i = 0; i < ctx.expr().size(); i++) {
+            Expression lengthExpression = (Expression) visit(ctx.expr(i));
+            try {
+                result = new NewArrayExpression(currentType, lengthExpression);
+            } catch (IncorrectTypeException e) {
+                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+            }
+            currentType = new ObjectArray(currentType);
+        }
+
+        return result;
+    }
+
+    @Override
     public ASTNode visitIncrementExpr(JavaFileParser.IncrementExprContext ctx) {
         return super.visitIncrementExpr(ctx);
     }
@@ -395,6 +440,28 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
         return expression;
+    }
+
+    @Override
+    public ASTNode visitArrayLookupExpr(JavaFileParser.ArrayLookupExprContext ctx) {
+
+        // Start with the array itself
+        Expression lookupExpression = (Expression) visit(ctx.expr(0));
+
+        // Recurse over the indices
+        // For example, for 'a[1][2]' this loop will run twice
+        // We also get a guarantee from the grammar that it will run at least
+        // once.
+        for (int i = 1; i < ctx.expr().size(); i++) {
+            Expression indexExpression = (Expression) visit(ctx.expr(i));
+            try {
+                lookupExpression = new ArrayIndexExpression(lookupExpression, indexExpression);
+            } catch (IncorrectTypeException e) {
+                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+            }
+        }
+
+        return lookupExpression;
     }
 
     @Override

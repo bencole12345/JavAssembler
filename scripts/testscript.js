@@ -65,7 +65,21 @@ const runTests = async () => {
     result = module.Test_testThis();
     passFail = result == 2 ? "PASS" : "FAIL";
     console.log(passFail + ": 'this' keyword test");
-    
+
+    // Test array set/get
+    result = module.Test_testArrays();
+    passFail = result ? "PASS" : "FAIL";
+    console.log(passFail + ": Array set/get");
+
+    // Test nested arrays
+    result = module.Test_testNestedArrays();
+    passFail = result ? "PASS" : "FAIL";
+    console.log(passFail + ": Nested arrays");
+
+    // Test passing array as reference
+    result = module.Test_testPassArrayReference();
+    passFail = result ? "PASS" : "FAIL";
+    console.log(passFail + ": Pass array as reference");
 };
 
 runTests();

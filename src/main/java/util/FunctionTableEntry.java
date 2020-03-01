@@ -89,4 +89,13 @@ public class FunctionTableEntry {
                 .collect(Collectors.toList());
         return getQualifiedName() + "(" + String.join(", ", typeStrings) + ")";
     }
+
+    public void validateTypes(ClassTable classTable) {
+        for (int i = 0; i < parameterTypes.size(); i++) {
+            Type type = parameterTypes.get(i);
+            Type validated = classTable.validateType(type);
+            parameterTypes.set(i, validated);
+        }
+        returnType = classTable.validateType(returnType);
+    }
 }

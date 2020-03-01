@@ -65,4 +65,35 @@ public class Test {
         return parent.x;
     }
 
+    public static boolean testArrays() {
+        Integer[] array = new Integer[5];
+        Integer firstElement = new Integer();
+        firstElement.value = 5;
+        array[1] = firstElement;
+        Integer readFromArray = array[1];
+        return readFromArray.value == 5;
+    }
+
+    public static boolean testNestedArrays() {
+        Integer[][] nestedList = new Integer[2][2];
+        Integer element = new Integer();
+        element.value = 5;
+        nestedList[1][0] = element;
+        Integer extracted = nestedList[1][0];
+        return extracted.value == 5;
+    }
+
+    public static boolean testPassArrayReference() {
+        Integer[] myList = new Integer[5];
+        Integer first = new Integer();
+        first.value = 10;
+        myList[0] = first;
+        Integer fromFunction = getFirstElement(myList);
+        return fromFunction.value == 10;
+    }
+
+    private static Integer getFirstElement(Integer[] list) {
+        return list[0];
+    }
+
 }

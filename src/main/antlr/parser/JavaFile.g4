@@ -59,6 +59,11 @@ assignment
             | PLUS_EQUALS | MINUS_EQUALS
             | MULTIPLY_EQUALS | DIVIDE_EQUALS)
         expr                                        # AttributeAssignment
+    | expr LSQBRACKET expr RSQBRACKET
+        op=(EQUALS
+            | PLUS_EQUALS | MINUS_EQUALS
+            | MULTIPLY_EQUALS | DIVIDE_EQUALS)
+        expr                                        # ArrayIndexAssignment
     ;
 
 variableDeclarationAndAssignment
@@ -72,6 +77,7 @@ expr
     | MINUS expr                                        # NegateExpr
     | NOT expr                                          # NotExpr
     | NEW IDENTIFIER LPAREN functionArgs RPAREN         # NewObjectExpr
+    | NEW IDENTIFIER (LSQBRACKET expr RSQBRACKET)+      # NewArrayExpr
     | variableIncrementExpr                             # IncrementExpr
     | expr op=(MULTIPLY|DIVIDE) expr                    # InfixExpr
     | expr op=(PLUS|MINUS) expr                         # InfixExpr
@@ -81,7 +87,11 @@ expr
                 | LESS_THAN_EQUAL_TO
                 | GREATER_THAN
                 | GREATER_THAN_EQUAL_TO) expr           # InfixExpr
-    | expr QUESTION_MARK expr COLON expr SEMICOLON      # BinarySelectorExpr
+    | expr QUESTION_MARK expr COLON expr                # BinarySelectorExpr
+    | expr (LSQBRACKET expr RSQBRACKET)+                # ArrayLookupExpr
+    // TODO: See if I can change variableName -> expr
+    // At the moment it's not possible to do things like
+    // myArray[0].x, have to do T temp = myArray[0]; temp.x
     | variableName DOT IDENTIFIER
             LPAREN functionArgs RPAREN                  # MethodCallExpr
     | variableName DOT variableName                     # AttributeLookupExpr
@@ -156,7 +166,8 @@ accessModifier
     ;
 
 type
-    : VOID                                                             # VoidType
+    : type LSQBRACKET RSQBRACKET                                       # ArrayType
+    | VOID                                                             # VoidType
     | primitiveType=(INT|SHORT|LONG|BYTE|CHAR|BOOLEAN|FLOAT|DOUBLE)    # PrimitiveType
     | nonPrimitiveType=IDENTIFIER                                      # NonPrimitiveType
     ;

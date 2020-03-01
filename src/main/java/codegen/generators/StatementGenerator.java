@@ -4,6 +4,7 @@ import ast.expressions.*;
 import ast.statements.*;
 import ast.structure.CodeBlock;
 import ast.structure.VariableScope;
+import ast.types.ObjectArray;
 import ast.types.Type;
 import ast.types.VoidType;
 import codegen.CodeEmitter;
@@ -72,26 +73,64 @@ public class StatementGenerator {
 
     private void compileAssignment(Assignment assignment,
                                    VariableScope scope) {
-        Expression expression = assignment.getExpression();
+        Expression value = assignment.getExpression();
         VariableExpression variableExpression = assignment.getVariableExpression();
         if (variableExpression instanceof LocalVariableExpression) {
-            ExpressionGenerator.getInstance().compileExpression(expression, scope);
-            LocalVariableExpression localVariable = (LocalVariableExpression) variableExpression;
-            int registerNum = scope.lookupRegisterIndexOfVariable(localVariable.getVariableName());
-            emitter.emitLine("local.set " + registerNum);
+            compileLocalVariableAssignment((LocalVariableExpression) variableExpression, value, scope);
         } else if (variableExpression instanceof AttributeNameExpression) {
-            AttributeNameExpression attributeNameExpression = (AttributeNameExpression) variableExpression;
-            LocalVariableExpression localVariable = attributeNameExpression.getObject();
-            int registerNum = scope.lookupRegisterIndexOfVariable(localVariable.getVariableName());
-            emitter.emitLine("local.get " + registerNum);
-            int offset = attributeNameExpression.getMemoryOffset();
-            emitter.emitLine("i32.const " + offset);
-            emitter.emitLine("i32.add");
-            ExpressionGenerator.getInstance().compileExpression(expression, scope);
-            Type attributeType = attributeNameExpression.getType();
-            WasmType wasmType = CodeGenUtil.getWasmType(attributeType);
-            emitter.emitLine(wasmType + ".store");
+            compileAttributeNameAssignment((AttributeNameExpression) variableExpression, value, scope);
+        } else if (variableExpression instanceof ArrayIndexExpression) {
+            compileArrayIndexAssignment((ArrayIndexExpression) variableExpression, value, scope);
         }
+    }
+
+    private void compileLocalVariableAssignment(LocalVariableExpression localVariable,
+                                                Expression value,
+                                                VariableScope scope) {
+        ExpressionGenerator.getInstance().compileExpression(value, scope);
+        int registerNum = scope.lookupRegisterIndexOfVariable(localVariable.getVariableName());
+        emitter.emitLine("local.set " + registerNum);
+    }
+
+    private void compileAttributeNameAssignment(AttributeNameExpression attributeNameExpression,
+                                                Expression value,
+                                                VariableScope scope) {
+        LocalVariableExpression localVariable = attributeNameExpression.getObject();
+        int registerNum = scope.lookupRegisterIndexOfVariable(localVariable.getVariableName());
+        emitter.emitLine("local.get " + registerNum);
+        int offset = attributeNameExpression.getMemoryOffset();
+        emitter.emitLine("i32.const " + offset);
+        emitter.emitLine("i32.add");
+        ExpressionGenerator.getInstance().compileExpression(value, scope);
+        Type attributeType = attributeNameExpression.getType();
+        WasmType wasmType = CodeGenUtil.getWasmType(attributeType);
+        emitter.emitLine(wasmType + ".store");
+    }
+
+    private void compileArrayIndexAssignment(ArrayIndexExpression arrayIndexExpression,
+                                             Expression value,
+                                             VariableScope scope) {
+
+        Expression arrayExpression = arrayIndexExpression.getArrayExpression();
+        Expression indexExpression = arrayIndexExpression.getIndexExpression();
+        Type arrayElementType = ((ObjectArray) arrayExpression.getType()).getElementType();
+        int arrayElementSize = arrayElementType.getStackSize();
+        WasmType valueType = CodeGenUtil.getWasmType(value.getType());
+
+        // Put the address of (start of array + header amount + index * element size)
+        // on the stack
+        ExpressionGenerator.getInstance().compileExpression(arrayExpression, scope);
+        // TODO: Add the offset for the header at the start of the array
+        ExpressionGenerator.getInstance().compileExpression(indexExpression, scope);
+        emitter.emitLine("i32.const " + arrayElementSize);
+        emitter.emitLine("i32.mul");
+        emitter.emitLine("i32.add");
+
+        // Put the value to store there on the stack
+        ExpressionGenerator.getInstance().compileExpression(value, scope);
+
+        // Write to memory
+        emitter.emitLine(valueType + ".store");
     }
 
     private void compileIfStatementChain(IfStatementChain chain,

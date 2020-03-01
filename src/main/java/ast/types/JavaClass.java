@@ -3,9 +3,7 @@ package ast.types;
 import errors.DuplicateClassAttributeException;
 import errors.IllegalPrivateAccessException;
 import errors.InvalidAttributeException;
-import errors.UnknownClassException;
 import util.ClassTable;
-import util.ErrorReporting;
 import util.FunctionTableEntry;
 import util.LookupTrie;
 
@@ -15,7 +13,7 @@ import java.util.stream.Collectors;
 /**
  * Represents a known Java class.
  */
-public class JavaClass extends JavaClassReference {
+public class JavaClass extends HeapObjectReference {
 
     /**
      * The name of the class
@@ -183,19 +181,9 @@ public class JavaClass extends JavaClassReference {
      *
      * @param classTable The class table that has been constructed
      */
-    public void validateAllClassReferences(ClassTable classTable) {
-        for (String attributeName : attributesMap.keySet()) {
-            ClassAttribute attribute = attributesMap.get(attributeName);
-            if (attribute.type instanceof UnvalidatedJavaClassReference) {
-                String className = ((UnvalidatedJavaClassReference) attribute.type).getClassName();
-                JavaClass validatedClass = null;
-                try {
-                    validatedClass = classTable.lookupClass(className);
-                } catch (UnknownClassException e) {
-                    ErrorReporting.reportError(e.getMessage());
-                }
-                attribute.type = validatedClass;
-            }
+    public void validateAllAttributeTypes(ClassTable classTable) {
+        for (ClassAttribute attribute : attributesMap.values()) {
+            attribute.type = classTable.validateType(attribute.type);
         }
     }
 
@@ -343,7 +331,7 @@ public class JavaClass extends JavaClassReference {
         }
 
         public int getSize() {
-            return type.getSize();
+            return type.getStackSize();
         }
     }
 

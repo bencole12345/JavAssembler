@@ -8,7 +8,7 @@ package ast.types;
  * JavaClass instance later, or an error will be raised if there is no such
  * class.
  */
-public class UnvalidatedJavaClassReference extends JavaClassReference {
+public class UnvalidatedJavaClassReference extends HeapObjectReference {
 
     /**
      * The name of the class
@@ -26,7 +26,7 @@ public class UnvalidatedJavaClassReference extends JavaClassReference {
     }
 
     @Override
-    public int getSize() {
+    public int getStackSize() {
         // All references are 32-bit
         return 4;
     }
