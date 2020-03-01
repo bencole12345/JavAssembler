@@ -1,6 +1,9 @@
 package util;
 
 import ast.types.JavaClass;
+import ast.types.ObjectArray;
+import ast.types.Type;
+import ast.types.UnvalidatedJavaClassReference;
 import errors.DuplicateClassDefinitionException;
 import errors.UnknownClassException;
 
@@ -43,8 +46,26 @@ public class ClassTable {
      */
     public void validateAllTypes() {
         for (JavaClass javaClass : classes) {
-            javaClass.validateAllClassReferences(this);
+            javaClass.validateAllAttributeTypes(this);
         }
+    }
+
+    public Type validateType(Type toValidate) {
+        Type validated = toValidate;
+        if (toValidate instanceof UnvalidatedJavaClassReference) {
+            UnvalidatedJavaClassReference unvalidatedReference = (UnvalidatedJavaClassReference) toValidate;
+            try {
+                validated = lookupClass(unvalidatedReference.getClassName());
+            } catch (UnknownClassException e) {
+                ErrorReporting.reportError(e.getMessage());
+            }
+        } else if (toValidate instanceof ObjectArray) {
+            ObjectArray array = (ObjectArray) toValidate;
+            Type elementType = array.getElementType();
+            Type validatedElementType = validateType(elementType);
+            validated = new ObjectArray(validatedElementType);
+        }
+        return validated;
     }
 
     /**

@@ -1,5 +1,7 @@
 package ast.types;
 
+import java.util.Objects;
+
 public class ObjectArray extends HeapObjectReference {
 
     /**
@@ -27,5 +29,18 @@ public class ObjectArray extends HeapObjectReference {
     @Override
     public String toString() {
         return elementType + "[]";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ObjectArray that = (ObjectArray) o;
+        return elementType.equals(that.elementType);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(elementType);
     }
 }

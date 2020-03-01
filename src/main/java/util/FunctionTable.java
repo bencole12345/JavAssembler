@@ -3,10 +3,8 @@ package util;
 import ast.types.AccessModifier;
 import ast.types.JavaClass;
 import ast.types.Type;
-import ast.types.UnvalidatedJavaClassReference;
 import errors.InvalidClassNameException;
 import errors.UndeclaredFunctionException;
-import errors.UnknownClassException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -180,21 +178,7 @@ public class FunctionTable {
      * @param classTable The class table to use for validation
      */
     public void validateAllTypes(ClassTable classTable) {
-        for (FunctionTableEntry entry : functions) {
-            List<Type> parameterTypes = entry.getParameterTypes();
-            for (int i = 0; i < parameterTypes.size(); i++) {
-                Type type = parameterTypes.get(i);
-                if (type instanceof UnvalidatedJavaClassReference) {
-                    UnvalidatedJavaClassReference unvalidatedReference = (UnvalidatedJavaClassReference) type;
-                    try {
-                        JavaClass validatedClass = classTable.lookupClass(unvalidatedReference.getClassName());
-                        parameterTypes.set(i, validatedClass);
-                    } catch (UnknownClassException e) {
-                        ErrorReporting.reportError(e.getMessage());
-                    }
-                }
-            }
-        }
+        functions.forEach(entry -> entry.validateTypes(classTable));
     }
 
     /**
