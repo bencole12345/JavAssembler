@@ -22,6 +22,8 @@ public class Compilation {
                 parseTrees.add(ParserWrapper.parse(fileName));
             } catch (SyntaxErrorException e) {
                 ErrorReporting.reportError(e.getMessage());
+            } catch (IOException e) {
+                ErrorReporting.reportError("Unable to read file " + fileName);
             }
         }
 

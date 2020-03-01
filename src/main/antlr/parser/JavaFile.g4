@@ -87,8 +87,11 @@ expr
                 | LESS_THAN_EQUAL_TO
                 | GREATER_THAN
                 | GREATER_THAN_EQUAL_TO) expr           # InfixExpr
-    | expr QUESTION_MARK expr COLON expr SEMICOLON      # BinarySelectorExpr
+    | expr QUESTION_MARK expr COLON expr                # BinarySelectorExpr
     | expr (LSQBRACKET expr RSQBRACKET)+                # ArrayLookupExpr
+    // TODO: See if I can change variableName -> expr
+    // At the moment it's not possible to do things like
+    // myArray[0].x, have to do T temp = myArray[0]; temp.x
     | variableName DOT IDENTIFIER
             LPAREN functionArgs RPAREN                  # MethodCallExpr
     | variableName DOT variableName                     # AttributeLookupExpr
