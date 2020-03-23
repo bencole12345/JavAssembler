@@ -351,7 +351,18 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         }
         ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
         List<Expression> arguments = expressionList.getExpressionList();
-        return new NewObjectExpression(javaClass, arguments);
+
+        assert javaClass != null;
+        if (arguments.size() > 0 || javaClass.hasNoArgumentConstructor()) {
+            List<Type> argumentTypes = arguments
+                    .stream()
+                    .map(Expression::getType)
+                    .collect(Collectors.toList());
+            FunctionTableEntry entry = javaClass.lookupConstructor(argumentTypes);
+            return new NewObjectExpression(javaClass, arguments, entry);
+        } else {
+            return new NewObjectExpression(javaClass);
+        }
     }
 
     @Override

@@ -281,6 +281,17 @@ public class JavaClass extends HeapObjectReference {
     }
 
     /**
+     * Looks up the function table entry for the constructor with the specified
+     * parameter types.
+     *
+     * @param parameterTypes The types of the parameters
+     * @return The function table entry of the relevant constructor method
+     */
+    public FunctionTableEntry lookupConstructor(List<Type> parameterTypes) {
+        return constructorLookupTrie.lookup(parameterTypes);
+    }
+
+    /**
      * Returns the list of function table indices that forms the virtual table
      * for this class.
      *
