@@ -25,6 +25,7 @@ classDefinition
 classItem
     : classAttributeDeclaration     # ClassAttribute
     | methodDefinition              # ClassMethod
+    | constructorDefinition         # Constructor
     ;
 
 classAttributeDeclaration
@@ -121,6 +122,10 @@ functionArgs
 
 methodDefinition
     : accessModifier? STATIC? type IDENTIFIER LPAREN methodParams RPAREN codeBlock
+    ;
+
+constructorDefinition
+    : PUBLIC IDENTIFIER LPAREN methodParams RPAREN codeBlock
     ;
 
 methodParams

@@ -11,13 +11,11 @@ import ast.types.AccessModifier;
 import ast.types.JavaClass;
 import ast.types.ObjectArray;
 import ast.types.Type;
+import ast.types.VoidType;
 import errors.*;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
-import util.ClassTable;
-import util.ErrorReporting;
-import util.FunctionTable;
-import util.FunctionTableEntry;
+import util.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,10 +43,14 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         accessModifierVisitor = new AccessModifierVisitor();
     }
 
-    public ClassMethod visitMethod(JavaFileParser.MethodDefinitionContext ctx, JavaClass containingClass) {
+    public ClassMethod visitSubroutine(SubroutineToCompile subroutine, JavaClass containingClass) {
         this.currentClass = containingClass;
         typeVisitor.setCurrentClass(containingClass);
-        return visitMethodDefinition(ctx);
+        if (subroutine.isMethod()) {
+            return visitMethodDefinition(subroutine.getMethodDefinition());
+        } else {
+            return visitConstructorDefinition(subroutine.getConstructorDefinition());
+        }
     }
 
     @Override
@@ -92,6 +94,51 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
 
         // Pop the scope that was created to contain the parameters
         popVariableScope(false);
+
+        // Return the method that was created
+        return new ClassMethod(modifier, isStatic, returnType, methodName, paramsList, body, currentClass);
+    }
+
+    @Override
+    public ClassMethod visitConstructorDefinition(JavaFileParser.ConstructorDefinitionContext ctx) {
+        AccessModifier modifier = AccessModifier.PUBLIC;
+        boolean isStatic = false;
+        Type returnType = new VoidType();
+        String methodName = "constructor";
+        MethodParameterList params = (MethodParameterList) visit(ctx.methodParams());
+        List<MethodParameter> paramsList = params.getParameters();
+
+        // Create a new variable scope stack and push a variable scope object
+        // to contain the method's parameters.
+        variableScopeStack.clear();
+        VariableScope scopeForParameters = pushNewVariableScope();
+
+        // Pass 'this' as extra parameter
+        try {
+            scopeForParameters.registerVariable("this", currentClass);
+        } catch (MultipleVariableDeclarationException e) {
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+        }
+
+        // Put all the constructor parameters on the stack
+        for (MethodParameter param : paramsList) {
+            String name = param.getParameterName();
+            Type type = param.getType();
+            try {
+                scopeForParameters.registerVariable(name, type);
+            } catch (MultipleVariableDeclarationException e) {
+                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+            }
+        }
+
+        // Visit the body of the method
+        currentFunctionReturnType = returnType;
+        CodeBlock body = (CodeBlock) visit(ctx.codeBlock());
+
+        // Pop the variable scope of the parameters from the stack
+        popVariableScope(false);
+
+        // Return the method that was created
         return new ClassMethod(modifier, isStatic, returnType, methodName, paramsList, body, currentClass);
     }
 

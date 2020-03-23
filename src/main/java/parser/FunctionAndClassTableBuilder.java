@@ -6,10 +6,7 @@ import ast.types.Type;
 import errors.DuplicateClassAttributeException;
 import errors.DuplicateClassDefinitionException;
 import errors.UnknownClassException;
-import util.ClassTable;
-import util.ErrorReporting;
-import util.FunctionTable;
-import util.FunctionTableEntry;
+import util.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,21 +25,28 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
     private FunctionTable functionTable;
 
     /**
+     * The name of the class currently being processed
+     */
+    private String currentClassName;
+
+    /**
      * The attributes we have seen so far for the current class
      */
     private List<JavaClass.ClassAttribute> classAttributes;
 
     /**
-     * A list of methods seen in the current class
+     * Lists of methods and constructors seen in the current class
      */
     private List<MethodSignature> methodsInCurrentClass;
+    private List<ConstructorSignature> constructorsInCurrentClass;
 
     /**
      * A list of the method parse trees encountered.
      *
      * We also keep a list of the containing class of each method.
      */
-    private List<JavaFileParser.MethodDefinitionContext> methodParseTrees;
+//    private List<JavaFileParser.MethodDefinitionContext> methodParseTrees;
+    private List<SubroutineToCompile> subroutines;
     private List<JavaClass> containingClasses;
 
     /**
@@ -56,9 +60,11 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
         functionTable = new FunctionTable();
         classAttributes = new ArrayList<>();
         methodsInCurrentClass = new ArrayList<>();
+        constructorsInCurrentClass = new ArrayList<>();
         typeVisitor = new TypeVisitor();
         accessModifierVisitor = new AccessModifierVisitor();
-        methodParseTrees = new ArrayList<>();
+//        methodParseTrees = new ArrayList<>();
+        subroutines = new ArrayList<>();
         containingClasses = new ArrayList<>();
     }
 
@@ -66,11 +72,12 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
     public Void visitClassDefinition(JavaFileParser.ClassDefinitionContext ctx) {
 
         // Read class name
-        String className = ctx.className.getText();
+        currentClassName = ctx.className.getText();
 
         // Empty the lists of attributes and methods ready for the new class
         classAttributes.clear();
         methodsInCurrentClass.clear();
+        constructorsInCurrentClass.clear();
 
         // Visit every attribute in this class
         ctx.classItem().forEach(this::visit);
@@ -87,7 +94,7 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
 
         JavaClass currentClass = null;
         try {
-            currentClass = new JavaClass(className, classAttributes, parent);
+            currentClass = new JavaClass(currentClassName, classAttributes, parent);
         } catch (DuplicateClassAttributeException e) {
             ErrorReporting.reportError(e.getMessage());
         }
@@ -115,7 +122,7 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
 
         // Finally register this class with the class table
         try {
-            classTable.registerClass(className, currentClass);
+            classTable.registerClass(currentClassName, currentClass);
         } catch (DuplicateClassDefinitionException e) {
             ErrorReporting.reportError(e.getMessage());
         }
@@ -140,24 +147,48 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
     }
 
     @Override
+    public Void visitConstructor(JavaFileParser.ConstructorContext ctx) {
+        visit(ctx.constructorDefinition());
+        return null;
+    }
+
+    @Override
     public Void visitMethodDefinition(JavaFileParser.MethodDefinitionContext ctx) {
         MethodSignature signature = new MethodSignature();
         signature.methodName = ctx.IDENTIFIER().toString();;
         signature.accessModifier = accessModifierVisitor.visit(ctx.accessModifier());
         signature.returnType = typeVisitor.visit(ctx.type());
-        signature.parameterTypes = (ctx.methodParams() instanceof JavaFileParser.SomeParamsContext)
-                ? visitMethodParams((JavaFileParser.SomeParamsContext) ctx.methodParams())
-                : new ArrayList<>();
+        signature.parameterTypes = visitMethodParams(ctx.methodParams());
         signature.isStatic = ctx.STATIC() != null;
         methodsInCurrentClass.add(signature);
-        methodParseTrees.add(ctx);
+        SubroutineToCompile subroutine = new SubroutineToCompile(ctx);
+        subroutines.add(subroutine);
         return null;
     }
 
-    private List<Type> visitMethodParams(JavaFileParser.SomeParamsContext ctx) {
-        return ctx.type().stream()
-                .map(typeVisitor::visit)
-                .collect(Collectors.toList());
+    @Override
+    public Void visitConstructorDefinition(JavaFileParser.ConstructorDefinitionContext ctx) {
+        if (!ctx.IDENTIFIER().toString().equals(currentClassName)) {
+            // TODO: Throw an exception - badly formatted constructor because it
+            // hasn't used the class name (really the error is that they forgot
+            // to specify the return type - it's not a constructor!)
+        }
+        ConstructorSignature signature = new ConstructorSignature();
+        signature.parameterTypes = visitMethodParams(ctx.methodParams());
+        constructorsInCurrentClass.add(signature);
+        SubroutineToCompile subroutine = new SubroutineToCompile(ctx);
+        subroutines.add(subroutine);
+        return null;
+    }
+
+    private List<Type> visitMethodParams(JavaFileParser.MethodParamsContext ctx) {
+        return (ctx instanceof JavaFileParser.SomeParamsContext)
+                ? ((JavaFileParser.SomeParamsContext) ctx)
+                    .type()
+                    .stream()
+                    .map(typeVisitor::visit)
+                    .collect(Collectors.toList())
+                : new ArrayList<>();
     }
 
     /**
@@ -174,8 +205,8 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
         return functionTable;
     }
 
-    public List<JavaFileParser.MethodDefinitionContext> getMethodParseTrees() {
-        return methodParseTrees;
+    public List<SubroutineToCompile> getSubroutines() {
+        return subroutines;
     }
 
     public List<JavaClass> getContainingClasses() {
@@ -188,5 +219,9 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
         public Type returnType;
         public boolean isStatic;
         public AccessModifier accessModifier;
+    }
+
+    private static class ConstructorSignature {
+        public List<Type> parameterTypes;
     }
 }
