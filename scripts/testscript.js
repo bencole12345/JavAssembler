@@ -42,6 +42,11 @@ const runTests = async () => {
     passFail = result ? "PASS" : "FAIL";
     console.log(passFail + ": Expression parsing order");
 
+    // Test Boolean logical operators
+    result = module.Test_testBooleanLogicalOperators();
+    passFail = result ? "PASS" : "FAIL";
+    console.log(passFail + ": Boolean logical operators");
+
     // Test call other function
     result = module.Test_callOtherFunction();
     passFail = result == 10.0 ? "PASS" : "FAIL";

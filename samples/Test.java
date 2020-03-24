@@ -36,6 +36,15 @@ public class Test {
         return 1+2*3 == 7;
     }
 
+    public static boolean testBooleanLogicalOperators() {
+        boolean andWorks = true && true;
+        boolean orWorks = (true || false)
+                && (false || true)
+                && (true || true);
+        boolean notWorks = !false;
+        return andWorks && orWorks && notWorks;
+    }
+
     public static float callOtherFunction() {
         return aPrivateFunction();
     }
@@ -102,14 +111,7 @@ public class Test {
 
     public boolean testConstructor() {
         ParentClass parent = new ParentClass(1, 2.0, 3.0f);
-        if (parent.x == 1) {
-            if (parent.y == 2.0) {
-                if (parent.z == 3.0f) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return parent.x == 1 && parent.y == 2.0 && parent.z == 3.0f;
     }
 
 }
