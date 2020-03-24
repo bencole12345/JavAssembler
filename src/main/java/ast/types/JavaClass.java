@@ -1,6 +1,7 @@
 package ast.types;
 
 import errors.DuplicateClassAttributeException;
+import errors.DuplicateFunctionSignatureException;
 import errors.IllegalPrivateAccessException;
 import errors.InvalidAttributeException;
 import util.ClassTable;
@@ -199,7 +200,8 @@ public class JavaClass extends HeapObjectReference {
      * @param functionTableEntry The function table entry to register as a
      *                           method of this class
      */
-    public void registerNewMethod(FunctionTableEntry functionTableEntry) {
+    public void registerNewMethod(FunctionTableEntry functionTableEntry)
+            throws DuplicateFunctionSignatureException {
 
         // Extract information about the method
         String methodName = functionTableEntry.getFunctionName();
@@ -235,9 +237,10 @@ public class JavaClass extends HeapObjectReference {
         // in the future.
         boolean success = vtableIndexLookupTrie.insert(parameterTypes, vtableIndex);
         if (!success) {
-            // TODO: Throw exception because this class already has a definition
-            // with that signature
-            // (overriding is okay, but we have overridden it twice, which is bad)
+            String signature = functionTableEntry.getQualifiedSignature();
+            String message = "Multiple declarations for method with signature "
+                    + signature;
+            throw new DuplicateFunctionSignatureException(message);
         }
     }
 

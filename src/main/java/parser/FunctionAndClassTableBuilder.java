@@ -6,6 +6,7 @@ import ast.types.Type;
 import ast.types.VoidType;
 import errors.DuplicateClassAttributeException;
 import errors.DuplicateClassDefinitionException;
+import errors.DuplicateFunctionSignatureException;
 import errors.UnknownClassException;
 import util.*;
 
@@ -111,8 +112,13 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
 
                 // If it's a non-static method then we want to register it with the
                 // class that owns it.
-                if (!methodSignature.isStatic)
-                    currentClass.registerNewMethod(entry);
+                if (!methodSignature.isStatic) {
+                    try {
+                        currentClass.registerNewMethod(entry);
+                    } catch (DuplicateFunctionSignatureException e) {
+                        ErrorReporting.reportError(e.getMessage());
+                    }
+                }
 
             } else {
                 ConstructorSignature constructorSignature = signature.getConstructorSignature();
