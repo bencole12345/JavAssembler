@@ -7,11 +7,7 @@ import ast.operations.BinaryOp;
 import ast.operations.IncrementOp;
 import ast.statements.*;
 import ast.structure.*;
-import ast.types.AccessModifier;
-import ast.types.JavaClass;
-import ast.types.ObjectArray;
-import ast.types.Type;
-import ast.types.VoidType;
+import ast.types.*;
 import errors.*;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
@@ -30,6 +26,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     private Type currentFunctionReturnType;
     private JavaClass currentClass;
 
+    private BopVisitor bopVisitor;
     private TypeVisitor typeVisitor;
     private AccessModifierVisitor accessModifierVisitor;
 
@@ -39,6 +36,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         currentClass = null;
         variableScopeStack = new Stack<>();
 
+        bopVisitor = new BopVisitor();
         typeVisitor = new TypeVisitor(classTable);
         accessModifierVisitor = new AccessModifierVisitor();
     }
@@ -258,16 +256,16 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         BinaryOp bop = null;
         switch (op.getType()) {
             case JavaFileParser.PLUS_EQUALS:
-                bop = BinaryOp.ADD;
+                bop = BinaryOp.Add;
                 break;
             case JavaFileParser.MINUS_EQUALS:
-                bop = BinaryOp.SUBTRACT;
+                bop = BinaryOp.Subtract;
                 break;
             case JavaFileParser.MULTIPLY_EQUALS:
-                bop = BinaryOp.MULTIPLY;
+                bop = BinaryOp.Multiply;
                 break;
             case JavaFileParser.DIVIDE_EQUALS:
-                bop = BinaryOp.DIVIDE;
+                bop = BinaryOp.Divide;
             // No case for JavaFileParser.EQUALS
         }
 
@@ -398,44 +396,43 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public BinaryOperatorExpression visitInfixExpr(JavaFileParser.InfixExprContext ctx) {
-        Expression left = (Expression) visit(ctx.expr(0));
-        Expression right = (Expression) visit(ctx.expr(1));
-        BinaryOp op = null;
-        switch (ctx.op.getType()) {
-            case JavaFileParser.MULTIPLY:
-                op = BinaryOp.MULTIPLY;
-                break;
-            case JavaFileParser.DIVIDE:
-                op = BinaryOp.DIVIDE;
-                break;
-            case JavaFileParser.PLUS:
-                op = BinaryOp.ADD;
-                break;
-            case JavaFileParser.MINUS:
-                op = BinaryOp.SUBTRACT;
-                break;
-            case JavaFileParser.EQUAL_TO:
-                op = BinaryOp.EQUAL_TO;
-                break;
-            case JavaFileParser.NOT_EQUAL_TO:
-                op = BinaryOp.NOT_EQUAL_TO;
-                break;
-            case JavaFileParser.LESS_THAN:
-                op = BinaryOp.LESS_THAN;
-                break;
-            case JavaFileParser.LESS_THAN_EQUAL_TO:
-                op = BinaryOp.LESS_THAN_OR_EQUAL_TO;
-                break;
-            case JavaFileParser.GREATER_THAN:
-                op = BinaryOp.GREATER_THAN;
-                break;
-            case JavaFileParser.GREATER_THAN_EQUAL_TO:
-                op = BinaryOp.GREATER_THAN_OR_EQUAL_TO;
-        }
+    public ASTNode visitMultiplicativeBopExpr(JavaFileParser.MultiplicativeBopExprContext ctx) {
+        BinaryOp op = bopVisitor.visit(ctx.multiplicativeBop());
+        return makeBopExpression(ctx.expr(), op, ctx);
+    }
+
+    @Override
+    public ASTNode visitAdditiveBopExpr(JavaFileParser.AdditiveBopExprContext ctx) {
+        BinaryOp op = bopVisitor.visit(ctx.additiveBop());
+        return makeBopExpression(ctx.expr(), op, ctx);
+    }
+
+    @Override
+    public ASTNode visitComparisonBopExpr(JavaFileParser.ComparisonBopExprContext ctx) {
+        BinaryOp op = bopVisitor.visit(ctx.comparisonBop());
+        return makeBopExpression(ctx.expr(), op, ctx);
+    }
+
+    @Override
+    public ASTNode visitLogicalAndBopExpr(JavaFileParser.LogicalAndBopExprContext ctx) {
+        BinaryOp op = bopVisitor.visit(ctx.logicalAndBop());
+        return makeBopExpression(ctx.expr(), op, ctx);
+    }
+
+    @Override
+    public ASTNode visitLogicalOrBopExpr(JavaFileParser.LogicalOrBopExprContext ctx) {
+        BinaryOp op = bopVisitor.visit(ctx.logicalOrBop());
+        return makeBopExpression(ctx.expr(), op, ctx);
+    }
+
+    private BinaryOperatorExpression makeBopExpression(List<JavaFileParser.ExprContext> expressions,
+                                                       BinaryOp bop,
+                                                       ParserRuleContext ctx) {
+        Expression left = (Expression) visit(expressions.get(0));
+        Expression right = (Expression) visit(expressions.get(1));
         BinaryOperatorExpression bopExpression = null;
         try {
-            bopExpression = new BinaryOperatorExpression(left, right, op);
+            bopExpression = new BinaryOperatorExpression(left, right, bop);
         } catch (IncorrectTypeException e) {
             ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }

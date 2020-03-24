@@ -2,16 +2,18 @@ package ast.operations;
 
 public enum BinaryOp {
 
-    ADD(OpType.Combiner),
-    SUBTRACT(OpType.Combiner),
-    MULTIPLY(OpType.Combiner),
-    DIVIDE(OpType.Combiner),
-    EQUAL_TO(OpType.Comparison),
-    NOT_EQUAL_TO(OpType.Comparison),
-    LESS_THAN(OpType.Comparison),
-    LESS_THAN_OR_EQUAL_TO(OpType.Comparison),
-    GREATER_THAN(OpType.Comparison),
-    GREATER_THAN_OR_EQUAL_TO(OpType.Comparison);
+    Add(OpType.Combiner),
+    Subtract(OpType.Combiner),
+    Multiply(OpType.Combiner),
+    Divide(OpType.Combiner),
+    EqualTo(OpType.Comparison),
+    NotEqualTo(OpType.Comparison),
+    LessThan(OpType.Comparison),
+    LessThanOrEqualTo(OpType.Comparison),
+    GreaterThan(OpType.Comparison),
+    GreaterThanOrEqualTo(OpType.Comparison),
+    LogicalAnd(OpType.Logical),
+    LogicalOr(OpType.Logical);
 
     private OpType opType;
 

@@ -21,6 +21,8 @@ LESS_THAN: '<' ;
 LESS_THAN_EQUAL_TO: '<=' ;
 GREATER_THAN: '>' ;
 GREATER_THAN_EQUAL_TO: '>=' ;
+LOGICAL_AND: '&&' ;
+LOGICAL_OR: '||' ;
 
 LPAREN: '(' ;
 RPAREN: ')' ;

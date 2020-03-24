@@ -86,51 +86,57 @@ public class ExpressionGenerator {
         PrimitiveType expressionType = bopExpression.getUnderlyingType();
         WasmType wasmType = CodeGenUtil.getWasmType(expressionType);
         switch (bopExpression.getOp()) {
-            case ADD:
+            case Add:
                 emitter.emitLine(wasmType + ".add");
                 CodeGenUtil.emitRangeRestrictionCode(expressionType, emitter);
                 break;
-            case SUBTRACT:
+            case Subtract:
                 emitter.emitLine(wasmType + ".sub");
                 CodeGenUtil.emitRangeRestrictionCode(expressionType, emitter);
                 break;
-            case MULTIPLY:
+            case Multiply:
                 // TODO: This probably won't work, as multiplying can add more bits
                 // eg i32 * i32 = i64
                 // but it'll do for now...
                 emitter.emitLine(wasmType + ".mul");
                 break;
-            case DIVIDE:
+            case Divide:
                 emitter.emitLine(wasmType + ".div");
                 break;
-            case EQUAL_TO:
+            case LogicalAnd:
+                emitter.emitLine("i32.and");
+                break;
+            case LogicalOr:
+                emitter.emitLine("i32.or");
+                break;
+            case EqualTo:
                 emitter.emitLine(wasmType + ".eq");
                 break;
-            case NOT_EQUAL_TO:
+            case NotEqualTo:
                 emitter.emitLine(wasmType + ".ne");
                 break;
-            case LESS_THAN:
+            case LessThan:
                 if (expressionType.isIntegralType()) {
                     emitter.emitLine(wasmType + ".lt_s");
                 } else {
                     emitter.emitLine(wasmType + ".lt");
                 }
                 break;
-            case LESS_THAN_OR_EQUAL_TO:
+            case LessThanOrEqualTo:
                 if (expressionType.isIntegralType()) {
                     emitter.emitLine(wasmType + ".le_s");
                 } else {
                     emitter.emitLine(wasmType + ".le");
                 }
                 break;
-            case GREATER_THAN:
+            case GreaterThan:
                 if (expressionType.isIntegralType()) {
                     emitter.emitLine(wasmType + ".gt_s");
                 } else {
                     emitter.emitLine(wasmType + ".gt");
                 }
                 break;
-            case GREATER_THAN_OR_EQUAL_TO:
+            case GreaterThanOrEqualTo:
                 if (expressionType.isIntegralType()) {
                     emitter.emitLine(wasmType + ".ge_s");
                 } else {
@@ -196,26 +202,26 @@ public class ExpressionGenerator {
         try {
             switch (expression.getIncrementOp()) {
                 case PRE_INCREMENT:
-                    bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.ADD);
+                    bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.Add);
                     assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
                     StatementGenerator.getInstance().compileStatement(assignment, variableScope);
                     emitter.emitLine("local.get " + registerNumber);
                     break;
                 case PRE_DECREMENT:
-                    bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.SUBTRACT);
+                    bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.Subtract);
                     assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
                     StatementGenerator.getInstance().compileStatement(assignment, variableScope);
                     emitter.emitLine("local.get " + registerNumber);
                     break;
                 case POST_INCREMENT:
                     emitter.emitLine("local.get " + registerNumber);
-                    bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.ADD);
+                    bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.Add);
                     assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
                     StatementGenerator.getInstance().compileStatement(assignment, variableScope);
                     break;
                 case POST_DECREMENT:
                     emitter.emitLine("local.get " + registerNumber);
-                    bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.SUBTRACT);
+                    bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.Subtract);
                     assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
                     StatementGenerator.getInstance().compileStatement(assignment, variableScope);
             }
