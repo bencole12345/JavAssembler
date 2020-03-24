@@ -131,7 +131,12 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
                         isStatic,
                         AccessModifier.PUBLIC
                 );
-                currentClass.registerNewConstructor(entry);
+
+                try {
+                    currentClass.registerNewConstructor(entry);
+                } catch (DuplicateFunctionSignatureException e) {
+                    ErrorReporting.reportError(e.getMessage());
+                }
             }
 
             // Add an entry to the list of containing classes

@@ -275,11 +275,15 @@ public class JavaClass extends HeapObjectReference {
      *
      * @param functionTableEntry The entry in the function table
      */
-    public void registerNewConstructor(FunctionTableEntry functionTableEntry) {
+    public void registerNewConstructor(FunctionTableEntry functionTableEntry)
+            throws DuplicateFunctionSignatureException {
         List<Type> parameterTypes = functionTableEntry.getParameterTypes();
         boolean success = constructorLookupTrie.insert(parameterTypes, functionTableEntry);
         if (!success) {
-            // TODO: Throw an exception
+            String signature = functionTableEntry.getQualifiedSignature();
+            String message = "Duplicate constructors in class " + name
+                    + " with signature " + signature;
+            throw new DuplicateFunctionSignatureException(message);
         }
     }
 
