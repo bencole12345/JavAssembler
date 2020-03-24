@@ -96,4 +96,16 @@ public class Test {
         return list[0];
     }
 
+    public boolean testConstructor() {
+        ParentClass parent = new ParentClass(1, 2.0, 3.0f);
+        if (parent.x == 1) {
+            if (parent.y == 2.0) {
+                if (parent.z == 3.0f) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 }
