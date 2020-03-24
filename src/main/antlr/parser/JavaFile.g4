@@ -80,14 +80,11 @@ expr
     | NEW IDENTIFIER LPAREN functionArgs RPAREN         # NewObjectExpr
     | NEW IDENTIFIER (LSQBRACKET expr RSQBRACKET)+      # NewArrayExpr
     | variableIncrementExpr                             # IncrementExpr
-    | expr op=(MULTIPLY|DIVIDE) expr                    # InfixExpr
-    | expr op=(PLUS|MINUS) expr                         # InfixExpr
-    | expr op=(EQUAL_TO
-                | NOT_EQUAL_TO
-                | LESS_THAN
-                | LESS_THAN_EQUAL_TO
-                | GREATER_THAN
-                | GREATER_THAN_EQUAL_TO) expr           # InfixExpr
+    | expr multiplicativeBop expr                       # MultiplicativeBopExpr
+    | expr additiveBop expr                             # AdditiveBopExpr
+    | expr comparisonBop expr                           # ComparisonBopExpr
+    | expr logicalAndBop expr                           # LogicalAndBopExpr
+    | expr logicalOrBop expr                            # LogicalOrBopExpr
     | expr QUESTION_MARK expr COLON expr                # BinarySelectorExpr
     | expr (LSQBRACKET expr RSQBRACKET)+                # ArrayLookupExpr
     // TODO: See if I can change variableName -> expr
@@ -97,6 +94,33 @@ expr
             LPAREN functionArgs RPAREN                  # MethodCallExpr
     | variableName DOT variableName                     # AttributeLookupExpr
     | variableName                                      # VariableNameExpr
+    ;
+
+multiplicativeBop
+    : op=MULTIPLY
+    | op=DIVIDE
+    ;
+
+additiveBop
+    : op=PLUS
+    | op=MINUS
+    ;
+
+comparisonBop
+    : op=EQUAL_TO
+    | op=NOT_EQUAL_TO
+    | op=LESS_THAN
+    | op=LESS_THAN_EQUAL_TO
+    | op=GREATER_THAN
+    | op=GREATER_THAN_EQUAL_TO
+    ;
+
+logicalAndBop
+    : op=LOGICAL_AND
+    ;
+
+logicalOrBop
+    : op=LOGICAL_OR
     ;
 
 variableName

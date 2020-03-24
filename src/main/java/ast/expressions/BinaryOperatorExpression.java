@@ -1,6 +1,7 @@
 package ast.expressions;
 
 import ast.operations.BinaryOp;
+import ast.operations.OpType;
 import ast.types.PrimitiveType;
 import ast.types.Type;
 import errors.IncorrectTypeException;
@@ -40,14 +41,9 @@ public class BinaryOperatorExpression implements Expression {
         // same type, thanks to the constructor
         switch (op.getOpType()) {
             case Combiner:
-                // TODO: Handle typing judgements correctly.
-                // Think: int * double vs double * int
-                // These are all legal in Java, and a double comes out
-                // Probably need to implement a method in PrimitiveType
-                // like .getResultingTypeWhenCombinedWith(PrimitiveType other)
-                // There should definitely be a good reference for this
                 return (PrimitiveType) left.getType();
             case Comparison:
+            case Logical:
                 return PrimitiveType.Boolean;
             default:
                 return null;
@@ -81,6 +77,11 @@ public class BinaryOperatorExpression implements Expression {
         if (!(rightType instanceof PrimitiveType))
             return false;
 
-        return leftType.equals(rightType);
+        if (op.getOpType().equals(OpType.Logical)) {
+            return leftType.equals(PrimitiveType.Boolean)
+                    && rightType.equals(PrimitiveType.Boolean);
+        } else {
+            return leftType.equals(rightType);
+        }
     }
 }
