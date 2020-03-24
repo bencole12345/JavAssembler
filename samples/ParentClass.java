@@ -3,6 +3,12 @@ public class ParentClass {
     public double y;
     public float z;
 
+    public ParentClass(int x, double y, float z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
+
     public int getNumber() {
         return 10;
     }

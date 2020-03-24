@@ -55,15 +55,15 @@ public class Compilation {
 
         // Convert the parse tree of each method into an AST
         ASTBuilder astBuilder = new ASTBuilder(functionTable, classTable);
-        List<JavaFileParser.MethodDefinitionContext> methodParseTrees = functionAndClassTableBuilder.getMethodParseTrees();
+        List<SubroutineToCompile> subroutines = functionAndClassTableBuilder.getSubroutines();
         List<JavaClass> containingClasses = functionAndClassTableBuilder.getContainingClasses();
         List<ClassMethod> methodASTs = new ArrayList<>();
 
         // Parse each method, also passing in the containing class
-        for (int i = 0; i < methodParseTrees.size(); i++) {
-            JavaFileParser.MethodDefinitionContext methodParseTree = methodParseTrees.get(i);
+        for (int i = 0; i < subroutines.size(); i++) {
+            SubroutineToCompile subroutine = subroutines.get(i);
             JavaClass containingClass = containingClasses.get(i);
-            ClassMethod methodAST = astBuilder.visitMethod(methodParseTree, containingClass);
+            ClassMethod methodAST = astBuilder.visitSubroutine(subroutine, containingClass);
             methodASTs.add(methodAST);
         }
 

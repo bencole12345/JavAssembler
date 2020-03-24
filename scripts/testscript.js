@@ -80,6 +80,11 @@ const runTests = async () => {
     result = module.Test_testPassArrayReference();
     passFail = result ? "PASS" : "FAIL";
     console.log(passFail + ": Pass array as reference");
+
+    // Test constructors
+    result = module.Test_testConstructor();
+    passFail = result ? "PASS" : "FAIL";
+    console.log(passFail + ": Constructors");
 };
 
 runTests();

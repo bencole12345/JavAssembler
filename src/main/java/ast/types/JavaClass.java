@@ -1,6 +1,7 @@
 package ast.types;
 
 import errors.DuplicateClassAttributeException;
+import errors.DuplicateFunctionSignatureException;
 import errors.IllegalPrivateAccessException;
 import errors.InvalidAttributeException;
 import util.ClassTable;
@@ -56,12 +57,18 @@ public class JavaClass extends HeapObjectReference {
      */
     private Map<String, LookupTrie<Integer, Type>> vtableIndexLookupTrieMap;
 
+    /**
+     * A lookup trie for the class constructor
+     */
+    private LookupTrie<FunctionTableEntry, Type> constructorLookupTrie;
+
     public JavaClass(String name, List<ClassAttribute> attributes, JavaClass parent)
             throws DuplicateClassAttributeException {
         this.name = name;
         this.parent = parent;
         vtableIndexLookupTrieMap = new HashMap<>();
         virtualTable = new ArrayList<>();
+        constructorLookupTrie = new LookupTrie<>();
         if (parent == null) {
             // Save 4 bytes for storing the vtable pointer
             nextFreeAssignmentOffset = 4;
@@ -193,7 +200,8 @@ public class JavaClass extends HeapObjectReference {
      * @param functionTableEntry The function table entry to register as a
      *                           method of this class
      */
-    public void registerNewMethod(FunctionTableEntry functionTableEntry) {
+    public void registerNewMethod(FunctionTableEntry functionTableEntry)
+            throws DuplicateFunctionSignatureException {
 
         // Extract information about the method
         String methodName = functionTableEntry.getFunctionName();
@@ -227,7 +235,13 @@ public class JavaClass extends HeapObjectReference {
 
         // Update the lookup trie so that we can quickly look up this method
         // in the future.
-        vtableIndexLookupTrie.insert(parameterTypes, vtableIndex);
+        boolean success = vtableIndexLookupTrie.insert(parameterTypes, vtableIndex);
+        if (!success) {
+            String signature = functionTableEntry.getQualifiedSignature();
+            String message = "Multiple declarations for method with signature "
+                    + signature;
+            throw new DuplicateFunctionSignatureException(message);
+        }
     }
 
     /**
@@ -254,6 +268,34 @@ public class JavaClass extends HeapObjectReference {
         }
 
         return entry;
+    }
+
+    /**
+     * Registers a constructor of this class.
+     *
+     * @param functionTableEntry The entry in the function table
+     */
+    public void registerNewConstructor(FunctionTableEntry functionTableEntry)
+            throws DuplicateFunctionSignatureException {
+        List<Type> parameterTypes = functionTableEntry.getParameterTypes();
+        boolean success = constructorLookupTrie.insert(parameterTypes, functionTableEntry);
+        if (!success) {
+            String signature = functionTableEntry.getQualifiedSignature();
+            String message = "Duplicate constructors in class " + name
+                    + " with signature " + signature;
+            throw new DuplicateFunctionSignatureException(message);
+        }
+    }
+
+    /**
+     * Looks up the function table entry for the constructor with the specified
+     * parameter types.
+     *
+     * @param parameterTypes The types of the parameters
+     * @return The function table entry of the relevant constructor method
+     */
+    public FunctionTableEntry lookupConstructor(List<Type> parameterTypes) {
+        return constructorLookupTrie.lookup(parameterTypes);
     }
 
     /**
@@ -301,6 +343,17 @@ public class JavaClass extends HeapObjectReference {
         if (vtableIndex == null && parent != null)
             return parent.getVirtualTableIndex(name, parameterTypes);
         return vtableIndex;
+    }
+
+    /**
+     * Reports whether this class has defined a zero-argument constructor.
+     *
+     * @return true if a zero-argument constructor has been defined;
+     *         false otherwise
+     */
+    public boolean hasNoArgumentConstructor() {
+        List<Type> emptyList = new ArrayList<>();
+        return (constructorLookupTrie.lookup(emptyList) != null);
     }
 
     /**

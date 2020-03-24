@@ -296,15 +296,34 @@ public class ExpressionGenerator {
     }
 
     private void compileNewObjectExpression(NewObjectExpression newObjectExpression,
-                                            VariableScope variableScope) {
+                                            VariableScope scope) {
         JavaClass javaClass = newObjectExpression.getType();
         int size = javaClass.getHeapSize();
         int vtableIndex = virtualTable.getVirtualTablePosition(javaClass);
         emitter.emitLine("i32.const " + size);
         emitter.emitLine("i32.const " + vtableIndex);
         emitter.emitLine("call $alloc_and_set_vtable");
-        // TODO: Initialise variables
-        // TODO: Invoke constructor
+
+        if (newObjectExpression.usesConstructor()) {
+
+            // Grab a reference to the created object so that we can leave it
+            // on the stack after it has been consumed by calling the
+            // constructor.
+            emitter.emitLine("global.set $tempRef");
+            emitter.emitLine("global.get $tempRef");
+
+            // Put all the arguments on the stack and call the constructor
+            for (Expression expression : newObjectExpression.getArguments()) {
+                compileExpression(expression, scope);
+            }
+            FunctionTableEntry entry = newObjectExpression.getConstructor();
+            String functionName = CodeGenUtil.getFunctionNameForOutput(entry, functionTable);
+            emitter.emitLine("call $" + functionName);
+
+            // Leave the reference to the object on the stack now that the
+            // constructor has been called
+            emitter.emitLine("global.get $tempRef");
+        }
     }
 
     public void compileNewArrayExpression(NewArrayExpression newArrayExpression,
