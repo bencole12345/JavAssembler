@@ -3,6 +3,7 @@ package parser;
 import ast.types.AccessModifier;
 import ast.types.JavaClass;
 import ast.types.Type;
+import ast.types.VoidType;
 import errors.DuplicateClassAttributeException;
 import errors.DuplicateClassDefinitionException;
 import errors.UnknownClassException;
@@ -37,8 +38,7 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
     /**
      * Lists of methods and constructors seen in the current class
      */
-    private List<MethodSignature> methodsInCurrentClass;
-    private List<ConstructorSignature> constructorsInCurrentClass;
+    private List<MethodOrConstructorSignature> methodsAndConstructorsInCurrentClass;
 
     /**
      * A list of the method parse trees encountered.
@@ -59,11 +59,9 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
         classTable = new ClassTable();
         functionTable = new FunctionTable();
         classAttributes = new ArrayList<>();
-        methodsInCurrentClass = new ArrayList<>();
-        constructorsInCurrentClass = new ArrayList<>();
+        methodsAndConstructorsInCurrentClass = new ArrayList<>();
         typeVisitor = new TypeVisitor();
         accessModifierVisitor = new AccessModifierVisitor();
-//        methodParseTrees = new ArrayList<>();
         subroutines = new ArrayList<>();
         containingClasses = new ArrayList<>();
     }
@@ -76,8 +74,7 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
 
         // Empty the lists of attributes and methods ready for the new class
         classAttributes.clear();
-        methodsInCurrentClass.clear();
-        constructorsInCurrentClass.clear();
+        methodsAndConstructorsInCurrentClass.clear();
 
         // Visit every attribute in this class
         ctx.classItem().forEach(this::visit);
@@ -99,22 +96,37 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
             ErrorReporting.reportError(e.getMessage());
         }
 
-        // Now add all the methods
-        for (MethodSignature signature : methodsInCurrentClass) {
-            assert currentClass != null;
-            FunctionTableEntry entry = functionTable.registerFunction(
-                    currentClass,
-                    signature.methodName,
-                    signature.parameterTypes,
-                    signature.returnType,
-                    signature.isStatic,
-                    signature.accessModifier
-            );
+        assert currentClass != null;
+        for (MethodOrConstructorSignature signature : methodsAndConstructorsInCurrentClass) {
+            if (signature.isMethod()) {
+                MethodSignature methodSignature = signature.getMethodSignature();
+                FunctionTableEntry entry = functionTable.registerFunction(
+                        currentClass,
+                        methodSignature.methodName,
+                        methodSignature.parameterTypes,
+                        methodSignature.returnType,
+                        methodSignature.isStatic,
+                        methodSignature.accessModifier
+                );
 
-            // If it's a non-static method then we want to register it with the
-            // class that owns it.
-            if (!signature.isStatic)
-                currentClass.registerNewMethod(entry);
+                // If it's a non-static method then we want to register it with the
+                // class that owns it.
+                if (!methodSignature.isStatic)
+                    currentClass.registerNewMethod(entry);
+
+            } else {
+                ConstructorSignature constructorSignature = signature.getConstructorSignature();
+                boolean isStatic = false;
+                FunctionTableEntry entry = functionTable.registerFunction(
+                        currentClass,
+                        "constructor",
+                        constructorSignature.parameterTypes,
+                        new VoidType(),
+                        isStatic,
+                        AccessModifier.PUBLIC
+                );
+                currentClass.registerNewConstructor(entry);
+            }
 
             // Add an entry to the list of containing classes
             containingClasses.add(currentClass);
@@ -160,7 +172,8 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
         signature.returnType = typeVisitor.visit(ctx.type());
         signature.parameterTypes = visitMethodParams(ctx.methodParams());
         signature.isStatic = ctx.STATIC() != null;
-        methodsInCurrentClass.add(signature);
+        MethodOrConstructorSignature wrapper = new MethodOrConstructorSignature(signature);
+        methodsAndConstructorsInCurrentClass.add(wrapper);
         SubroutineToCompile subroutine = new SubroutineToCompile(ctx);
         subroutines.add(subroutine);
         return null;
@@ -175,7 +188,8 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
         }
         ConstructorSignature signature = new ConstructorSignature();
         signature.parameterTypes = visitMethodParams(ctx.methodParams());
-        constructorsInCurrentClass.add(signature);
+        MethodOrConstructorSignature wrapper = new MethodOrConstructorSignature(signature);
+        methodsAndConstructorsInCurrentClass.add(wrapper);
         SubroutineToCompile subroutine = new SubroutineToCompile(ctx);
         subroutines.add(subroutine);
         return null;
@@ -223,5 +237,40 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
 
     private static class ConstructorSignature {
         public List<Type> parameterTypes;
+    }
+
+    private static class MethodOrConstructorSignature {
+
+        private MethodSignature methodSignature;
+        private ConstructorSignature constructorSignature;
+        private boolean isConstructor;
+
+        public MethodOrConstructorSignature(MethodSignature methodSignature) {
+            this.methodSignature = methodSignature;
+            this.constructorSignature = null;
+            this.isConstructor = false;
+        }
+
+        public MethodOrConstructorSignature(ConstructorSignature constructorSignature) {
+            this.constructorSignature = constructorSignature;
+            this.methodSignature = null;
+            this.isConstructor = true;
+        }
+
+        public boolean isMethod() {
+            return !isConstructor;
+        }
+
+        public boolean isConstructor() {
+            return isConstructor;
+        }
+
+        public MethodSignature getMethodSignature() {
+            return methodSignature;
+        }
+
+        public ConstructorSignature getConstructorSignature() {
+            return constructorSignature;
+        }
     }
 }
