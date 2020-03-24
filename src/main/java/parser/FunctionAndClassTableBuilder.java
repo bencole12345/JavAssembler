@@ -167,7 +167,7 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
     @Override
     public Void visitMethodDefinition(JavaFileParser.MethodDefinitionContext ctx) {
         MethodSignature signature = new MethodSignature();
-        signature.methodName = ctx.IDENTIFIER().toString();;
+        signature.methodName = ctx.IDENTIFIER().toString();
         signature.accessModifier = accessModifierVisitor.visit(ctx.accessModifier());
         signature.returnType = typeVisitor.visit(ctx.type());
         signature.parameterTypes = visitMethodParams(ctx.methodParams());
@@ -182,9 +182,8 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
     @Override
     public Void visitConstructorDefinition(JavaFileParser.ConstructorDefinitionContext ctx) {
         if (!ctx.IDENTIFIER().toString().equals(currentClassName)) {
-            // TODO: Throw an exception - badly formatted constructor because it
-            // hasn't used the class name (really the error is that they forgot
-            // to specify the return type - it's not a constructor!)
+            String message = "Missing return type in method definition.";
+            ErrorReporting.reportError(message, ctx, currentClassName+".java");
         }
         ConstructorSignature signature = new ConstructorSignature();
         signature.parameterTypes = visitMethodParams(ctx.methodParams());
