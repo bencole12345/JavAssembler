@@ -32,6 +32,10 @@ public class Test {
         return (x > 100);
     }
 
+    public static boolean testExpressionParsing() {
+        return 1+2*3 == 7;
+    }
+
     public static float callOtherFunction() {
         return aPrivateFunction();
     }
