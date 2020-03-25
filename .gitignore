@@ -51,3 +51,4 @@ generated_wasm
 # ------------------------------
 scripts/wat2wasm
 /.vscode/
+node_modules
