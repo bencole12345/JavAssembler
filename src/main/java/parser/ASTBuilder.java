@@ -2,14 +2,22 @@ package parser;
 
 import ast.ASTNode;
 import ast.expressions.*;
-import ast.literals.*;
+import ast.literals.BooleanLiteral;
 import ast.operations.BinaryOp;
 import ast.statements.*;
 import ast.structure.*;
-import ast.types.*;
-import errors.*;
+import ast.types.AccessModifier;
+import ast.types.JavaClass;
+import ast.types.Type;
+import ast.types.VoidType;
+import errors.IncorrectTypeException;
+import errors.JavAssemblerException;
+import errors.MultipleVariableDeclarationException;
 import org.antlr.v4.runtime.Token;
-import util.*;
+import util.ClassTable;
+import util.ErrorReporting;
+import util.FunctionTable;
+import util.SubroutineToCompile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -135,22 +143,22 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public VariableDeclaration visitDeclarationStatement(JavaFileParser.DeclarationStatementContext ctx) {
-        return (VariableDeclaration) visit(ctx.variableDeclaration());
+    public ASTNode visitDeclarationStatement(JavaFileParser.DeclarationStatementContext ctx) {
+        return visit(ctx.variableDeclaration());
     }
 
     @Override
-    public Assignment visitAssignmentStatement(JavaFileParser.AssignmentStatementContext ctx) {
-        return (Assignment) visit(ctx.assignment());
+    public ASTNode visitAssignmentStatement(JavaFileParser.AssignmentStatementContext ctx) {
+        return visit(ctx.assignment());
     }
 
     @Override
-    public DeclarationAndAssignment visitDeclarationAssignmentStatement(JavaFileParser.DeclarationAssignmentStatementContext ctx) {
-        return (DeclarationAndAssignment) visit(ctx.variableDeclarationAndAssignment());
+    public ASTNode visitDeclarationAssignmentStatement(JavaFileParser.DeclarationAssignmentStatementContext ctx) {
+        return visit(ctx.variableDeclarationAndAssignment());
     }
 
     @Override
-    public ReturnStatement visitReturnStatement(JavaFileParser.ReturnStatementContext ctx) {
+    public ASTNode visitReturnStatement(JavaFileParser.ReturnStatementContext ctx) {
         Expression expression = expressionVisitor.visit(ctx.expr(), variableScopeStack.peek());
         ReturnStatement returnStatement = null;
         try {
@@ -162,34 +170,34 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public IfStatementChain visitIfStatementWrap(JavaFileParser.IfStatementWrapContext ctx) {
-        return (IfStatementChain) visit(ctx.ifStatement());
+    public ASTNode visitIfStatementWrap(JavaFileParser.IfStatementWrapContext ctx) {
+        return visit(ctx.ifStatement());
     }
 
     @Override
-    public WhileLoop visitWhileLoopWrap(JavaFileParser.WhileLoopWrapContext ctx) {
-        return (WhileLoop) visit(ctx.whileLoop());
+    public ASTNode visitWhileLoopWrap(JavaFileParser.WhileLoopWrapContext ctx) {
+        return visit(ctx.whileLoop());
     }
 
     @Override
-    public ForLoop visitForLoopWrap(JavaFileParser.ForLoopWrapContext ctx) {
-        return (ForLoop) visit(ctx.forLoop());
+    public ASTNode visitForLoopWrap(JavaFileParser.ForLoopWrapContext ctx) {
+        return visit(ctx.forLoop());
     }
 
     @Override
-    public Expression visitFunctionCallStatement(JavaFileParser.FunctionCallStatementContext ctx) {
+    public ASTNode visitFunctionCallStatement(JavaFileParser.FunctionCallStatementContext ctx) {
         return expressionVisitor.visit(ctx.functionCall(), variableScopeStack.peek());
     }
 
     @Override
-    public VariableDeclaration visitVariableDeclaration(JavaFileParser.VariableDeclarationContext ctx) {
+    public ASTNode visitVariableDeclaration(JavaFileParser.VariableDeclarationContext ctx) {
         Type type = typeVisitor.visit(ctx.type());
         String name = ctx.IDENTIFIER().toString();
         return new VariableDeclaration(type, name);
     }
 
     @Override
-    public Assignment visitVariableAssignment(JavaFileParser.VariableAssignmentContext ctx) {
+    public ASTNode visitVariableAssignment(JavaFileParser.VariableAssignmentContext ctx) {
         String variableName = ctx.variableName().getText();
         VariableScope scope = variableScopeStack.peek();
         VariableExpression variableExpression = new LocalVariableExpression(variableName, scope);
@@ -199,7 +207,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public Assignment visitAttributeAssignment(JavaFileParser.AttributeAssignmentContext ctx) {
+    public ASTNode visitAttributeAssignment(JavaFileParser.AttributeAssignmentContext ctx) {
         String localVarName = ctx.variableName().getText();
         LocalVariableExpression object =
                 new LocalVariableExpression(localVarName, variableScopeStack.peek());
@@ -232,10 +240,10 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         return buildAssignment(lhs, op, rhs, ctx);
     }
 
-    private Assignment buildAssignment(VariableExpression variableExpression,
-                                       Token op,
-                                       Expression rhs,
-                                       JavaFileParser.AssignmentContext ctx) {
+    private ASTNode buildAssignment(VariableExpression variableExpression,
+                                    Token op,
+                                    Expression rhs,
+                                    JavaFileParser.AssignmentContext ctx) {
 
         // This method covers +=, -=, *=, /=, and also a simple assignment, =
         // The main idea is that we can reduce any of the first 4 into a simple
@@ -263,8 +271,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             // No case for JavaFileParser.EQUALS
         }
 
-        VariableScope currentScope = variableScopeStack.peek();
-
         // Perform substitution if this is not a simple assignment
         if (bop != null) {
             try {
@@ -285,7 +291,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public DeclarationAndAssignment visitVariableDeclarationAndAssignment(
+    public ASTNode visitVariableDeclarationAndAssignment(
             JavaFileParser.VariableDeclarationAndAssignmentContext ctx) {
         Type type = typeVisitor.visit(ctx.type());
         String name = ctx.IDENTIFIER().toString();
@@ -299,18 +305,18 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public EmptyStatement visitEmptyStatement(JavaFileParser.EmptyStatementContext ctx) {
+    public ASTNode visitEmptyStatement(JavaFileParser.EmptyStatementContext ctx) {
         return new EmptyStatement();
     }
 
     @Override
-    public MethodParameterList visitNoParams(JavaFileParser.NoParamsContext ctx) {
+    public ASTNode visitNoParams(JavaFileParser.NoParamsContext ctx) {
         List<MethodParameter> emptyList = new ArrayList<>();
         return new MethodParameterList(emptyList);
     }
 
     @Override
-    public MethodParameterList visitSomeParams(JavaFileParser.SomeParamsContext ctx) {
+    public ASTNode visitSomeParams(JavaFileParser.SomeParamsContext ctx) {
         List<MethodParameter> paramList = new ArrayList<>();
         for (int i = 0; i < ctx.IDENTIFIER().size(); i++) {
             String parameterName = ctx.IDENTIFIER(i).toString();
@@ -322,7 +328,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public CodeBlock visitStatementList(JavaFileParser.StatementListContext ctx) {
+    public ASTNode visitStatementList(JavaFileParser.StatementListContext ctx) {
 
         // Create a new scope for this code block and push it to the stack
         VariableScope innerScope = pushNewVariableScope();
@@ -369,7 +375,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public IfStatementChain visitIfElseIf(JavaFileParser.IfElseIfContext ctx) {
+    public ASTNode visitIfElseIf(JavaFileParser.IfElseIfContext ctx) {
         Expression condition = expressionVisitor.visit(ctx.expr(), variableScopeStack.peek());
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
         IfStatementChain nextStatement = (IfStatementChain) visit(ctx.ifStatement());
@@ -377,7 +383,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public IfStatementChain visitIfElse(JavaFileParser.IfElseContext ctx) {
+    public ASTNode visitIfElse(JavaFileParser.IfElseContext ctx) {
         Expression condition = expressionVisitor.visit(ctx.expr(), variableScopeStack.peek());
         CodeBlock ifBlock = (CodeBlock) visit(ctx.codeBlock(0));
         CodeBlock elseBlock = (CodeBlock) visit(ctx.codeBlock(1));
@@ -385,14 +391,14 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public IfStatementChain visitIf(JavaFileParser.IfContext ctx) {
+    public ASTNode visitIf(JavaFileParser.IfContext ctx) {
         Expression condition = expressionVisitor.visit(ctx.expr(), variableScopeStack.peek());
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
         return new IfStatementChain(condition, codeBlock);
     }
 
     @Override
-    public WhileLoop visitWhileLoop(JavaFileParser.WhileLoopContext ctx) {
+    public ASTNode visitWhileLoop(JavaFileParser.WhileLoopContext ctx) {
         Expression condition = expressionVisitor.visit(ctx.expr(), variableScopeStack.peek());
         CodeBlock codeBlock = (CodeBlock) visit(ctx.codeBlock());
         WhileLoop whileLoop = null;
@@ -405,7 +411,7 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public ForLoop visitForLoop(JavaFileParser.ForLoopContext ctx) {
+    public ASTNode visitForLoop(JavaFileParser.ForLoopContext ctx) {
 
         Statement initialiser = (ctx.forLoopInitialiser() != null)
                 ? (Statement) visit(ctx.forLoopInitialiser()) : null;
@@ -465,22 +471,22 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
     }
 
     @Override
-    public DeclarationAndAssignment visitForLoopDeclareAndAssign(JavaFileParser.ForLoopDeclareAndAssignContext ctx) {
-        return (DeclarationAndAssignment) visit(ctx.variableDeclarationAndAssignment());
+    public ASTNode visitForLoopDeclareAndAssign(JavaFileParser.ForLoopDeclareAndAssignContext ctx) {
+        return visit(ctx.variableDeclarationAndAssignment());
     }
 
     @Override
-    public Assignment visitForLoopAssignOnly(JavaFileParser.ForLoopAssignOnlyContext ctx) {
-        return (Assignment) visit(ctx.assignment());
+    public ASTNode visitForLoopAssignOnly(JavaFileParser.ForLoopAssignOnlyContext ctx) {
+        return visit(ctx.assignment());
     }
 
     @Override
-    public Expression visitForLoopCondition(JavaFileParser.ForLoopConditionContext ctx) {
+    public ASTNode visitForLoopCondition(JavaFileParser.ForLoopConditionContext ctx) {
         return expressionVisitor.visit(ctx.expr(), variableScopeStack.peek());
     }
 
     @Override
-    public Expression visitForLoopUpdater(JavaFileParser.ForLoopUpdaterContext ctx) {
+    public ASTNode visitForLoopUpdater(JavaFileParser.ForLoopUpdaterContext ctx) {
         return expressionVisitor.visit(ctx.expr(), variableScopeStack.peek());
     }
 
