@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/bencole12345/JavAssembler#readme",
   "devDependencies": {
-    "jest": "^25.1.0"
+    "jest": "^25.1.0",
+    "wabt": "^1.0.13"
   }
 }
