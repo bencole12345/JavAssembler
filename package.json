@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "benchmark": "node benchmarking.js"
+    "benchmark": "node scripts/run_benchmarks.js"
   },
   "repository": {
     "type": "git",

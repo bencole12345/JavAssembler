@@ -4,7 +4,7 @@ const wabt = require('wabt')();
 
 let wasmInstance;
 beforeAll(async() => {
-  const watPath = path.resolve(__dirname, '..', 'generated_wat', 'tests.wat');
+  const watPath = path.resolve(__dirname, '..', 'sample_programs_compiled', 'tests.wat');
   const watBuffer = fs.readFileSync(watPath, 'utf8');
   const wasmModule = wabt.parseWat(watPath, watBuffer);
   const {buffer} = wasmModule.toBinary({});

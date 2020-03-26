@@ -19,7 +19,7 @@ suite.add('wasm sum of first 1000 squares', function() {
   wasmInstance.Benchmarks_sumSquares(1000);
 })
 
-const watPath = path.resolve(__dirname, '.', 'generated_wat', 'benchmarks.wat');
+const watPath = path.resolve(__dirname, '..', 'sample_programs_compiled', 'benchmarks.wat');
 const watBuffer = fs.readFileSync(watPath, 'utf8');
 const wasmModule = wabt.parseWat(watPath, watBuffer);
 const { buffer } = wasmModule.toBinary({});
