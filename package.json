@@ -6,7 +6,9 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "benchmark": "node scripts/run_benchmarks.js"
+    "benchmark": "node scripts/run_benchmarks.js",
+    "compileTheCompiler": "./gradlew buildFatJar",
+    "compileExamples": "bash scripts/compile_examples.sh"
   },
   "repository": {
     "type": "git",
