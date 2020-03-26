@@ -1,0 +1,29 @@
+{
+  "name": "javassembler",
+  "version": "1.0.0",
+  "description": "A compiler from Java to WebAssembly",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bencole12345/JavAssembler.git"
+  },
+  "keywords": [
+    "Java",
+    "WebAssembly",
+    "compiler"
+  ],
+  "author": "Ben Cole",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bencole12345/JavAssembler/issues"
+  },
+  "homepage": "https://github.com/bencole12345/JavAssembler#readme",
+  "devDependencies": {
+    "jest": "^25.1.0",
+    "wabt": "^1.0.13"
+  }
+}

@@ -101,7 +101,7 @@ public class ExpressionGenerator {
                 emitter.emitLine(wasmType + ".mul");
                 break;
             case Divide:
-                emitter.emitLine(wasmType + ".div");
+                emitter.emitLine(wasmType + ".div_s");
                 break;
             case LogicalAnd:
                 emitter.emitLine("i32.and");
