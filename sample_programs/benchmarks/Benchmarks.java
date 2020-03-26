@@ -8,4 +8,9 @@ public class Benchmarks {
         return sum;
     }
 
+    public static void recurse(int depth) {
+        if (depth > 0) {
+            recurse(depth - 1);
+        }
+    }
 }
