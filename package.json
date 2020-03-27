@@ -5,7 +5,10 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "benchmark": "node scripts/run_benchmarks.js",
+    "compileTheCompiler": "./gradlew buildFatJar",
+    "compileExamples": "bash scripts/compile_examples.sh"
   },
   "repository": {
     "type": "git",
@@ -23,6 +26,7 @@
   },
   "homepage": "https://github.com/bencole12345/JavAssembler#readme",
   "devDependencies": {
+    "benchmark": "^2.1.4",
     "jest": "^25.1.0",
     "wabt": "^1.0.13"
   }
