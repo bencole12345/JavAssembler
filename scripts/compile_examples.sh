@@ -23,7 +23,7 @@ echo "Generated sample_programs_compiled/tests.wat"
 
 # Compile the benchmarks
 echo "Compiling benchmarks..."
-java -jar $JAR_LOCATION -i sample_programs/benchmarks/Benchmarks.java -o sample_programs_compiled/benchmarks.wat
+java -jar $JAR_LOCATION -i sample_programs/benchmarks/Benchmarks.java sample_programs/benchmarks/util/LinkedList.java sample_programs/benchmarks/util/LinkedListNode.java -o sample_programs_compiled/benchmarks.wat
 echo "Generated sample_programs_compiled/benchmarks.wat"
 
 echo "Done!"

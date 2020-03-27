@@ -44,6 +44,15 @@ suite.add('JavaScript recurse 10000 times', function () {
   jsReference.recurse(10000);
 })
 
+suite.add('WebAssembly insert and traverse 1000 linked list nodes', function() {
+  wasmInstance.reset_allocator();
+  wasmInstance.Benchmarks_linkedListInsertTraverse(1000);
+})
+
+suite.add('JavaScript insert and traverse 1000 linked list nodes', function() {
+  jsReference.linkedListInsertTraverse(1000);
+})
+
 const watPath = path.resolve(__dirname, '..', 'sample_programs_compiled', 'benchmarks.wat');
 const watBuffer = fs.readFileSync(watPath, 'utf8');
 const wasmModule = wabt.parseWat(watPath, watBuffer);
@@ -52,6 +61,7 @@ let wasmInstance;
 WebAssembly.compile(buffer).then(themodule => {
   WebAssembly.instantiate(themodule).then(instance => {
     wasmInstance = instance.exports;
+    jsReference.linkedListInsertTraverse(1000);
     suite.run();
   })
 })

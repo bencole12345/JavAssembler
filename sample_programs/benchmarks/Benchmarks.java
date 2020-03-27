@@ -13,4 +13,14 @@ public class Benchmarks {
             recurse(depth - 1);
         }
     }
+
+    public static void linkedListInsertTraverse(int numValues) {
+        LinkedList list = new LinkedList();
+        for (int i = 0; i < numValues; i++) {
+            list.append(i);
+        }
+        for (int i = 0; i < numValues; i++) {
+            int result = list.popFirstElement();
+        }
+    }
 }
