@@ -61,3 +61,11 @@
   ;; Return the allocated address
   local.get $allocatedAddress
 )
+
+
+;; Resets the memory allocator
+(func $reset_allocator
+  i32.const 0
+  global.set $nextFreeSpace
+)
+(export "reset_allocator" (func $reset_allocator))
