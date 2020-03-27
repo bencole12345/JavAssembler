@@ -51,4 +51,9 @@ generated_wasm
 # ------------------------------
 scripts/wat2wasm
 /.vscode/
+
+# Ignore all node modules
 node_modules
+
+# Ignore the build .wat files
+sample_programs_compiled
