@@ -25,4 +25,16 @@ public interface Type extends ASTNode {
      */
     int getStackSize();
 
+    /**
+     * Reports whether this type is a pointer.
+     *
+     * This is used by the garbage collector to determine whether the value
+     * should be interpreted as a reference to an object, or whether it is just
+     * a value.
+     *
+     * @return true if this type is a pointer and should be followed by the
+     *         garbage collector; false otherwise
+     */
+    boolean isPointer();
+
 }

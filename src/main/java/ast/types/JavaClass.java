@@ -22,6 +22,13 @@ public class JavaClass extends HeapObjectReference {
     private String name;
 
     /**
+     * A list of all attributes defined in this class only (not including any
+     * that are defined in parent classes), in the same order as will be used
+     * in the heap.
+     */
+    private List<AllocatedClassAttribute> allocatedAttributes;
+
+    /**
      * A map of name -> ClassAttribute containing all public and private
      * attributes defined within this class.
      */
@@ -72,41 +79,40 @@ public class JavaClass extends HeapObjectReference {
         if (parent == null) {
             // Save 4 bytes for storing the vtable pointer
             nextFreeAssignmentOffset = 4;
+            allocatedAttributes = new ArrayList<>();
         } else {
             nextFreeAssignmentOffset = parent.nextFreeAssignmentOffset;
             virtualTable.addAll(parent.virtualTable);
+            allocatedAttributes = parent.allocatedAttributes;
         }
-        this.attributesMap = buildAttributeMap(attributes);
-    }
 
-    /**
-     * Builds a map from attribute names to AllocatedClassAttribute objects.
-     *
-     * This method will handle checking that each name is unique - that is, for
-     * every attribute name in this class, there is no other attribute in this
-     * class with the same name, nor is there a public attribute in a parent
-     * class with the same name.
-     *
-     * @param attributes The list of attributes defined in the class body
-     * @return A map from attribute names to AllocatedClassAttribute objects
-     * @throws DuplicateClassAttributeException
-     */
-    private Map<String, AllocatedClassAttribute> buildAttributeMap(List<ClassAttribute> attributes)
-            throws DuplicateClassAttributeException {
-        Map<String, AllocatedClassAttribute> attributeMap = new HashMap<>();
+        // Allocate all the attributes defined in this class
+        allocatedAttributes = new ArrayList<>();
+        attributesMap = new HashMap<>();
         for (ClassAttribute attribute : attributes) {
             String attributeName = attribute.getName();
-            if (attributeMap.containsKey(attributeName)
-                    || (parent != null && parent.hasPublicAttribute(attributeName))) {
+
+            // Make sure that the attribute name is unique
+            if (attributesMap.containsKey(attributeName)) {
                 String message = "Duplicate public attribute " + attributeName
                         + " in class " + name;
                 throw new DuplicateClassAttributeException(message);
+            } else if (parent != null && parent.hasPublicAttribute(attributeName)) {
+                // You can't redeclare a public attribute that has already been
+                // declared in a parent class.
+                String message = "Attribute " + attributeName
+                        + " in class " + name
+                        + " has already been defined in a parent class.";
+                throw new DuplicateClassAttributeException(message);
             }
-            AllocatedClassAttribute allocatedAttribute = new AllocatedClassAttribute(attribute, nextFreeAssignmentOffset);
-            attributeMap.put(attributeName, allocatedAttribute);
+
+            // We are safe to allocate the attribute
+            AllocatedClassAttribute allocatedAttribute =
+                    new AllocatedClassAttribute(attribute, nextFreeAssignmentOffset);
+            allocatedAttributes.add(allocatedAttribute);
+            attributesMap.put(attributeName, allocatedAttribute);
             nextFreeAssignmentOffset += allocatedAttribute.getSize();
         }
-        return attributeMap;
     }
 
     @Override
@@ -132,7 +138,12 @@ public class JavaClass extends HeapObjectReference {
     }
 
     public int getHeapSize() {
-        return nextFreeAssignmentOffset;
+        // Heap layout:
+        //  size + flags     (4 bytes)
+        //  vtable           (4 bytes)
+        //  pointer_info     (variable)
+        //  attributes       (variable)
+        return 8 + 4 * getEncodedPointersDescription().size() + nextFreeAssignmentOffset;
     }
 
     /**
@@ -177,6 +188,68 @@ public class JavaClass extends HeapObjectReference {
             throw new IllegalPrivateAccessException(message);
         }
         return attribute;
+    }
+
+    /**
+     * Builds a list recording, for every 4-byte word in the heap
+     * representation of this class, whether that word should be interpreted
+     * as a pointer.
+     *
+     * This is used by the garbage collector to determine which attributes to
+     * treat as pointers to other objects.
+     *
+     * @return A list of booleans where the truth value of the nth element
+     *         encodes whether the nth 4-byte block should be treated as a
+     *         pointer
+     */
+    public List<Boolean> getIsPointerList() {
+        List<Boolean> list = (parent == null)
+                ? new ArrayList<>()
+                : parent.getIsPointerList();
+        for (ClassAttribute attribute : allocatedAttributes) {
+            Type attributeType = attribute.getType();
+            if (attributeType.getStackSize() > 4) {
+                list.add(false);
+                list.add(false);
+            } else {
+                boolean isPointer = attributeType.isPointer();
+                list.add(isPointer);
+            }
+        }
+        return list;
+    }
+
+    /**
+     * Encodes the pointer information as a list of integers, so that whether
+     * each 4-byte word is a pointer is encoded using a single bit.
+     *
+     * @return The encoded version of the pointer information
+     */
+    public List<Integer> getEncodedPointersDescription() {
+        List<Boolean> pointersList = getIsPointerList();
+        List<Integer> encoded = new ArrayList<>();
+        while (!pointersList.isEmpty()) {
+            int value = 0;
+            for (int i = 0; i < 32 && !pointersList.isEmpty(); i++) {
+                boolean isPointer = pointersList.remove(0);
+                int bit = isPointer ? 1 : 0;
+                int mask = bit << i;
+                value |= mask;
+            }
+            encoded.add(value);
+        }
+        return encoded;
+    }
+
+    /**
+     * Returns the number of 4-byte words required to store the attributes of
+     * this class, including parent attributes.
+     *
+     * @return The number of 4-byte words required to store all attributes of
+     *         this class
+     */
+    public int getNumberOfAttributeWords() {
+        return getIsPointerList().size() * 4;
     }
 
     /**
