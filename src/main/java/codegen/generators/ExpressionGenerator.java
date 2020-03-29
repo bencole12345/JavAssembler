@@ -7,6 +7,7 @@ import ast.statements.Assignment;
 import ast.structure.VariableScope;
 import ast.types.JavaClass;
 import ast.types.PrimitiveType;
+import ast.types.Type;
 import codegen.CodeEmitter;
 import codegen.CodeGenUtil;
 import codegen.WasmType;
@@ -15,6 +16,8 @@ import util.ClassTable;
 import util.FunctionTable;
 import util.FunctionTableEntry;
 import util.VirtualTable;
+
+import java.util.List;
 
 public class ExpressionGenerator {
 
@@ -239,17 +242,32 @@ public class ExpressionGenerator {
     private void compileAttributeNameExpression(AttributeNameExpression attributeNameExpression,
                                                 VariableScope scope) {
         // TODO: Implement layer of indirection for stack references to heap objects
-
-        // Look up the local variable to leave the heap pointer on the stack
-        compileLocalVariableNameExpression(attributeNameExpression.getObject(), scope);
-
-        // Find the memory offset of the desired attribute
         int offset = attributeNameExpression.getMemoryOffset();
 
-        // Leave it on the stack
-        LiteralGenerator.getInstance().compileLiteralValue(new IntLiteral(offset));
+        // Lookup size header
+        compileExpression(attributeNameExpression.getObject(), scope);
+        emitter.emitLine("global.set $temp_ref");
+        emitter.emitLine("global.get $temp_ref");
+        emitter.emitLine("i32.load");
+        emitter.emitLine("i32.const 0x3fffffff");
+        emitter.emitLine("i32.and");
 
-        // Add the base and offset to find the heap address of the attribute
+        // Compute the position at which the attributes start
+        emitter.emitLine("i32.const 8");
+        emitter.emitLine("i32.sub");  // Subtract header amount
+        emitter.emitLine("i32.const 33");
+        emitter.emitLine("i32.div_u");
+        emitter.emitLine("i32.const 4");
+        emitter.emitLine("i32.mul");
+        emitter.emitLine("i32.const 8");  // Size + vtable pointer
+        emitter.emitLine("i32.add");
+
+        // Add the relative address of the attribute
+        emitter.emitLine("i32.const " + offset);
+        emitter.emitLine("i32.add");
+
+        // Add the start position of the object in the heap
+        emitter.emitLine("global.get $temp_ref");
         emitter.emitLine("i32.add");
 
         // Look up this index from the heap
@@ -286,6 +304,8 @@ public class ExpressionGenerator {
         compileLocalVariableNameExpression(methodCall.getLocalVariable(), scope);
 
         // Extract its vtable pointer
+        emitter.emitLine("i32.const 4");
+        emitter.emitLine("i32.add");
         emitter.emitLine("i32.load");
 
         // Add the offset for this particular method
@@ -306,62 +326,95 @@ public class ExpressionGenerator {
         JavaClass javaClass = newObjectExpression.getType();
         int size = javaClass.getHeapSize();
         int vtableIndex = virtualTable.getVirtualTablePosition(javaClass);
+        List<Integer> pointerInformation = javaClass.getEncodedPointersDescription();
+
+        // Allocate memory
         emitter.emitLine("i32.const " + size);
+        emitter.emitLine("i32.const 1");  // Set the is_object flag
+        emitter.emitLine("call $alloc");
+
+        // Save a reference to the to the object so we can leave it on the
+        // stack later
+        emitter.emitLine("global.set $temp_ref");
+
+        // Write the vtable index
+        emitter.emitLine("global.get $temp_ref");
+        emitter.emitLine("i32.const 4");
+        emitter.emitLine("i32.add");
         emitter.emitLine("i32.const " + vtableIndex);
-        emitter.emitLine("call $alloc_and_set_vtable");
+        emitter.emitLine("i32.store");
 
+        // Write pointer information
+        int currentPosition = 8;
+        for (int pointerInfoWord : pointerInformation) {
+            emitter.emitLine("global.get $temp_ref");
+            emitter.emitLine("i32.const " + currentPosition);
+            emitter.emitLine("i32.add");
+            emitter.emitLine("i32.const " + pointerInfoWord);
+            emitter.emitLine("i32.store");
+            currentPosition += 4;
+        }
+
+        // TODO: Set every attribute to 0 (null)
+
+        // If a constructor is used, put its arguments on the stack and call the constructor
         if (newObjectExpression.usesConstructor()) {
-
-            // Grab a reference to the created object so that we can leave it
-            // on the stack after it has been consumed by calling the
-            // constructor.
-            emitter.emitLine("global.set $tempRef");
-            emitter.emitLine("global.get $tempRef");
+            FunctionTableEntry entry = newObjectExpression.getConstructor();
+            String functionName = CodeGenUtil.getFunctionNameForOutput(entry, functionTable);
 
             // Put all the arguments on the stack and call the constructor
+            emitter.emitLine("global.get $temp_ref");
             for (Expression expression : newObjectExpression.getArguments()) {
                 compileExpression(expression, scope);
             }
-            FunctionTableEntry entry = newObjectExpression.getConstructor();
-            String functionName = CodeGenUtil.getFunctionNameForOutput(entry, functionTable);
             emitter.emitLine("call $" + functionName);
-
-            // Leave the reference to the object on the stack now that the
-            // constructor has been called
-            emitter.emitLine("global.get $tempRef");
         }
+
+        // Leave a reference to the object on the stack
+        emitter.emitLine("global.get $temp_ref");
     }
 
     public void compileNewArrayExpression(NewArrayExpression newArrayExpression,
                                           VariableScope scope) {
-        // TODO: Add the size for the header overhead to the argument passed
-        // to alloc
+        Expression lengthExpression = newArrayExpression.getLengthExpression();
+        Type elementType = newArrayExpression.getElementType();
+        int elementSize = elementType.getStackSize();
 
-        // Determine how big the array will be, by evaluating the expression
-        // for its length and multiplying by element size, which will always
-        // be 4 since arrays can only hold pointers.
-        emitter.emitLine("i32.const 4");
-        compileExpression(newArrayExpression.getLengthExpression(), scope);
+        // Work out how long the array will be: multiply the number of elements
+        // by the size of each element, and add a constant 4 extra bytes for
+        // the size header. Leave the result on the stack ready for the call
+        // to $alloc.
+        compileExpression(lengthExpression, scope);
+        emitter.emitLine("i32.const " + elementSize);
         emitter.emitLine("i32.mul");
+        emitter.emitLine("i32.const 4");
+        emitter.emitLine("i32.add");
 
-        // Now allocate the memory
+        // Do not set the is_object flag
+        emitter.emitLine("i32.const 0");
+
+        // Allocate the memory, leaving the pointer on the stack
         emitter.emitLine("call $alloc");
     }
 
     private void compileArrayLookupExpression(ArrayIndexExpression lookupExpression,
                                               VariableScope scope) {
+        Expression array = lookupExpression.getArrayExpression();
+        Expression index = lookupExpression.getIndexExpression();
+        Type elementType = lookupExpression.getArrayExpression().getType();
+        int elementSize = elementType.getStackSize();
 
         // Put the address of the start of the array on the stack
-        Expression array = lookupExpression.getArrayExpression();
         compileExpression(array, scope);
 
-        // Add 4 * index to this value to get the address to look up
-        // (because references are all 32-bit/4-byte, and arrays can only
-        // hold references)
-        Expression index = lookupExpression.getIndexExpression();
-        compileExpression(index, scope);
+        // Add 4 to account for the array size header
         emitter.emitLine("i32.const 4");
-        emitter.emitLine("i32.mul"); // Because references are 4 bytes
+        emitter.emitLine("i32.add");
+
+        // Compute the address of the requested element
+        compileExpression(index, scope);
+        emitter.emitLine("i32.const " + elementSize);
+        emitter.emitLine("i32.mul");
         emitter.emitLine("i32.add");
 
         // Look up the value at this address

@@ -242,17 +242,6 @@ public class JavaClass extends HeapObjectReference {
     }
 
     /**
-     * Returns the number of 4-byte words required to store the attributes of
-     * this class, including parent attributes.
-     *
-     * @return The number of 4-byte words required to store all attributes of
-     *         this class
-     */
-    public int getNumberOfAttributeWords() {
-        return getIsPointerList().size() * 4;
-    }
-
-    /**
      * Replaces all UnvalidatedJavaClassReference attributes with JavaClass
      * references.
      *

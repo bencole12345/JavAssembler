@@ -3,7 +3,7 @@
 (memory (export "memory") 1)
 
 ;; Used to track the next available heap address
-(global $nextFreeSpace (mut i32) (i32.const 0))
+(global $next_free_space (mut i32) (i32.const 0))
 
-;; Used when duplicating references on the stack
-(global $tempRef (mut i32) (i32.const 0))
+;; Used as a temporary value when allocating objects
+(global $temp_ref (mut i32) (i32.const 0))

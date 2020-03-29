@@ -95,15 +95,41 @@ public class StatementGenerator {
     private void compileAttributeNameAssignment(AttributeNameExpression attributeNameExpression,
                                                 Expression value,
                                                 VariableScope scope) {
-        LocalVariableExpression localVariable = attributeNameExpression.getObject();
-        int registerNum = scope.lookupRegisterIndexOfVariable(localVariable.getVariableName());
-        emitter.emitLine("local.get " + registerNum);
         int offset = attributeNameExpression.getMemoryOffset();
-        emitter.emitLine("i32.const " + offset);
-        emitter.emitLine("i32.add");
-        ExpressionGenerator.getInstance().compileExpression(value, scope);
         Type attributeType = attributeNameExpression.getType();
         WasmType wasmType = CodeGenUtil.getWasmType(attributeType);
+
+        // Lookup size header
+        ExpressionGenerator.getInstance()
+                .compileExpression(attributeNameExpression.getObject(), scope);
+        emitter.emitLine("global.set $temp_ref");
+        emitter.emitLine("global.get $temp_ref");
+        emitter.emitLine("i32.load");
+        emitter.emitLine("i32.const 0x3fffffff");
+        emitter.emitLine("i32.and");
+
+        // Compute the position at which the attributes start
+        emitter.emitLine("i32.const 8");
+        emitter.emitLine("i32.sub");  // Subtract header amount
+        emitter.emitLine("i32.const 33");
+        emitter.emitLine("i32.div_u");
+        emitter.emitLine("i32.const 4");
+        emitter.emitLine("i32.mul");
+        emitter.emitLine("i32.const 8");  // Size + vtable pointer
+        emitter.emitLine("i32.add");
+
+        // Add the relative address of the attribute
+        emitter.emitLine("i32.const " + offset);
+        emitter.emitLine("i32.add");
+
+        // Add the start position of the object in the heap
+        emitter.emitLine("global.get $temp_ref");
+        emitter.emitLine("i32.add");
+
+        // Put the actual value we want to store on the stack
+        ExpressionGenerator.getInstance().compileExpression(value, scope);
+
+        // Look up this index from the heap
         emitter.emitLine(wasmType + ".store");
     }
 
@@ -120,10 +146,11 @@ public class StatementGenerator {
         // Put the address of (start of array + header amount + index * element size)
         // on the stack
         ExpressionGenerator.getInstance().compileExpression(arrayExpression, scope);
-        // TODO: Add the offset for the header at the start of the array
+        emitter.emitLine("i32.const 4");  // Header amount
         ExpressionGenerator.getInstance().compileExpression(indexExpression, scope);
         emitter.emitLine("i32.const " + arrayElementSize);
         emitter.emitLine("i32.mul");
+        emitter.emitLine("i32.add");
         emitter.emitLine("i32.add");
 
         // Put the value to store there on the stack
