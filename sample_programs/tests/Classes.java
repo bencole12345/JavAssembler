@@ -39,4 +39,32 @@ public class Classes {
     public static void callIncrementY(ExampleClass exampleClass) {
         exampleClass.incrementY();
     }
+
+    public static ClassWith33Attributes createClassWith33Attributes() {
+        return new ClassWith33Attributes();
+    }
+
+    public static void setX1(ClassWith33Attributes object, int value) {
+        object.x1 = value;
+    }
+
+    public static void setX32(ClassWith33Attributes object, int value) {
+        object.x32 = value;
+    }
+
+    public static void setX33(ClassWith33Attributes object, int value) {
+        object.x33 = value;
+    }
+
+    public static int getX1(ClassWith33Attributes object) {
+        return object.x1;
+    }
+
+    public static int getX32(ClassWith33Attributes object) {
+        return object.x32;
+    }
+
+    public static int getX33(ClassWith33Attributes object) {
+        return object.x33;
+    }
 }

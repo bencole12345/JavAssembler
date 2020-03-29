@@ -50,6 +50,18 @@ describe('Classes', () => {
     const result = wasmInstance.Classes_callGetY(reference);
     expect(result).toBe(2);
   })
+  test('More than 32 attributes', () => {
+    const reference = wasmInstance.Classes_createClassWith33Attributes();
+    wasmInstance.Classes_setX1(reference, 1);
+    wasmInstance.Classes_setX32(reference, 32);
+    wasmInstance.Classes_setX33(reference, 33);
+    const x1 = wasmInstance.Classes_getX1(reference);
+    const x32 = wasmInstance.Classes_getX32(reference);
+    const x33 = wasmInstance.Classes_getX33(reference);
+    expect(x1).toBe(1);
+    expect(x32).toBe(32);
+    expect(x33).toBe(33);
+  })
 })
 
 describe('Dynamic polymorphism', () => {
