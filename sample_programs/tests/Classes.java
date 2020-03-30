@@ -1,70 +1,61 @@
 public class Classes {
 
-    public static ExampleClass createInstanceWithoutConstructor() {
-        return new ExampleClass();
+    public static int testSetGetPublicAttributeDirectly(int value) {
+        ExampleClass example = new ExampleClass();
+        example.x = value;
+        return example.x;
     }
 
-    public static ExampleClass createInstanceUsingConstructor(int x) {
-        return new ExampleClass(x);
+    public static int testUseSetterGetterForPublicAttribute(int value) {
+        ExampleClass example = new ExampleClass();
+        example.setX(value);
+        return example.getX();
     }
 
-    public static void callSetX(ExampleClass exampleClass, int x) {
-        exampleClass.setX(x);
+    public static int testUseSetterGetterForPrivateAttribute(int value) {
+        ExampleClass example = new ExampleClass();
+        example.setY(value);
+        return example.getY();
     }
 
-    public static int callGetX(ExampleClass exampleClass) {
-        return exampleClass.getX();
+    public static int testSetPublicAttributeUsingConstructor(int value) {
+        ExampleClass example = new ExampleClass(value);
+        return example.x;
     }
 
-    public static void setXAttributeDirectly(ExampleClass exampleClass, int x) {
-        exampleClass.x = x;
+    public static int testMutatePublicAttribute(int value) {
+        ExampleClass example = new ExampleClass(value);
+        example.incrementX();
+        return example.x;
     }
 
-    public static int lookupXAttributeDirectly(ExampleClass exampleClass) {
-        return exampleClass.x;
+    public static int testMutatePrivateAttribute(int value) {
+        ExampleClass example = new ExampleClass();
+        example.setY(value);
+        example.incrementY();
+        return example.getY();
     }
 
-    public static void callSetY(ExampleClass exampleClass, int y) {
-        exampleClass.setY(y);
+    public static boolean testMoreThan32Attributes() {
+        ClassWith33Attributes bigClass = new ClassWith33Attributes();
+        bigClass.x1 = 1;
+        bigClass.x2 = 2;
+        bigClass.x31 = 31;
+        bigClass.x32 = 32;
+        bigClass.x33 = 33;
+        return bigClass.x1 == 1
+                && bigClass.x2 == 2
+                && bigClass.x31 == 31
+                && bigClass.x32 == 32
+                && bigClass.x33 == 33;
     }
 
-    public static int callGetY(ExampleClass exampleClass) {
-        return exampleClass.getY();
+    private static int getX(ExampleClass example) {
+        return example.x;
     }
 
-    public static void callIncrementX(ExampleClass exampleClass) {
-        exampleClass.incrementX();
-    }
-
-    public static void callIncrementY(ExampleClass exampleClass) {
-        exampleClass.incrementY();
-    }
-
-    public static ClassWith33Attributes createClassWith33Attributes() {
-        return new ClassWith33Attributes();
-    }
-
-    public static void setX1(ClassWith33Attributes object, int value) {
-        object.x1 = value;
-    }
-
-    public static void setX32(ClassWith33Attributes object, int value) {
-        object.x32 = value;
-    }
-
-    public static void setX33(ClassWith33Attributes object, int value) {
-        object.x33 = value;
-    }
-
-    public static int getX1(ClassWith33Attributes object) {
-        return object.x1;
-    }
-
-    public static int getX32(ClassWith33Attributes object) {
-        return object.x32;
-    }
-
-    public static int getX33(ClassWith33Attributes object) {
-        return object.x33;
+    public static boolean testPassAnonymousObjectAsArgument() {
+        int result = getX(new ExampleClass(10));
+        return result == 10;
     }
 }

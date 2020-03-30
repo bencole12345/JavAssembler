@@ -67,16 +67,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         variableScopeStack.clear();
         VariableScope scopeForParameters = pushNewVariableScope();
 
-        // If it's a non-static method, insert a reference to the object as the
-        // first parameter.
-        if (!isStatic) {
-            try {
-                scopeForParameters.registerVariable("this", currentClass);
-            } catch (MultipleVariableDeclarationException e) {
-                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
-            }
-        }
-
         // Add all method parameters to the stack
         for (MethodParameter param : paramsList) {
             String name = param.getParameterName();
@@ -84,6 +74,17 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             try {
                 scopeForParameters.registerVariable(name, type);
             } catch (MultipleVariableDeclarationException e) {
+                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
+            }
+        }
+
+        // If it's a non-static method, also pass a reference to the object
+        if (!isStatic) {
+            try {
+                scopeForParameters.registerVariable("this", currentClass);
+            } catch (MultipleVariableDeclarationException e) {
+                // TODO: Give a more descriptive error message
+                // The problem is that they have tried to declare a variable called "this"
                 ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
             }
         }
@@ -113,13 +114,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         variableScopeStack.clear();
         VariableScope scopeForParameters = pushNewVariableScope();
 
-        // Pass 'this' as extra parameter
-        try {
-            scopeForParameters.registerVariable("this", currentClass);
-        } catch (MultipleVariableDeclarationException e) {
-            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
-        }
-
         // Put all the constructor parameters on the stack
         for (MethodParameter param : paramsList) {
             String name = param.getParameterName();
@@ -129,6 +123,16 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
             } catch (MultipleVariableDeclarationException e) {
                 ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
             }
+        }
+
+        // Pass 'this' as extra parameter
+        try {
+            scopeForParameters.registerVariable("this", currentClass);
+        } catch (MultipleVariableDeclarationException e) {
+            // TODO: Throw a more descriptive error
+            // Like above, the problem here is that they have tried to declare
+            // a new variable called 'this'
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
 
         // Visit the body of the method

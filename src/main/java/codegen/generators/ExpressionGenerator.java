@@ -5,6 +5,7 @@ import ast.literals.*;
 import ast.operations.BinaryOp;
 import ast.statements.Assignment;
 import ast.structure.VariableScope;
+import ast.types.HeapObjectReference;
 import ast.types.JavaClass;
 import ast.types.PrimitiveType;
 import ast.types.Type;
@@ -171,7 +172,7 @@ public class ExpressionGenerator {
                                       VariableScope scope) {
         emitter.emitLine("i32.const 1");
         compileExpression(notExpression.getExpression(), scope);
-        emitter.emitLine("i32.sub");
+        emitter.emitLine("i32.xor");
     }
 
     private void compileVariableIncrementExpression(VariableIncrementExpression expression,
@@ -241,84 +242,86 @@ public class ExpressionGenerator {
 
     private void compileAttributeNameExpression(AttributeNameExpression attributeNameExpression,
                                                 VariableScope scope) {
-        // TODO: Implement layer of indirection for stack references to heap objects
-        int offset = attributeNameExpression.getMemoryOffset();
+        int headerSize = 8;
+        int offset = headerSize + attributeNameExpression.getMemoryOffset();
 
-        // Lookup size header
+        // Locate the start of the object in the heap
+        emitter.emitLine("global.get $shadow_stack_base");
         compileExpression(attributeNameExpression.getObject(), scope);
-        emitter.emitLine("global.set $temp_ref");
-        emitter.emitLine("global.get $temp_ref");
+        emitter.emitLine("i32.sub");
         emitter.emitLine("i32.load");
-        emitter.emitLine("i32.const 0x3fffffff");
-        emitter.emitLine("i32.and");
 
-        // Compute the position at which the attributes start
-        emitter.emitLine("i32.const 8");
-        emitter.emitLine("i32.sub");  // Subtract header amount
-        emitter.emitLine("i32.const 33");
-        emitter.emitLine("i32.div_u");
-        emitter.emitLine("i32.const 4");
-        emitter.emitLine("i32.mul");
-        emitter.emitLine("i32.const 8");  // Size + vtable pointer
-        emitter.emitLine("i32.add");
-
-        // Add the relative address of the attribute
+        // Move to the address of the relevant attribute
         emitter.emitLine("i32.const " + offset);
         emitter.emitLine("i32.add");
 
-        // Add the start position of the object in the heap
-        emitter.emitLine("global.get $temp_ref");
-        emitter.emitLine("i32.add");
-
-        // Look up this index from the heap
+        // Look up the value at this address
         WasmType wasmType = CodeGenUtil.getWasmType(attributeNameExpression.getType());
         emitter.emitLine(wasmType + ".load");
+
+        // If it's a heap object then add a shadow stack entry
+        if (attributeNameExpression.getType() instanceof HeapObjectReference) {
+            emitter.emitLine("call $push_to_shadow_stack");
+        }
     }
 
     private void compileFunctionCallExpression(FunctionCall functionCall,
-                                               VariableScope variableScope) {
+                                               VariableScope scope) {
 
-        // Put arguments on the stack
+        // Put the arguments on the stack
         for (Expression expression : functionCall.getArguments()) {
-            compileExpression(expression, variableScope);
+            compileExpression(expression, scope);
         }
 
         // Call the function
         FunctionTableEntry tableEntry = functionCall.getFunctionTableEntry();
         String functionName = CodeGenUtil.getFunctionNameForOutput(tableEntry, functionTable);
         emitter.emitLine("call $" + functionName);
+
+        // If it's a heap object then add a shadow stack entry
+        if (functionCall.getType() instanceof HeapObjectReference) {
+            emitter.emitLine("call $push_to_shadow_stack");
+        }
     }
 
     private void compileMethodCallExpression(MethodCall methodCall,
                                              VariableScope scope) {
-        // Put the reference to the object on the stack; this is
-        // the first argument to the function.
-        compileLocalVariableNameExpression(methodCall.getLocalVariable(), scope);
+        int vtableOffset = methodCall.getVirtualTableOffset();
+        String fullMethodName = CodeGenUtil.getFunctionNameForOutput(methodCall.getStaticFunctionEntry(), functionTable);
+        String typeAnnotation = "(type $func_" + fullMethodName + ")";
 
-        // Put the rest of the expressions on the stack
+        // Put the arguments on the stack
         for (Expression expression : methodCall.getArguments()) {
             compileExpression(expression, scope);
         }
 
-        // Look up the variable
+        // Pass the object as the last parameter, saving a reference to it
         compileLocalVariableNameExpression(methodCall.getLocalVariable(), scope);
+        emitter.emitLine("global.set $temp_ref_shadow_stack_offset");
+        emitter.emitLine("global.get $temp_ref_shadow_stack_offset");
 
-        // Extract its vtable pointer
+        // Look up the object's heap address
+        emitter.emitLine("global.get $shadow_stack_base");
+        emitter.emitLine("global.get $temp_ref_shadow_stack_offset");
+        emitter.emitLine("i32.sub");
+        emitter.emitLine("i32.load");
+
+        // Extract the vtable pointer
         emitter.emitLine("i32.const 4");
         emitter.emitLine("i32.add");
         emitter.emitLine("i32.load");
 
         // Add the offset for this particular method
-        int vtableOffset = methodCall.getVirtualTableOffset();
         emitter.emitLine("i32.const " + vtableOffset);
         emitter.emitLine("i32.add");
 
-        // Look up the type annotation for the indirect call
-        String fullMethodName = CodeGenUtil.getFunctionNameForOutput(methodCall.getStaticFunctionEntry(), functionTable);
-        String typeAnnotation = "(type $func_" + fullMethodName + ")";
-
         // Call the method
         emitter.emitLine("call_indirect " + typeAnnotation);
+
+        // If it's a heap object then add a shadow stack entry
+        if (methodCall.getType() instanceof HeapObjectReference) {
+            emitter.emitLine("call $push_to_shadow_stack");
+        }
     }
 
     private void compileNewObjectExpression(NewObjectExpression newObjectExpression,
@@ -327,27 +330,32 @@ public class ExpressionGenerator {
         int size = javaClass.getHeapSize();
         int vtableIndex = virtualTable.getVirtualTablePosition(javaClass);
         List<Integer> pointerInformation = javaClass.getEncodedPointersDescription();
+        int pointerInfoStart = javaClass.getPointerInfoStartOffset();
 
         // Allocate memory
         emitter.emitLine("i32.const " + size);
         emitter.emitLine("i32.const 1");  // Set the is_object flag
         emitter.emitLine("call $alloc");
 
-        // Save a reference to the to the object so we can leave it on the
-        // stack later
-        emitter.emitLine("global.set $temp_ref");
+        // Save the allocated address
+        emitter.emitLine("global.set $temp_ref_heap_address");
 
-        // Write the vtable index
-        emitter.emitLine("global.get $temp_ref");
+        // Add a shadow stack entry
+        emitter.emitLine("global.get $temp_ref_heap_address");
+        emitter.emitLine("call $push_to_shadow_stack");
+        emitter.emitLine("global.set $temp_ref_shadow_stack_offset");
+
+        // Set the vtable entry
+        emitter.emitLine("global.get $temp_ref_heap_address");
         emitter.emitLine("i32.const 4");
         emitter.emitLine("i32.add");
         emitter.emitLine("i32.const " + vtableIndex);
         emitter.emitLine("i32.store");
 
         // Write pointer information
-        int currentPosition = 8;
+        int currentPosition = pointerInfoStart;
         for (int pointerInfoWord : pointerInformation) {
-            emitter.emitLine("global.get $temp_ref");
+            emitter.emitLine("global.get $temp_ref_heap_address");
             emitter.emitLine("i32.const " + currentPosition);
             emitter.emitLine("i32.add");
             emitter.emitLine("i32.const " + pointerInfoWord);
@@ -363,15 +371,15 @@ public class ExpressionGenerator {
             String functionName = CodeGenUtil.getFunctionNameForOutput(entry, functionTable);
 
             // Put all the arguments on the stack and call the constructor
-            emitter.emitLine("global.get $temp_ref");
             for (Expression expression : newObjectExpression.getArguments()) {
                 compileExpression(expression, scope);
             }
+            emitter.emitLine("global.get $temp_ref_shadow_stack_offset");
             emitter.emitLine("call $" + functionName);
         }
 
         // Leave a reference to the object on the stack
-        emitter.emitLine("global.get $temp_ref");
+        emitter.emitLine("global.get $temp_ref_shadow_stack_offset");
     }
 
     public void compileNewArrayExpression(NewArrayExpression newArrayExpression,
@@ -395,6 +403,9 @@ public class ExpressionGenerator {
 
         // Allocate the memory, leaving the pointer on the stack
         emitter.emitLine("call $alloc");
+
+        // Allocate a shadow stack entry
+        emitter.emitLine("call $push_to_shadow_stack");
     }
 
     private void compileArrayLookupExpression(ArrayIndexExpression lookupExpression,
@@ -404,8 +415,11 @@ public class ExpressionGenerator {
         Type elementType = lookupExpression.getArrayExpression().getType();
         int elementSize = elementType.getStackSize();
 
-        // Put the address of the start of the array on the stack
+        // Find the start of the array in the heap
+        emitter.emitLine("global.get $shadow_stack_base");
         compileExpression(array, scope);
+        emitter.emitLine("i32.sub");
+        emitter.emitLine("i32.load");
 
         // Add 4 to account for the array size header
         emitter.emitLine("i32.const 4");

@@ -5,5 +5,11 @@
 ;; Used to track the next available heap address
 (global $next_free_space (mut i32) (i32.const 0))
 
-;; Used as a temporary value when allocating objects
-(global $temp_ref (mut i32) (i32.const 0))
+;; Used as temporary values when allocating objects
+(global $temp_ref_heap_address (mut i32) (i32.const 0))
+(global $temp_ref_shadow_stack_offset (mut i32) (i32.const 0))
+
+;; Pointer to the top of the shadow stack (grows downwards)
+(global $shadow_stack_base (mut i32) (i32.const 65532)
+)
+(global $shadow_stack_next_offset (mut i32) i32.const 0)

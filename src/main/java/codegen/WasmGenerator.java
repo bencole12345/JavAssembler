@@ -82,10 +82,7 @@ public class WasmGenerator {
                     + CodeGenUtil.getFunctionNameForOutput(entry, functionTable)
                     + " (func ";
 
-            // Add parameter for the reference to the object
-            typeString += "(param i32)";
-
-            // Add each parameter to the function
+            // Emit each parameter
             String parameters = entry.getParameterTypes()
                     .stream()
                     .map(CodeGenUtil::getWasmType)
@@ -94,8 +91,11 @@ public class WasmGenerator {
                     .map(wasmType -> "(param " + wasmType + ")")
                     .collect(Collectors.joining(" "));
             if (parameters.length() > 0) {
-                typeString += " " + parameters;
+                typeString += parameters + " ";
             }
+
+            // Emit the extra 'this' parameter
+            typeString += "(param i32)";
 
             // Return type
             if (!(entry.getReturnType() instanceof VoidType)) {
@@ -141,16 +141,16 @@ public class WasmGenerator {
         emitter.emitLine("(func $" + functionName);
         emitter.increaseIndentationLevel();
 
-        // If it's not a static method then pass a reference to the class as the
-        // first parameter.
-        if (!method.isStatic()) {
-            emitter.emitLine("(param $this i32)");
-        }
-
-        // Emit the rest of the parameters
+        // Emit all the parameters
         for (MethodParameter param : method.getParams()) {
             WasmType paramType = CodeGenUtil.getWasmType(param.getType());
             emitter.emitLine("(param " + paramType + ")");
+        }
+
+        // If it's not a static method then we also need to take a reference
+        // to the object as the first parameter.
+        if (!method.isStatic()) {
+            emitter.emitLine("(param $this i32)");
         }
 
         // Emit return type, unless it's a void return
@@ -166,8 +166,22 @@ public class WasmGenerator {
             emitter.emitLine("(local " + wasmType + ")");
         }
 
+        // Save the current next shadow stack offset so that everything can be
+        // popped once this function has finished
+        emitter.emitLine("(local $shadow_stack_next_offset_at_entry i32)");
+        emitter.emitLine("global.get $shadow_stack_next_offset");
+        emitter.emitLine("local.set $shadow_stack_next_offset_at_entry");
+
         // Now compile the body of the function
         StatementGenerator.getInstance().compileCodeBlock(method.getBody());
+
+        // If the method has void return type then there will not be a return
+        // statement, so we need to pop everything from the shadow stack to
+        // avoid a memory leak.
+        if (method.getReturnType() instanceof VoidType) {
+            emitter.emitLine("local.get $shadow_stack_next_offset_at_entry");
+            emitter.emitLine("global.set $shadow_stack_next_offset");
+        }
 
         // End the body
         emitter.emitLine(")");

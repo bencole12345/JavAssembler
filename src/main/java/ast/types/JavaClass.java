@@ -77,8 +77,7 @@ public class JavaClass extends HeapObjectReference {
         virtualTable = new ArrayList<>();
         constructorLookupTrie = new LookupTrie<>();
         if (parent == null) {
-            // Save 4 bytes for storing the vtable pointer
-            nextFreeAssignmentOffset = 4;
+            nextFreeAssignmentOffset = 0;
             allocatedAttributes = new ArrayList<>();
         } else {
             nextFreeAssignmentOffset = parent.nextFreeAssignmentOffset;
@@ -239,6 +238,18 @@ public class JavaClass extends HeapObjectReference {
             encoded.add(value);
         }
         return encoded;
+    }
+
+    /**
+     * Returns the offset at which the pointer information should start being
+     * written.
+     *
+     * This comes after the header and all attributes.
+     *
+     * @return The offset at which pointer information starts
+     */
+    public int getPointerInfoStartOffset() {
+        return 8 + nextFreeAssignmentOffset;
     }
 
     /**
