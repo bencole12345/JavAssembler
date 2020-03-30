@@ -251,13 +251,9 @@ public class ExpressionGenerator {
         emitter.emitLine("i32.sub");
         emitter.emitLine("i32.load");
 
-        // Move to the address of the relevant attribute
-        emitter.emitLine("i32.const " + offset);
-        emitter.emitLine("i32.add");
-
         // Look up the value at this address
         WasmType wasmType = CodeGenUtil.getWasmType(attributeNameExpression.getType());
-        emitter.emitLine(wasmType + ".load");
+        emitter.emitLine(wasmType + ".load offset=" + offset);
 
         // If it's a heap object then add a shadow stack entry
         if (attributeNameExpression.getType() instanceof HeapObjectReference) {
@@ -307,9 +303,7 @@ public class ExpressionGenerator {
         emitter.emitLine("i32.load");
 
         // Extract the vtable pointer
-        emitter.emitLine("i32.const 4");
-        emitter.emitLine("i32.add");
-        emitter.emitLine("i32.load");
+        emitter.emitLine("i32.load offset=4");
 
         // Add the offset for this particular method
         emitter.emitLine("i32.const " + vtableOffset);
@@ -345,21 +339,17 @@ public class ExpressionGenerator {
         emitter.emitLine("call $push_to_shadow_stack");
         emitter.emitLine("global.set $temp_ref_shadow_stack_offset");
 
-        // Set the vtable entry
+        // Set the vtable pointer
         emitter.emitLine("global.get $temp_ref_heap_address");
-        emitter.emitLine("i32.const 4");
-        emitter.emitLine("i32.add");
         emitter.emitLine("i32.const " + vtableIndex);
-        emitter.emitLine("i32.store");
+        emitter.emitLine("i32.store offset=4");
 
         // Write pointer information
         int currentPosition = pointerInfoStart;
         for (int pointerInfoWord : pointerInformation) {
             emitter.emitLine("global.get $temp_ref_heap_address");
-            emitter.emitLine("i32.const " + currentPosition);
-            emitter.emitLine("i32.add");
             emitter.emitLine("i32.const " + pointerInfoWord);
-            emitter.emitLine("i32.store");
+            emitter.emitLine("i32.store offset=" + currentPosition);
             currentPosition += 4;
         }
 
@@ -421,18 +411,14 @@ public class ExpressionGenerator {
         emitter.emitLine("i32.sub");
         emitter.emitLine("i32.load");
 
-        // Add 4 to account for the array size header
-        emitter.emitLine("i32.const 4");
-        emitter.emitLine("i32.add");
-
         // Compute the address of the requested element
         compileExpression(index, scope);
         emitter.emitLine("i32.const " + elementSize);
         emitter.emitLine("i32.mul");
         emitter.emitLine("i32.add");
 
-        // Look up the value at this address
+        // Look up the value at this address (accounting for 4-byte header)
         WasmType type = CodeGenUtil.getWasmType(lookupExpression.getType());
-        emitter.emitLine(type + ".load");
+        emitter.emitLine(type + ".load offset=4");
     }
 }

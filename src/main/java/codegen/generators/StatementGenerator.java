@@ -122,11 +122,6 @@ public class StatementGenerator {
         emitter.emitLine("i32.sub");
         emitter.emitLine("i32.load");
 
-        // Identify the address of the relevant attribute
-        emitter.emitLine("i32.const " + offset);
-        emitter.emitLine("i32.add");
-        // Now the address for storing the value is on the stack
-
         // Now put the value we want to store on the stack
         if (value instanceof HeapObjectReference) {
             // We need to "derefence" the shadow stack pointer and store the
@@ -140,8 +135,8 @@ public class StatementGenerator {
             ExpressionGenerator.getInstance().compileExpression(value, scope);
         }
 
-        // Look up this index from the heap
-        emitter.emitLine(wasmType + ".store");
+        // Write to the address of this attribute
+        emitter.emitLine(wasmType + ".store offset=" + offset);
     }
 
     private void compileArrayIndexAssignment(ArrayIndexExpression arrayIndexExpression,
@@ -154,24 +149,24 @@ public class StatementGenerator {
         int arrayElementSize = arrayElementType.getStackSize();
         WasmType valueType = CodeGenUtil.getWasmType(value.getType());
 
-        // Put the address of (start of array + header amount + index * element size)
-        // on the stack
+        // Look up the start of the array
         emitter.emitLine("global.get $shadow_stack_base");
         ExpressionGenerator.getInstance().compileExpression(arrayExpression, scope);
         emitter.emitLine("i32.sub");
         emitter.emitLine("i32.load");
-        emitter.emitLine("i32.const 4");  // Header amount
+
+        // Move to the right element
         ExpressionGenerator.getInstance().compileExpression(indexExpression, scope);
         emitter.emitLine("i32.const " + arrayElementSize);
         emitter.emitLine("i32.mul");
-        emitter.emitLine("i32.add");
+        // TODO: Replace with << 2 because in Java you can only have arrays of references, all 4 bytes
         emitter.emitLine("i32.add");
 
         // Put the value to store there on the stack
         ExpressionGenerator.getInstance().compileExpression(value, scope);
 
-        // Write to memory
-        emitter.emitLine(valueType + ".store");
+        // Write to memory (accounting for 4-byte header)
+        emitter.emitLine(valueType + ".store offset=4");
     }
 
     private void compileIfStatementChain(IfStatementChain chain,
