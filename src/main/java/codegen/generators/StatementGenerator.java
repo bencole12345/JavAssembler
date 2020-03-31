@@ -5,11 +5,11 @@ import ast.statements.*;
 import ast.structure.CodeBlock;
 import ast.structure.VariableScope;
 import ast.types.HeapObjectReference;
-import ast.types.ObjectArray;
 import ast.types.Type;
 import ast.types.VoidType;
 import codegen.CodeEmitter;
 import codegen.CodeGenUtil;
+import codegen.Constants;
 import codegen.WasmType;
 import errors.IncorrectTypeException;
 import util.ClassTable;
@@ -110,8 +110,7 @@ public class StatementGenerator {
     private void compileAttributeNameAssignment(AttributeNameExpression attributeNameExpression,
                                                 Expression value,
                                                 VariableScope scope) {
-        int headerSize = 8;
-        int offset = headerSize + attributeNameExpression.getMemoryOffset();
+        int offset = Constants.OBJECT_HEADER_LENGTH + attributeNameExpression.getMemoryOffset();
         Type attributeType = attributeNameExpression.getType();
         WasmType wasmType = CodeGenUtil.getWasmType(attributeType);
 
@@ -145,8 +144,6 @@ public class StatementGenerator {
 
         Expression arrayExpression = arrayIndexExpression.getArrayExpression();
         Expression indexExpression = arrayIndexExpression.getIndexExpression();
-        Type arrayElementType = ((ObjectArray) arrayExpression.getType()).getElementType();
-        int arrayElementSize = arrayElementType.getStackSize();
         WasmType valueType = CodeGenUtil.getWasmType(value.getType());
 
         // Look up the start of the array
@@ -157,16 +154,15 @@ public class StatementGenerator {
 
         // Move to the right element
         ExpressionGenerator.getInstance().compileExpression(indexExpression, scope);
-        emitter.emitLine("i32.const " + arrayElementSize);
-        emitter.emitLine("i32.mul");
-        // TODO: Replace with << 2 because in Java you can only have arrays of references, all 4 bytes
+        emitter.emitLine("i32.const 2");
+        emitter.emitLine("i32.shl");
         emitter.emitLine("i32.add");
 
         // Put the value to store there on the stack
         ExpressionGenerator.getInstance().compileExpression(value, scope);
 
-        // Write to memory (accounting for 4-byte header)
-        emitter.emitLine(valueType + ".store offset=4");
+        // Write to memory (accounting for header)
+        emitter.emitLine(valueType + ".store offset=" + Constants.ARRAY_HEADER_LENGTH);
     }
 
     private void compileIfStatementChain(IfStatementChain chain,
@@ -251,17 +247,13 @@ public class StatementGenerator {
         ExpressionGenerator.getInstance().compileExpression(notExpression, headerScope);
         emitter.emitLine("br_if 1");
 
+        // Now compile the actual code block
         compileCodeBlock(forLoop.getCodeBlock());
 
-        // We have a problem: we need to compile the updater, eg i++
-        // BUT: if you do this the standard way, it leaves the old value of i
-        // on the stack
-        // And it would be messy to do a pop as we'd have to check that there
-        // is indeed an updater. It's also valid to have an empty expression!
-        // One idea: could we return "how much stuff did we put on the stack"
-        // whenever you compile an expression?
-
-        // TODO: Stop dumping result on the stack
+        // Compile the updater - the part that updates the loop variable. It
+        // doesn't matter if this leaves anything on the stack because we are
+        // about to jump back to the start of the loop, unwinding the stack
+        // anyway.
         ExpressionGenerator.getInstance().compileExpression(forLoop.getUpdater(), headerScope);
 
         // Branch back to the start of the loop

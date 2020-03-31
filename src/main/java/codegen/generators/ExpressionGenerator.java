@@ -11,6 +11,7 @@ import ast.types.PrimitiveType;
 import ast.types.Type;
 import codegen.CodeEmitter;
 import codegen.CodeGenUtil;
+import codegen.Constants;
 import codegen.WasmType;
 import errors.IncorrectTypeException;
 import util.ClassTable;
@@ -242,7 +243,7 @@ public class ExpressionGenerator {
 
     private void compileAttributeNameExpression(AttributeNameExpression attributeNameExpression,
                                                 VariableScope scope) {
-        int headerSize = 8;
+        int headerSize = 9;
         int offset = headerSize + attributeNameExpression.getMemoryOffset();
 
         // Locate the start of the object in the heap
@@ -302,8 +303,8 @@ public class ExpressionGenerator {
         emitter.emitLine("i32.sub");
         emitter.emitLine("i32.load");
 
-        // Extract the vtable pointer
-        emitter.emitLine("i32.load offset=4");
+    // Extract the vtable pointer
+    emitter.emitLine("i32.load offset=" + Constants.VTABLE_POINTER_POS);
 
         // Add the offset for this particular method
         emitter.emitLine("i32.const " + vtableOffset);
@@ -322,14 +323,14 @@ public class ExpressionGenerator {
                                             VariableScope scope) {
         JavaClass javaClass = newObjectExpression.getType();
         int size = javaClass.getHeapSize();
-        int vtableIndex = virtualTable.getVirtualTablePosition(javaClass);
+        int vtablePointer = virtualTable.getVirtualTablePosition(javaClass);
         List<Integer> pointerInformation = javaClass.getEncodedPointersDescription();
         int pointerInfoStart = javaClass.getPointerInfoStartOffset();
 
-        // Allocate memory
+        // Allocate memory, passing size and vtable pointer as arguments
         emitter.emitLine("i32.const " + size);
-        emitter.emitLine("i32.const 1");  // Set the is_object flag
-        emitter.emitLine("call $alloc");
+        emitter.emitLine("i32.const " + vtablePointer);
+        emitter.emitLine("call $alloc_object");
 
         // Save the allocated address
         emitter.emitLine("global.set $temp_ref_heap_address");
@@ -338,11 +339,6 @@ public class ExpressionGenerator {
         emitter.emitLine("global.get $temp_ref_heap_address");
         emitter.emitLine("call $push_to_shadow_stack");
         emitter.emitLine("global.set $temp_ref_shadow_stack_offset");
-
-        // Set the vtable pointer
-        emitter.emitLine("global.get $temp_ref_heap_address");
-        emitter.emitLine("i32.const " + vtableIndex);
-        emitter.emitLine("i32.store offset=4");
 
         // Write pointer information
         int currentPosition = pointerInfoStart;
@@ -375,24 +371,12 @@ public class ExpressionGenerator {
     public void compileNewArrayExpression(NewArrayExpression newArrayExpression,
                                           VariableScope scope) {
         Expression lengthExpression = newArrayExpression.getLengthExpression();
-        Type elementType = newArrayExpression.getElementType();
-        int elementSize = elementType.getStackSize();
 
-        // Work out how long the array will be: multiply the number of elements
-        // by the size of each element, and add a constant 4 extra bytes for
-        // the size header. Leave the result on the stack ready for the call
-        // to $alloc.
+        // First evaluate the expression for how long the array should be
         compileExpression(lengthExpression, scope);
-        emitter.emitLine("i32.const " + elementSize);
-        emitter.emitLine("i32.mul");
-        emitter.emitLine("i32.const 4");
-        emitter.emitLine("i32.add");
 
-        // Do not set the is_object flag
-        emitter.emitLine("i32.const 0");
-
-        // Allocate the memory, leaving the pointer on the stack
-        emitter.emitLine("call $alloc");
+        // Now allocate the memory
+        emitter.emitLine("call $alloc_array");
 
         // Allocate a shadow stack entry
         emitter.emitLine("call $push_to_shadow_stack");
@@ -417,8 +401,8 @@ public class ExpressionGenerator {
         emitter.emitLine("i32.mul");
         emitter.emitLine("i32.add");
 
-        // Look up the value at this address (accounting for 4-byte header)
+        // Look up the value at this address (accounting for header)
         WasmType type = CodeGenUtil.getWasmType(lookupExpression.getType());
-        emitter.emitLine(type + ".load offset=4");
+        emitter.emitLine(type + ".load offset=" + Constants.ARRAY_HEADER_LENGTH);
     }
 }

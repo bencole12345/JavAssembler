@@ -1,5 +1,6 @@
 package ast.types;
 
+import codegen.Constants;
 import errors.DuplicateClassAttributeException;
 import errors.DuplicateFunctionSignatureException;
 import errors.IllegalPrivateAccessException;
@@ -138,11 +139,12 @@ public class JavaClass extends HeapObjectReference {
 
     public int getHeapSize() {
         // Heap layout:
-        //  size + flags     (4 bytes)
-        //  vtable           (4 bytes)
-        //  pointer_info     (variable)
+        //  flags            (1 byte)
+        //  vtable pointer   (4 bytes)
+        //  size field       (4 bytes)
         //  attributes       (variable)
-        return 8 + 4 * getEncodedPointersDescription().size() + nextFreeAssignmentOffset;
+        //  pointer_info     (variable)
+        return 9 + nextFreeAssignmentOffset + 4 * getEncodedPointersDescription().size();
     }
 
     /**
@@ -249,7 +251,7 @@ public class JavaClass extends HeapObjectReference {
      * @return The offset at which pointer information starts
      */
     public int getPointerInfoStartOffset() {
-        return 8 + nextFreeAssignmentOffset;
+    return Constants.OBJECT_HEADER_LENGTH + nextFreeAssignmentOffset;
     }
 
     /**

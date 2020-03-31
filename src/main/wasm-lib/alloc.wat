@@ -1,21 +1,17 @@
-;; Allocates a requested amount of heap space and returns
-;; the address that was allocated.
-(func $alloc
+;; Allocates heap space for an object
+(func $alloc_object
   
-  ;; The number of bytes to allocate
+  ;; The number of bytes to allocate including header
   (param $size i32)
 
   ;; Whether to set the is_object flag
-  (param $is_object i32)
+  (param $vtable_pointer i32)
 
   ;; Returns the address that was allocated
   (result i32)
 
   ;; Used to track the address that was allocated
   (local $allocated_address i32)
-
-  ;; Used to track the shadow stack offset allocated
-  (local $allocated_shadow_stack_offset i32)
 
   ;; Read the current next free heap address
   global.get $next_free_space
@@ -27,18 +23,72 @@
   i32.add
   global.set $next_free_space
 
-  ;; Set the is_object flag
-  local.get $is_object
-  i32.const 31
-  i32.shl
-  local.get $size
-  i32.or
-  local.set $size
+  ;; Write the flags to the first byte
+  ;; 0b00000001
+  ;;         ^ has_been_copied GC flag
+  ;;          ^ is_object flag
+  local.get $allocated_address
+  i32.const 0x00000001
+  i32.store8
 
-  ;; Write the size word to the first address
+  ;; Write the size field
   local.get $allocated_address
   local.get $size
-  i32.store
+  i32.store offset=1
+
+  ;; Write the vtable pointer
+  local.get $allocated_address
+  local.get $vtable_pointer
+  i32.store offset=5
+
+  ;; Return the allocated address
+  local.get $allocated_address
+)
+
+
+;; Allocates heap space for an array
+(func $alloc_array
+  
+  ;; The length of the array
+  (param $length i32)
+
+  ;; Returns the address that was allocated
+  (result i32)
+
+  ;; Used to track the address that was allocated
+  (local $allocated_address i32)
+
+  ;; Read the current next free heap address
+  global.get $next_free_space
+  local.set $allocated_address
+
+  ;; Size = header + 4 * length
+  ;;      = 5 + (length << 2)
+  i32.const 5
+  local.get $length
+  i32.const 2
+  i32.shl
+  i32.add
+
+  ;; Bump the next free address
+  global.get $next_free_space
+  i32.add
+  global.set $next_free_space
+
+  ;; Write the flags to the first byte
+  ;; 0b00000000
+  ;;         ^ has_been_copied GC flag
+  ;;          ^ is_object flag
+  local.get $allocated_address
+  i32.const 0x00000000
+  i32.store8
+
+  ;; Write the size field
+  local.get $allocated_address
+  local.get $length
+  i32.const 2
+  i32.shl
+  i32.store offset=1
 
   ;; Return the allocated address
   local.get $allocated_address
@@ -51,6 +101,10 @@
   global.set $next_free_space
   i32.const 0
   global.set $shadow_stack_next_offset
+  i32.const 32764
+  global.set $shadow_stack_base
+  i32.const 0
+  global.set $curr_heap_half
 )
 (export "reset_allocator" (func $reset_allocator))
 
