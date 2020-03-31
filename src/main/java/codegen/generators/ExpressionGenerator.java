@@ -322,13 +322,15 @@ public class ExpressionGenerator {
     private void compileNewObjectExpression(NewObjectExpression newObjectExpression,
                                             VariableScope scope) {
         JavaClass javaClass = newObjectExpression.getType();
-        int size = javaClass.getHeapSize();
+        int numAttributeBytes = javaClass.getNumAttributeBytes();
+        int totalSize = javaClass.getHeapSize();
         int vtablePointer = virtualTable.getVirtualTablePosition(javaClass);
         List<Integer> pointerInformation = javaClass.getEncodedPointersDescription();
         int pointerInfoStart = javaClass.getPointerInfoStartOffset();
 
-        // Allocate memory, passing size and vtable pointer as arguments
-        emitter.emitLine("i32.const " + size);
+        // Allocate the memory
+        emitter.emitLine("i32.const " + totalSize);
+        emitter.emitLine("i32.const " + numAttributeBytes);
         emitter.emitLine("i32.const " + vtablePointer);
         emitter.emitLine("call $alloc_object");
 

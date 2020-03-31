@@ -22,6 +22,10 @@ public class WasmLibReader {
         return readCleanedWasmCode("alloc.wat");
     }
 
+    public static Stream<String> getGarbageCollectionCode() {
+        return readCleanedWasmCode("gc.wat");
+    }
+
     /**
      * Cleans the WebAssembly code for output by removing empty lines and
      * comments.

@@ -192,6 +192,13 @@ public class JavaClass extends HeapObjectReference {
     }
 
     /**
+     * Returns the number of bytes taken up by attributes.
+     */
+    public int getNumAttributeBytes() {
+        return nextFreeAssignmentOffset;
+    }
+
+    /**
      * Builds a list recording, for every 4-byte word in the heap
      * representation of this class, whether that word should be interpreted
      * as a pointer.

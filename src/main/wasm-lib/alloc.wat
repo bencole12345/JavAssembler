@@ -1,8 +1,12 @@
 ;; Allocates heap space for an object
 (func $alloc_object
   
-  ;; The number of bytes to allocate including header
-  (param $size i32)
+  ;; The total number of bytes to allocate including header
+  ;; and pointer information
+  (param $total_size i32)
+
+  ;; The number of bytes occupied by the attributes
+  (param $num_attribute_bytes i32)
 
   ;; Whether to set the is_object flag
   (param $vtable_pointer i32)
@@ -13,13 +17,15 @@
   ;; Used to track the address that was allocated
   (local $allocated_address i32)
 
+  call $gc
+
   ;; Read the current next free heap address
   global.get $next_free_space
   local.set $allocated_address
 
   ;; Bump the next free address
   global.get $next_free_space
-  local.get $size
+  local.get $total_size
   i32.add
   global.set $next_free_space
 
@@ -31,9 +37,9 @@
   i32.const 0x00000001
   i32.store8
 
-  ;; Write the size field
+  ;; Write the num_attribute_bytes field
   local.get $allocated_address
-  local.get $size
+  local.get $num_attribute_bytes
   i32.store offset=1
 
   ;; Write the vtable pointer
@@ -58,12 +64,14 @@
   ;; Used to track the address that was allocated
   (local $allocated_address i32)
 
+  call $gc
+
   ;; Read the current next free heap address
   global.get $next_free_space
   local.set $allocated_address
 
   ;; Size = header + 4 * length
-  ;;      = 5 + (length << 2)
+  ;;      = 5      + (length << 2)
   i32.const 5
   local.get $length
   i32.const 2
@@ -104,7 +112,7 @@
   i32.const 32764
   global.set $shadow_stack_base
   i32.const 0
-  global.set $curr_heap_half
+  global.set $gc_curr_heap_half
 )
 (export "reset_allocator" (func $reset_allocator))
 

@@ -10,6 +10,8 @@
 (global $temp_ref_shadow_stack_offset (mut i32) (i32.const 0))
 
 ;; Pointer to the top of the shadow stack (grows downwards)
-(global $shadow_stack_base (mut i32) (i32.const 65532)
-)
+(global $shadow_stack_base (mut i32) (i32.const 32764))
 (global $shadow_stack_next_offset (mut i32) i32.const 0)
+
+;; Which half of the heap we are currently using (0 or 1)
+(global $gc_curr_heap_half (mut i32) (i32.const 0))
