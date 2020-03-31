@@ -15,19 +15,11 @@ beforeAll(async () => {
 
 describe('Arrays', () => {
   test('Array elements are stored correctly', () => {
-    const array = wasmInstance.Arrays_makeArray(3);
-    wasmInstance.Arrays_setElement(array, 0, 0);
-    wasmInstance.Arrays_setElement(array, 1, -1);
-    wasmInstance.Arrays_setElement(array, 2, 10);
-    const first = wasmInstance.Arrays_getElement(array, 0);
-    const second = wasmInstance.Arrays_getElement(array, 1);
-    const third = wasmInstance.Arrays_getElement(array, 2);
-    expect(first).toBe(0);
-    expect(second).toBe(-1);
-    expect(third).toBe(10);
+    const success = wasmInstance.Arrays_testArrayElementsStoredCorrectly();
+    expect(success).toBeTruthy();
   })
   test('Can pass array as parameter', () => {
-    const result = wasmInstance.Arrays_passArrayAsParameter();
-    expect(result).toBeTruthy();
+    const success = wasmInstance.Arrays_testPassArrayAsParameter();
+    expect(success).toBeTruthy();
   })
 })
