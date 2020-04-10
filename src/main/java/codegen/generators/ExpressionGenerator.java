@@ -435,17 +435,9 @@ public class ExpressionGenerator {
         Type elementType = lookupExpression.getArrayExpression().getType();
         int elementSize = elementType.getStackSize();
 
-        // Find the address of the array
         compileExpression(array, scope);
-
-        // Compute the address of the requested element
         compileExpression(index, scope);
         emitter.emitLine("i32.const " + elementSize);
-        emitter.emitLine("i32.mul");
-        emitter.emitLine("i32.add");
-
-        // Look up the value at this address (accounting for header)
-        WasmType type = CodeGenUtil.getWasmType(lookupExpression.getType());
-        emitter.emitLine(type + ".load offset=" + Constants.ARRAY_HEADER_LENGTH);
+        emitter.emitLine("call $read_array_index");
     }
 }
