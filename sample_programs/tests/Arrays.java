@@ -1,6 +1,6 @@
 public class Arrays {
 
-    public static int testArrayElementsStoredCorrectly() {
+    public static boolean testArrayElementsStoredCorrectly() {
         Integer[] array = new Integer[3];
         array[0] = new Integer(0);
         array[1] = new Integer(-1);
@@ -8,7 +8,9 @@ public class Arrays {
         Integer firstElement = array[0];
         Integer secondElement = array[1];
         Integer thirdElement = array[2];
-        return thirdElement.value;
+        return firstElement.value == 0
+                && secondElement.value == -1
+                && thirdElement.value == 10;
     }
 
     public static boolean testPassArrayAsParameter() {
@@ -16,11 +18,11 @@ public class Arrays {
         Integer element = new Integer();
         element.value = 10;
         array[0] = element;
-        Integer returnedElement = getFirstElement(array);
-        return returnedElement.value == 10;
+        Integer returned = getFirstElement(array);
+        return returned.value == 10;
     }
 
-    private static Integer getFirstElement(Integer[] array) {
+    public static Integer getFirstElement(Integer[] array) {
         return array[0];
     }
 

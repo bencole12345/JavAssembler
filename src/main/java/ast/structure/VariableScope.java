@@ -1,5 +1,7 @@
 package ast.structure;
 
+import ast.types.HeapObjectReference;
+import ast.types.PrimitiveType;
 import ast.types.Type;
 import errors.MultipleVariableDeclarationException;
 
@@ -20,21 +22,56 @@ import java.util.stream.Collectors;
  */
 public class VariableScope {
 
+    public static abstract class Allocation {
+
+        public abstract Type getType();
+
+    }
+
     /**
-     * Wraps the data stored about a variable allocation.
+     * Wraps the data stored about a local variable allocation.
+     *
+     * This must only be used for primitive types. Non-primitive types
+     * must be stored in the shadow stack.
      */
-    private static class RegisterAllocation {
+    public static class LocalVariableAllocation extends Allocation {
 
-        private int registerIndex;
-        private Type type;
+        private int localVariableIndex;
+        private PrimitiveType type;
 
-        public RegisterAllocation(int registerIndex, Type type) {
-            this.registerIndex = registerIndex;
+        public LocalVariableAllocation(int localVariableIndex, PrimitiveType type) {
+            this.localVariableIndex = localVariableIndex;
             this.type = type;
         }
 
-        public int getRegisterIndex() {
-            return registerIndex;
+        public int getLocalVariableIndex() {
+            return localVariableIndex;
+        }
+
+        public Type getType() {
+            return type;
+        }
+    }
+
+    /**
+     * Wraps the data stored about a stack allocation.
+     *
+     * This must only be used for offsets into the shadow stack, where
+     * the actual pointer into the heap will be stored. Primitive types
+     * should be stored using a local variable.
+     */
+    public static class StackOffsetAllocation extends Allocation {
+
+        private int offset;
+        private HeapObjectReference type;
+
+        public StackOffsetAllocation(int offset, HeapObjectReference type) {
+            this.offset = offset;
+            this.type = type;
+        }
+
+        public int getStackFrameOffset() {
+            return offset;
         }
 
         public Type getType() {
@@ -51,9 +88,9 @@ public class VariableScope {
     private VariableScope containingScope;
 
     /**
-     * The map from variable names to register allocations
+     * Contains the allocations for all variables that have been registered.
      */
-    private Map<String, RegisterAllocation> allocations;
+    private Map<String, Allocation> variableAllocations;
 
     /**
      * An ordered list of all known allocations at this level or below
@@ -61,25 +98,33 @@ public class VariableScope {
      * This is used to generate the list of types used within a function, which
      * is required at the start of a WebAssembly function.
      */
-    private List<RegisterAllocation> allocationsList;
+    private List<LocalVariableAllocation> localVariableAllocationsList;
 
     /**
      * Tracks which register index we can allocate next for
      * a local variable
      */
-    private int nextAllocation;
+    private int nextLocalVariableIndexToAllocate;
+
+    /**
+     * Tracks which stack offset to use next to allocate a value in the
+     * shadow stack
+     */
+    private int nextStackOffsetToAllocate;
 
     public VariableScope() {
-        allocations = new HashMap<>();
-        allocationsList = new ArrayList<>();
-        nextAllocation = 0;
+        variableAllocations = new HashMap<>();
+        localVariableAllocationsList = new ArrayList<>();
+        nextLocalVariableIndexToAllocate = 0;
+        nextStackOffsetToAllocate = 0;
         containingScope = null;
     }
 
     public VariableScope(VariableScope containingScope) {
         this();
         this.containingScope = containingScope;
-        nextAllocation = containingScope.nextAllocation;
+        nextLocalVariableIndexToAllocate = containingScope.nextLocalVariableIndexToAllocate;
+        nextStackOffsetToAllocate = containingScope.nextStackOffsetToAllocate;
     }
 
     /**
@@ -101,23 +146,43 @@ public class VariableScope {
     }
 
     /**
-     * Assigns a register to a variable in this scope.
+     * Registers a variable with this scope.
      *
-     * @param name The variable's name
+     * @param name The name of the variable being registered
      * @param type The type of the variable
-     * @return The register index that was allocated
+     * @throws MultipleVariableDeclarationException if a variable with this
+     *         name has already been declared in this scope
      */
-    public int registerVariable(String name, Type type) throws MultipleVariableDeclarationException {
-        if (lookupVariableType(name) == null) {
-            RegisterAllocation allocation = new RegisterAllocation(nextAllocation, type);
-            allocations.put(name, allocation);
-            allocationsList.add(allocation);
-        } else {
-            String message = "Variable " + name
-                    + " already has a declaration in this scope";
+    public void registerVariable(String name, Type type) throws MultipleVariableDeclarationException {
+        if (hasMappingFor(name)) {
+            String message = "Variable " + name + " already has a declaration in this scope";
             throw new MultipleVariableDeclarationException(message);
         }
-        return nextAllocation++;
+        Allocation allocation;
+        if (type instanceof PrimitiveType) {
+            PrimitiveType primitiveType = (PrimitiveType) type;
+            allocation = new LocalVariableAllocation(nextLocalVariableIndexToAllocate, primitiveType);
+            localVariableAllocationsList.add((LocalVariableAllocation) allocation);
+            nextLocalVariableIndexToAllocate++;
+        } else {
+            HeapObjectReference nonPrimitiveType = (HeapObjectReference) type;
+            allocation = new StackOffsetAllocation(nextStackOffsetToAllocate, nonPrimitiveType);
+            nextStackOffsetToAllocate += 4;
+        }
+        variableAllocations.put(name, allocation);
+    }
+
+    /**
+     * Registers the parameters of a method just like normal variables
+     *
+     * @param parameters The parameters to register
+     */
+    public void registerParameters(List<MethodParameter> parameters) throws MultipleVariableDeclarationException {
+        for (MethodParameter parameter : parameters) {
+            String name = parameter.getParameterName();
+            Type type = parameter.getType();
+            registerVariable(name, type);
+        }
     }
 
     /**
@@ -127,42 +192,22 @@ public class VariableScope {
      * @return true if this scope has a mapping; false otherwise
      */
     public boolean hasMappingFor(String name) {
-        if (allocations.containsKey(name))
-            return true;
-        if (containingScope != null)
-            return containingScope.hasMappingFor(name);
-        else
-            return false;
+        if (variableAllocations.containsKey(name)) return true;
+        if (containingScope != null) return containingScope.hasMappingFor(name);
+        return false;
     }
 
     /**
-     * Looks up the type of a variable from its name.
+     * Looks up an allocated variable from its name.
      *
-     * @param name The name of the variable to look up
-     * @return The Type of that variable, or null if not registered
+     * @param name The variable name to look up
+     * @return The Allocation of that variable
      */
-    public Type lookupVariableType(String name) {
-        if (allocations.containsKey(name)) {
-            return allocations.get(name).getType();
+    public Allocation getVariableWithName(String name) {
+        if (variableAllocations.containsKey(name)) {
+            return variableAllocations.get(name);
         } else if (containingScope != null) {
-            return containingScope.lookupVariableType(name);
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Looks up the register index that was assigned to a variable.
-     *
-     * @param name The name of the variable to look up
-     * @return The index of the register that was assigned, or null if not
-     *      registered
-     */
-    public Integer lookupRegisterIndexOfVariable(String name) {
-        if (allocations.containsKey(name)) {
-            return allocations.get(name).getRegisterIndex();
-        } else if (containingScope != null) {
-            return containingScope.lookupRegisterIndexOfVariable(name);
+            return containingScope.getVariableWithName(name);
         } else {
             return null;
         }
@@ -175,8 +220,9 @@ public class VariableScope {
      */
     public void notifyPopped() {
         if (containingScope != null) {
-            containingScope.nextAllocation += allocations.size();
-            containingScope.allocationsList.addAll(this.allocationsList);
+            containingScope.nextLocalVariableIndexToAllocate = this.nextLocalVariableIndexToAllocate;
+            containingScope.nextStackOffsetToAllocate = this.nextStackOffsetToAllocate;
+            containingScope.localVariableAllocationsList.addAll(this.localVariableAllocationsList);
         }
     }
 
@@ -187,9 +233,10 @@ public class VariableScope {
      *
      * @return A list of all known allocated types
      */
-    public List<Type> getAllKnownAllocatedTypes() {
-        return allocationsList.stream()
-                .map(RegisterAllocation::getType)
+    public List<Type> getPrimitiveLocalVariableTypes() {
+        return localVariableAllocationsList
+                .stream()
+                .map(LocalVariableAllocation::getType)
                 .collect(Collectors.toList());
     }
 }

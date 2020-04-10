@@ -177,11 +177,13 @@ public class ExpressionGenerator {
     }
 
     private void compileVariableIncrementExpression(VariableIncrementExpression expression,
-                                                    VariableScope variableScope) {
+                                                    VariableScope scope) {
         // TODO: Make sure range is preserved
         //       (shouldn't be able to ++ a short to get out of the 16-bit range)
         // TODO: Support applying increments to attributes as well as local variables
-        int registerNumber = variableScope.lookupRegisterIndexOfVariable(expression.getLocalVariableExpression().getVariableName());
+        String variableName = expression.getLocalVariableExpression().getVariableName();
+        VariableScope.LocalVariableAllocation allocation = (VariableScope.LocalVariableAllocation) scope.getVariableWithName(variableName);
+        int registerNumber = allocation.getLocalVariableIndex();
         Expression varNameExpr = expression.getLocalVariableExpression();
         Expression one;
         PrimitiveType variableType = (PrimitiveType) expression.getLocalVariableExpression().getType();
@@ -209,26 +211,26 @@ public class ExpressionGenerator {
                 case PRE_INCREMENT:
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.Add);
                     assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
-                    StatementGenerator.getInstance().compileStatement(assignment, variableScope);
+                    StatementGenerator.getInstance().compileStatement(assignment, scope);
                     emitter.emitLine("local.get " + registerNumber);
                     break;
                 case PRE_DECREMENT:
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.Subtract);
                     assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
-                    StatementGenerator.getInstance().compileStatement(assignment, variableScope);
+                    StatementGenerator.getInstance().compileStatement(assignment, scope);
                     emitter.emitLine("local.get " + registerNumber);
                     break;
                 case POST_INCREMENT:
                     emitter.emitLine("local.get " + registerNumber);
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.Add);
                     assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
-                    StatementGenerator.getInstance().compileStatement(assignment, variableScope);
+                    StatementGenerator.getInstance().compileStatement(assignment, scope);
                     break;
                 case POST_DECREMENT:
                     emitter.emitLine("local.get " + registerNumber);
                     bopExpr = new BinaryOperatorExpression(varNameExpr, one, BinaryOp.Subtract);
                     assignment = new Assignment(expression.getLocalVariableExpression(), bopExpr);
-                    StatementGenerator.getInstance().compileStatement(assignment, variableScope);
+                    StatementGenerator.getInstance().compileStatement(assignment, scope);
             }
         } catch (IncorrectTypeException e) {
             e.printStackTrace();
@@ -237,90 +239,66 @@ public class ExpressionGenerator {
 
     private void compileLocalVariableNameExpression(LocalVariableExpression expression,
                                                     VariableScope variableScope) {
-        int index = variableScope.lookupRegisterIndexOfVariable(expression.getVariableName());
-        emitter.emitLine("local.get " + index);
+        VariableScope.Allocation allocation = variableScope.getVariableWithName(expression.getVariableName());
+        if (allocation instanceof VariableScope.LocalVariableAllocation) {
+            // It's a WebAssembly local variable
+            VariableScope.LocalVariableAllocation localAllocation = (VariableScope.LocalVariableAllocation) allocation;
+            int index = localAllocation.getLocalVariableIndex();
+            emitter.emitLine("local.get " + index);
+        } else {
+            // It's a stack variable
+            VariableScope.StackOffsetAllocation stackAllocation = (VariableScope.StackOffsetAllocation) allocation;
+            int stackFrameOffset = stackAllocation.getStackFrameOffset();
+            emitter.emitLine("global.get $stack_base");
+            emitter.emitLine("global.get $stack_frame_start");
+            emitter.emitLine("i32.add");
+            emitter.emitLine("i32.load offset=" + stackFrameOffset);
+        }
     }
 
     private void compileAttributeNameExpression(AttributeNameExpression attributeNameExpression,
                                                 VariableScope scope) {
-        int headerSize = 9;
-        int offset = headerSize + attributeNameExpression.getMemoryOffset();
-
-        // Locate the start of the object in the heap
-        emitter.emitLine("global.get $shadow_stack_base");
-        compileExpression(attributeNameExpression.getObject(), scope);
-        emitter.emitLine("i32.sub");
-        emitter.emitLine("i32.load");
-
-        // Look up the value at this address
+        int attributeOffset = Constants.OBJECT_HEADER_LENGTH + attributeNameExpression.getMemoryOffset();
         WasmType wasmType = CodeGenUtil.getWasmType(attributeNameExpression.getType());
-        emitter.emitLine(wasmType + ".load offset=" + offset);
 
-        // If it's a heap object then add a shadow stack entry
-        if (attributeNameExpression.getType() instanceof HeapObjectReference) {
-            emitter.emitLine("call $push_to_shadow_stack");
-        }
+        // Put the address of the object on the stack
+        compileExpression(attributeNameExpression.getObject(), scope);
+
+        // Look up the value at the offset for the requested attribute
+        emitter.emitLine(wasmType + ".load offset=" + attributeOffset);
     }
 
     private void compileFunctionCallExpression(FunctionCall functionCall,
                                                VariableScope scope) {
-
-        // Put the arguments on the stack
-        for (Expression expression : functionCall.getArguments()) {
-            compileExpression(expression, scope);
-        }
-
-        // Call the function
+        List<Expression> arguments = functionCall.getArguments();
         FunctionTableEntry tableEntry = functionCall.getFunctionTableEntry();
         String functionName = CodeGenUtil.getFunctionNameForOutput(tableEntry, functionTable);
-        emitter.emitLine("call $" + functionName);
-
-        // If it's a heap object then add a shadow stack entry
-        if (functionCall.getType() instanceof HeapObjectReference) {
-            emitter.emitLine("call $push_to_shadow_stack");
-        }
+        String functionCallString = "call $" + functionName;
+        saveStateAndCallFunction(functionCallString, arguments, scope, null, null, false);
     }
 
     private void compileMethodCallExpression(MethodCall methodCall,
                                              VariableScope scope) {
+
+        // Extract arguments
+        List<Expression> arguments = methodCall.getArguments();
+
+        // Include the 'this' object as the final parameter
+        arguments.add(methodCall.getLocalVariable());
+
+        // Calculate the method to call
         int vtableOffset = methodCall.getVirtualTableOffset();
         String fullMethodName = CodeGenUtil.getFunctionNameForOutput(methodCall.getStaticFunctionEntry(), functionTable);
         String typeAnnotation = "(type $func_" + fullMethodName + ")";
+        String functionCallString = "call_indirect " + typeAnnotation;
 
-        // Put the arguments on the stack
-        for (Expression expression : methodCall.getArguments()) {
-            compileExpression(expression, scope);
-        }
-
-        // Pass the object as the last parameter, saving a reference to it
-        compileLocalVariableNameExpression(methodCall.getLocalVariable(), scope);
-        emitter.emitLine("global.set $temp_ref_shadow_stack_offset");
-        emitter.emitLine("global.get $temp_ref_shadow_stack_offset");
-
-        // Look up the object's heap address
-        emitter.emitLine("global.get $shadow_stack_base");
-        emitter.emitLine("global.get $temp_ref_shadow_stack_offset");
-        emitter.emitLine("i32.sub");
-        emitter.emitLine("i32.load");
-
-    // Extract the vtable pointer
-    emitter.emitLine("i32.load offset=" + Constants.VTABLE_POINTER_POS);
-
-        // Add the offset for this particular method
-        emitter.emitLine("i32.const " + vtableOffset);
-        emitter.emitLine("i32.add");
-
-        // Call the method
-        emitter.emitLine("call_indirect " + typeAnnotation);
-
-        // If it's a heap object then add a shadow stack entry
-        if (methodCall.getType() instanceof HeapObjectReference) {
-            emitter.emitLine("call $push_to_shadow_stack");
-        }
+        // Make the call
+        saveStateAndCallFunction(functionCallString, arguments, scope, methodCall.getLocalVariable(), vtableOffset, false);
     }
 
     private void compileNewObjectExpression(NewObjectExpression newObjectExpression,
                                             VariableScope scope) {
+
         JavaClass javaClass = newObjectExpression.getType();
         int numAttributeBytes = javaClass.getNumAttributeBytes();
         int totalSize = javaClass.getHeapSize();
@@ -334,18 +312,13 @@ public class ExpressionGenerator {
         emitter.emitLine("i32.const " + vtablePointer);
         emitter.emitLine("call $alloc_object");
 
-        // Save the allocated address
-        emitter.emitLine("global.set $temp_ref_heap_address");
-
-        // Add a shadow stack entry
-        emitter.emitLine("global.get $temp_ref_heap_address");
-        emitter.emitLine("call $push_to_shadow_stack");
-        emitter.emitLine("global.set $temp_ref_shadow_stack_offset");
+        // Save object reference
+        emitter.emitLine("global.set $temp_heap_address");
 
         // Write pointer information
         int currentPosition = pointerInfoStart;
         for (int pointerInfoWord : pointerInformation) {
-            emitter.emitLine("global.get $temp_ref_heap_address");
+            emitter.emitLine("global.get $temp_heap_address");
             emitter.emitLine("i32.const " + pointerInfoWord);
             emitter.emitLine("i32.store offset=" + currentPosition);
             currentPosition += 4;
@@ -355,33 +328,107 @@ public class ExpressionGenerator {
 
         // If a constructor is used, put its arguments on the stack and call the constructor
         if (newObjectExpression.usesConstructor()) {
+            List<Expression> arguments = newObjectExpression.getArguments();
             FunctionTableEntry entry = newObjectExpression.getConstructor();
             String functionName = CodeGenUtil.getFunctionNameForOutput(entry, functionTable);
-
-            // Put all the arguments on the stack and call the constructor
-            for (Expression expression : newObjectExpression.getArguments()) {
-                compileExpression(expression, scope);
-            }
-            emitter.emitLine("global.get $temp_ref_shadow_stack_offset");
-            emitter.emitLine("call $" + functionName);
+            String functionCallString = "call $" + functionName;
+            saveStateAndCallFunction(functionCallString, arguments, scope, null, null, true);
         }
 
         // Leave a reference to the object on the stack
-        emitter.emitLine("global.get $temp_ref_shadow_stack_offset");
+        emitter.emitLine("global.get $temp_heap_address");
+    }
+
+    private void saveStateAndCallFunction(String functionCallString,
+                                          List<Expression> arguments,
+                                          VariableScope scope,
+                                          Expression objectForVtable,
+                                          Integer vtableOffset,
+                                          boolean includeThisArgument) {
+
+        // Set up all arguments
+        int offset = 0;
+        for (Expression expression : arguments) {
+            if (expression.getType() instanceof PrimitiveType) {
+                // Primitive arguments go on the WebAssembly operand stack
+                compileExpression(expression, scope);
+            } else {
+                // Heap pointers go on the manually managed stack
+                emitter.emitLine("global.get $stack_base");
+                emitter.emitLine("global.get $stack_pointer");
+                emitter.emitLine("i32.add");
+                compileExpression(expression, scope);
+                emitter.emitLine("i32.store offset=" + offset);
+                offset += 4;
+            }
+        }
+
+        if (includeThisArgument) {
+            // Assume that the pointer has been saved to $temp_heap_address
+            // Note that method calls DON'T use this because they instead
+            // pass the this argument by appending it to the normal list
+            // of arguments. This is only used for constructors, where there
+            // is no local variable to treat as an argument.
+            emitter.emitLine("global.get $stack_base");
+            emitter.emitLine("global.get $stack_pointer");
+            emitter.emitLine("i32.add");
+            emitter.emitLine("global.get $temp_heap_address");
+            emitter.emitLine("i32.store offset=" + offset);
+            offset += 4;
+        }
+
+        // If this is a method call, put the vtable index on the stack
+        if (objectForVtable != null) {
+            compileExpression(objectForVtable, scope);
+            emitter.emitLine("i32.load offset=5");
+            emitter.emitLine("i32.const " + vtableOffset);
+            emitter.emitLine("i32.add");
+        }
+
+        // Save the current stack frame start
+        emitter.emitLine("global.get $stack_frame_start");
+        emitter.emitLine("local.set $saved_stack_frame_start");
+
+        // Move the start of the new stack frame ready for the new function
+        emitter.emitLine("global.get $stack_pointer");
+        emitter.emitLine("global.set $stack_frame_start");
+
+        // Bump up the stack pointer
+        emitter.emitLine("global.get $stack_pointer");
+        emitter.emitLine("i32.const " + offset);
+        emitter.emitLine("i32.add");
+        emitter.emitLine("global.set $stack_pointer");
+
+        // Make the function call
+        emitter.emitLine(functionCallString);
+
+        // Restore the previous stack pointer
+        emitter.emitLine("global.get $stack_frame_start");
+        emitter.emitLine("global.set $stack_pointer");
+
+        // Restore the previous start of call frame
+        emitter.emitLine("local.get $saved_stack_frame_start");
+        emitter.emitLine("global.set $stack_frame_start");
     }
 
     public void compileNewArrayExpression(NewArrayExpression newArrayExpression,
                                           VariableScope scope) {
+
+        // TODO: Use WebAssembly type's size to determine array length
+        // (eg work it through for an array of short values)
+
         Expression lengthExpression = newArrayExpression.getLengthExpression();
+        int elementSize = newArrayExpression.getElementType().getStackSize();
 
         // First evaluate the expression for how long the array should be
         compileExpression(lengthExpression, scope);
 
-        // Now allocate the memory
-        emitter.emitLine("call $alloc_array");
+        // Multiply by element size to get the actual size
+        emitter.emitLine("i32.const " + elementSize);
+        emitter.emitLine("i32.mul");
 
-        // Allocate a shadow stack entry
-        emitter.emitLine("call $push_to_shadow_stack");
+        // Now allocate the memory, leaving the address on the stack
+        emitter.emitLine("call $alloc_array");
     }
 
     private void compileArrayLookupExpression(ArrayIndexExpression lookupExpression,
@@ -391,17 +438,16 @@ public class ExpressionGenerator {
         Type elementType = lookupExpression.getArrayExpression().getType();
         int elementSize = elementType.getStackSize();
 
-        // Find the start of the array in the heap
-        emitter.emitLine("global.get $shadow_stack_base");
+        // Find the address of the array
         compileExpression(array, scope);
-        emitter.emitLine("i32.sub");
-        emitter.emitLine("i32.load");
 
         // Compute the address of the requested element
         compileExpression(index, scope);
         emitter.emitLine("i32.const " + elementSize);
         emitter.emitLine("i32.mul");
         emitter.emitLine("i32.add");
+
+        // TODO: Bounds checks
 
         // Look up the value at this address (accounting for header)
         WasmType type = CodeGenUtil.getWasmType(lookupExpression.getType());

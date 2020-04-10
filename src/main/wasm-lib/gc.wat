@@ -15,7 +15,7 @@
 
   ;; Compute where the new stack will go
   global.get $curr_heap
-  call $_gc_next_shadow_stack_base
+  call $_gc_next_stack_base
   local.set $tospace_stack_base
 
   ;; Set $currently_traced_to
@@ -25,7 +25,7 @@
   ;; Move each stack-accessible object
   (block (loop
     local.get $curr_stack_offset
-    global.get $stack_offset
+    global.get $stack_pointer
     i32.ge_u
     br_if 1
 
@@ -92,7 +92,7 @@
     local.set $currently_traced_to
   ))
 
-  local.get $tospace_curr_object_address
+  ;; local.get $tospace_curr_object_address
 
 )
 (export "run_gc" (func $gc))
@@ -235,10 +235,11 @@
     br_if 1
 
     ;; Copy the byte across
-    local.get $to_address
+    local.get $allocated_address
+    local.get $curr_byte
     i32.add
     local.get $from_address
-    local.get $current_byte
+    local.get $curr_byte
     i32.add
     i32.load8_u
     i32.store8
@@ -409,7 +410,7 @@
   )
 
 
-(func $_gc_next_shadow_stack_base
+(func $_gc_next_stack_base
   (param $current_heap i32)
   (result i32)
   local.get $current_heap

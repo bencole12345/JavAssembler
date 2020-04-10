@@ -9,7 +9,7 @@
 
   (local $allocated_address i32)
 
-  call $gc
+  ;; call $gc
 
   ;; Reserve space for the object
   global.get $heap_last_allocated
@@ -39,6 +39,7 @@
   ;; Return the allocated address
   local.get $allocated_address
 )
+(export "alloc_object" (func $alloc_object))
 
 
 ;; Allocates heap space for an array
@@ -50,13 +51,14 @@
 
   (local $allocated_address i32)
 
-  call $gc
+  ;; call $gc
 
   ;; Reserve space for the array
   global.get $heap_last_allocated
   local.get $size_field
   i32.const 5
   i32.add
+  i32.sub
   local.tee $allocated_address
   global.set $heap_last_allocated
 
@@ -76,6 +78,7 @@
   ;; Return the allocated address
   local.get $allocated_address
 )
+(export "alloc_array" (func $alloc_array))
 
 
 ;; Resets the memory allocator
@@ -85,37 +88,43 @@
   i32.const 0x0000
   global.set $stack_base
   i32.const 0
-  global.set $stack_offset
+  global.set $stack_frame_start
+  i32.const 0
+  global.set $stack_pointer
   i32.const 0
   global.set $curr_heap
 )
 (export "reset_allocator" (func $reset_allocator))
 
 
-;; Pushes a heap address to the shadow stack and returns the
-;; allocated index
-(func $push_to_stack
-  (param $address i32)
-  (result i32)
-  (local $allocated_offset i32)
+(func $set_at_stack_frame_offset
+  (param $value i32)
+  (param $offset i32)
 
-  ;; Allocate the next available offset
-  global.get $stack_offset
-  local.set $allocated_offset
+  (local $relative_to_stack_base i32)
 
-  ;; Save the pushed heap address
-  global.get $stack_base
-  local.get $allocated_offset
+  ;; Compute the address relative to stack base
+  global.get $stack_frame_start
+  local.get $offset
   i32.add
-  local.get $address
+  local.tee $relative_to_stack_base
+
+  ;; Set the value
+  global.get $stack_base
+  i32.add
+  local.get $value
   i32.store
 
-  ;; Increment the next available offset by 4
-  global.get $stack_offset
-  i32.const 4
-  i32.add
-  global.set $stack_offset
-
-  ;; Return the allocated offset
-  local.get $allocated_offset
+  ;; If this is the highest offset we've seen so far, update stack pointer
+  local.get $relative_to_stack_base
+  global.get $stack_pointer
+  i32.ge_u
+  if
+    local.get $relative_to_stack_base
+    i32.const 4
+    i32.add
+    global.set $stack_pointer
+  end
 )
+
+

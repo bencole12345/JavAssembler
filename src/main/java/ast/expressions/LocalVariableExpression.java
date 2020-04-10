@@ -29,7 +29,9 @@ public class LocalVariableExpression implements VariableExpression {
 
     @Override
     public Type getType() {
-        return containingScope.lookupVariableType(variableName);
+        return containingScope
+                .getVariableWithName(variableName)
+                .getType();
     }
 
     @Override

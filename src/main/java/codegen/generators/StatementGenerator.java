@@ -68,20 +68,8 @@ public class StatementGenerator {
 
     private void compileReturnStatement(ReturnStatement returnStatement,
                                         VariableScope scope) {
-        Type returnType = returnStatement.getExpression().getType();
-        emitter.emitLine("local.get $shadow_stack_next_offset_at_entry");
-        emitter.emitLine("global.set $shadow_stack_next_offset");
-
-        if (returnType instanceof HeapObjectReference) {
-            // Can't return stack values, so dereference the shadow stack
-            emitter.emitLine("global.get $shadow_stack_base");
-            ExpressionGenerator.getInstance().compileExpression(returnStatement.getExpression(), scope);
-            emitter.emitLine("i32.sub");
-            emitter.emitLine("i32.load");
-        } else {
-            // If it's primitive then we don't have to worry about the shadow stack
-            ExpressionGenerator.getInstance().compileExpression(returnStatement.getExpression(), scope);
-        }
+        Expression expression = returnStatement.getExpression();
+        ExpressionGenerator.getInstance().compileExpression(expression, scope);
         emitter.emitLine("return");
     }
 
@@ -101,40 +89,37 @@ public class StatementGenerator {
     private void compileLocalVariableAssignment(LocalVariableExpression localVariable,
                                                 Expression value,
                                                 VariableScope scope) {
-        int registerNum = scope.lookupRegisterIndexOfVariable(localVariable.getVariableName());
-
-        ExpressionGenerator.getInstance().compileExpression(value, scope);
-        emitter.emitLine("local.set " + registerNum);
+        VariableScope.Allocation allocation = scope.getVariableWithName(localVariable.getVariableName());
+        if (allocation instanceof VariableScope.LocalVariableAllocation) {
+            VariableScope.LocalVariableAllocation localVarAllocation = (VariableScope.LocalVariableAllocation) allocation;
+            int localVariableIndex = localVarAllocation.getLocalVariableIndex();
+            ExpressionGenerator.getInstance().compileExpression(value, scope);
+            emitter.emitLine("local.set " + localVariableIndex);
+        } else {
+            VariableScope.StackOffsetAllocation stackOffsetAllocation = (VariableScope.StackOffsetAllocation) allocation;
+            int stackOffset = stackOffsetAllocation.getStackFrameOffset();
+            ExpressionGenerator.getInstance().compileExpression(value, scope);
+            emitter.emitLine("i32.const " + stackOffset);
+            emitter.emitLine("call $set_at_stack_frame_offset");
+        }
     }
 
     private void compileAttributeNameAssignment(AttributeNameExpression attributeNameExpression,
                                                 Expression value,
                                                 VariableScope scope) {
+
+        LocalVariableExpression localVariable = attributeNameExpression.getObject();
         int offset = Constants.OBJECT_HEADER_LENGTH + attributeNameExpression.getMemoryOffset();
         Type attributeType = attributeNameExpression.getType();
         WasmType wasmType = CodeGenUtil.getWasmType(attributeType);
 
-        // Find the address of the start of the object in the heap
-        emitter.emitLine("global.get $shadow_stack_base");
-        ExpressionGenerator.getInstance()
-                .compileExpression(attributeNameExpression.getObject(), scope);
-        emitter.emitLine("i32.sub");
-        emitter.emitLine("i32.load");
+        // Put the object address on the stack
+        ExpressionGenerator.getInstance().compileExpression(localVariable, scope);
 
-        // Now put the value we want to store on the stack
-        if (value instanceof HeapObjectReference) {
-            // We need to "derefence" the shadow stack pointer and store the
-            // actual heap address directly
-            emitter.emitLine("global.get $shadow_stack_base");
-            ExpressionGenerator.getInstance().compileExpression(value, scope);
-            emitter.emitLine("i32.sub");
-            emitter.emitLine("i32.load");
-        } else {
-            // It's a primitive type so the shadow stack is not used
-            ExpressionGenerator.getInstance().compileExpression(value, scope);
-        }
+        // Put the value to save on the stack
+        ExpressionGenerator.getInstance().compileExpression(value, scope);
 
-        // Write to the address of this attribute
+        // Save the value
         emitter.emitLine(wasmType + ".store offset=" + offset);
     }
 
@@ -146,19 +131,16 @@ public class StatementGenerator {
         Expression indexExpression = arrayIndexExpression.getIndexExpression();
         WasmType valueType = CodeGenUtil.getWasmType(value.getType());
 
-        // Look up the start of the array
-        emitter.emitLine("global.get $shadow_stack_base");
+        // Put a pointer to the start of the array on the stack
         ExpressionGenerator.getInstance().compileExpression(arrayExpression, scope);
-        emitter.emitLine("i32.sub");
-        emitter.emitLine("i32.load");
 
-        // Move to the right element
+        // Move along to the right index
         ExpressionGenerator.getInstance().compileExpression(indexExpression, scope);
-        emitter.emitLine("i32.const 2");
-        emitter.emitLine("i32.shl");
+        emitter.emitLine("i32.const " + valueType.getSize());
+        emitter.emitLine("i32.mul");
         emitter.emitLine("i32.add");
 
-        // Put the value to store there on the stack
+        // Put the value to store on the stack
         ExpressionGenerator.getInstance().compileExpression(value, scope);
 
         // Write to memory (accounting for header)
