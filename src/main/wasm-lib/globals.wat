@@ -6,8 +6,8 @@
 (global $heap_last_allocated (mut i32) (i32.const 0x8000))
 
 ;; Pointer to the stack base (grows upwards)
-(global $stack_base (mut i32) (i32.const 0x0000))
-(global $stack_frame_start (mut i32) (i32.const 0x0000))
+(global $stack_base (mut i32) (i32.const 0x0004))
+(global $stack_frame_start (mut i32) (i32.const 0x0004))
 (global $stack_pointer (mut i32) i32.const 0)
 
 ;; Used as temporary values when allocating objects

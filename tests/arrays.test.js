@@ -22,4 +22,5 @@ describe('Arrays', () => {
     const success = wasmInstance.Arrays_testPassArrayAsParameter();
     expect(success).toBeTruthy();
   })
+  // TODO: Add 2D arrays test
 })

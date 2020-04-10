@@ -18,6 +18,11 @@
   call $_gc_next_stack_base
   local.set $tospace_stack_base
 
+  ;; Update the heap
+  global.get $curr_heap
+  call $_gc_next_heap
+  global.set $curr_heap
+
   ;; Set $currently_traced_to
   global.get $heap_last_allocated
   local.set $currently_traced_to
@@ -49,9 +54,10 @@
 
     ;; Move to the next stack position
     local.get $curr_stack_offset
-    i32.const 1
+    i32.const 4
     i32.add
     local.set $curr_stack_offset
+    br 0
   ))
 
   ;; Set the new shadow stack base
@@ -86,14 +92,13 @@
       local.get $current_object_being_traced
       i32.add
       local.set $current_object_being_traced
+      br 0
     ))
 
     local.get $start_of_current_group
     local.set $currently_traced_to
+    br 0
   ))
-
-  ;; local.get $tospace_curr_object_address
-
 )
 (export "run_gc" (func $gc))
 
@@ -147,6 +152,7 @@
       i32.const 4
       i32.add
       local.set $curr_attribute_offset
+      br 0
     ))
 
 
@@ -183,6 +189,7 @@
         i32.const 4
         i32.add
         local.set $curr_attribute_offset
+        br 0
       ))
     end
   end
@@ -215,22 +222,29 @@
 
   ;; Returns the address it allocates
   (result i32)
-  
+
   (local $allocated_address i32)
   (local $curr_byte i32)
-  (local $end i32)
+
+  ;; If it's a null pointer then don't copy anything, just return null
+  local.get $from_address
+  i32.eqz
+  if
+    i32.const 0
+    return
+  end
 
   ;; Allocate space for the object
   global.get $heap_last_allocated
-  local.tee $end
   local.get $size_bytes
   i32.sub
-  local.set $allocated_address
+  local.tee $allocated_address
+  global.set $heap_last_allocated
 
   ;; Do the copy, one byte at a time
   (block (loop
     local.get $curr_byte
-    local.get $end
+    local.get $size_bytes
     i32.ge_s
     br_if 1
 
@@ -248,6 +262,7 @@
     i32.const 1
     i32.add
     local.set $curr_byte
+    br 0
   ))
 
   ;; Write the new pointer to the old object's size field
@@ -288,7 +303,7 @@
   else
     local.get $address
     i32.load offset=1
-    i32.const 9
+    i32.const 5
     i32.add
   end
 )
@@ -312,16 +327,20 @@
   (param $offset i32)
   (result i32)
 
-  (local $address_to_read i32)
+  (local $size_field i32)
+  (local $offset_within_pointers_section i32)
   (local $bit_to_read i32)
 
-  ;; Use offset to work out which address to read
+  ;; Read the size field
   local.get $address
+  i32.load offset=1
+  local.set $size_field
+
+  ;; Work out which word within the pointers section to read
   local.get $offset
   i32.const 5
   i32.shr_u
-  i32.add
-  local.set $address_to_read
+  local.set $offset_within_pointers_section
 
   ;; Use offset to work out which bit to read
   local.get $offset
@@ -330,8 +349,12 @@
   local.set $bit_to_read
 
   ;; Read the bit
-  local.get $address_to_read
-  i32.load
+  local.get $address
+  local.get $size_field
+  i32.add
+  local.get $offset_within_pointers_section
+  i32.add
+  i32.load offset=9
   local.get $bit_to_read
   i32.shr_u
   i32.const 1
@@ -347,6 +370,8 @@
   i32.load8_u
   i32.const 0x02
   i32.and
+  i32.const 1
+  i32.shr_u
 )
 
 
@@ -405,7 +430,7 @@
   if (result i32)
     i32.const 0x8000
   else
-    i32.const 0xf000
+    i32.const 0x10000
   end
   )
 
@@ -415,9 +440,9 @@
   (result i32)
   local.get $current_heap
   if (result i32)
-    i32.const 0x0000
+    i32.const 0x0004
   else
-    i32.const 0x8000
+    i32.const 0x8004
   end
 )
 
@@ -431,4 +456,6 @@
   i32.add
   i32.const 5
   i32.shr_u
+  i32.const 2
+  i32.shl
 )

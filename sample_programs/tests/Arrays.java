@@ -2,13 +2,13 @@ public class Arrays {
 
     public static boolean testArrayElementsStoredCorrectly() {
         Integer[] array = new Integer[3];
-        array[0] = new Integer(0);
+        array[0] = new Integer(1);
         array[1] = new Integer(-1);
         array[2] = new Integer(10);
         Integer firstElement = array[0];
         Integer secondElement = array[1];
         Integer thirdElement = array[2];
-        return firstElement.value == 0
+        return firstElement.value == 1
                 && secondElement.value == -1
                 && thirdElement.value == 10;
     }

@@ -124,27 +124,18 @@ public class StatementGenerator {
     }
 
     private void compileArrayIndexAssignment(ArrayIndexExpression arrayIndexExpression,
-                                             Expression value,
+                                             Expression valueExpression,
                                              VariableScope scope) {
 
         Expression arrayExpression = arrayIndexExpression.getArrayExpression();
         Expression indexExpression = arrayIndexExpression.getIndexExpression();
-        WasmType valueType = CodeGenUtil.getWasmType(value.getType());
+        WasmType valueType = CodeGenUtil.getWasmType(valueExpression.getType());
 
-        // Put a pointer to the start of the array on the stack
+        ExpressionGenerator.getInstance().compileExpression(valueExpression, scope);
         ExpressionGenerator.getInstance().compileExpression(arrayExpression, scope);
-
-        // Move along to the right index
         ExpressionGenerator.getInstance().compileExpression(indexExpression, scope);
         emitter.emitLine("i32.const " + valueType.getSize());
-        emitter.emitLine("i32.mul");
-        emitter.emitLine("i32.add");
-
-        // Put the value to store on the stack
-        ExpressionGenerator.getInstance().compileExpression(value, scope);
-
-        // Write to memory (accounting for header)
-        emitter.emitLine(valueType + ".store offset=" + Constants.ARRAY_HEADER_LENGTH);
+        emitter.emitLine("call $write_to_array_index");
     }
 
     private void compileIfStatementChain(IfStatementChain chain,

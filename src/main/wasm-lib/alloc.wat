@@ -9,7 +9,12 @@
 
   (local $allocated_address i32)
 
-  ;; call $gc
+  ;; If needed, run the garbage collector
+  ;; local.get $total_size_bytes
+  ;; call $determine_gc_needed
+  ;; if
+    call $gc
+  ;; end
 
   ;; Reserve space for the object
   global.get $heap_last_allocated
@@ -36,6 +41,13 @@
   local.get $vtable_pointer
   i32.store offset=5
 
+  ;; Write zeroes to every attribute
+  local.get $allocated_address
+  i32.const 9
+  i32.add
+  local.get $size_field
+  call $write_zeroes
+
   ;; Return the allocated address
   local.get $allocated_address
 )
@@ -45,13 +57,19 @@
 ;; Allocates heap space for an array
 (func $alloc_array
   (param $size_field i32)
-
+  ;; TODO: Pass in the bit for whether the array contains pointers
   ;; Returns the address that was allocated
   (result i32)
-
   (local $allocated_address i32)
 
-  ;; call $gc
+  ;; If needed, run the garbage collector
+  ;; local.get $size_field
+  ;; i32.const 5
+  ;; i32.add
+  ;; call $determine_gc_needed
+  ;; if
+  call $gc
+  ;; end
 
   ;; Reserve space for the array
   global.get $heap_last_allocated
@@ -63,11 +81,12 @@
   global.set $heap_last_allocated
 
   ;; Write the flags to the flags field
-  ;; 0b00000000
+  ;; 0b00000100
+  ;;        ^ contains_pointers
   ;;         ^ has_been_copied GC flag
   ;;          ^ is_object flag
   local.get $allocated_address
-  i32.const 0x00
+  i32.const 0x04
   i32.store8
 
   ;; Write the size field
@@ -75,10 +94,69 @@
   local.get $size_field
   i32.store offset=1
 
+  ;; Write zeroes to every element
+  local.get $allocated_address
+  i32.const 5
+  i32.add
+  local.get $size_field
+  call $write_zeroes
+
   ;; Return the allocated address
   local.get $allocated_address
 )
 (export "alloc_array" (func $alloc_array))
+
+
+(func $write_zeroes
+  (param $address i32)
+  (param $length i32)
+  (local $pos i32)
+  (local $end i32)
+
+  local.get $address
+  local.get $length
+  i32.add
+  local.set $end
+
+  local.get $address
+  local.set $pos
+
+  (block (loop
+    local.get $pos
+    local.get $end
+    i32.ge_u
+    br_if 1
+
+    local.get $pos
+    i32.const 0
+    i32.store
+
+    local.get $pos
+    i32.const 4
+    i32.add
+    local.set $pos
+    br 0
+  ))
+)
+
+
+(func $determine_gc_needed
+  (param $requested_amount i32)
+  (result i32)
+
+  ;; Amount the caller has requested
+  local.get $requested_amount
+
+  ;; Amount of free space right now
+  global.get $heap_last_allocated
+  global.get $stack_base
+  global.get $stack_pointer
+  i32.add
+  i32.sub
+
+  ;; If it's not enough then we need to run the garbage collector
+  i32.le_u
+)
 
 
 ;; Resets the memory allocator
@@ -128,3 +206,19 @@
 )
 
 
+(func $write_to_array_index
+  (param $value i32)
+  (param $array_address i32)
+  (param $index i32)
+  (param $element_size i32)
+
+  ;; TODO: Add bounds checking
+  
+  local.get $array_address
+  local.get $index
+  local.get $element_size
+  i32.mul
+  i32.add
+  local.get $value
+  i32.store offset=5
+)
