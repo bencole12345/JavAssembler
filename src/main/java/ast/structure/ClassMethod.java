@@ -23,7 +23,7 @@ public class ClassMethod implements ASTNode {
                        String name,
                        List<MethodParameter> params,
                        CodeBlock body,
-                       JavaClass containingClass ) {
+                       JavaClass containingClass) {
         this.accessModifier = accessModifier;
         this.isStatic = isStatic;
         this.returnType = returnType;

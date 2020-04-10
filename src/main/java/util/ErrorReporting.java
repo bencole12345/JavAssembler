@@ -47,8 +47,9 @@ public class ErrorReporting {
 
     /**
      * Converts a list of types into a list of strings
-     * @param types
-     * @return
+     *
+     * @param types The types of the arguments
+     * @return The types formatted as a bracketed and comma-separated list
      */
     public static String getFunctionSignatureOutput(String functionName, List<Type> types) {
         List<String> typeStrings = types

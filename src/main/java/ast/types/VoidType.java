@@ -17,4 +17,9 @@ public class VoidType implements Type {
     public int getStackSize() {
         return 0;
     }
+
+    @Override
+    public boolean isPointer() {
+        return false;
+    }
 }

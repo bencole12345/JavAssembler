@@ -13,14 +13,9 @@ beforeAll(async () => {
   wasmInstance = instance.exports;
 })
 
-describe('Arrays', () => {
-  test('Array elements are stored correctly', () => {
-    const success = wasmInstance.Arrays_testArrayElementsStoredCorrectly();
+describe('Garbage collection', () => {
+  test('Repeatedly allocate memory', () => {
+    const success = wasmInstance.GarbageCollection_testGarbageCollection(50000);
     expect(success).toBeTruthy();
   })
-  test('Can pass array as parameter', () => {
-    const success = wasmInstance.Arrays_testPassArrayAsParameter();
-    expect(success).toBeTruthy();
-  })
-  // TODO: Add 2D arrays test
 })

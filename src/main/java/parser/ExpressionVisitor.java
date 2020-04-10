@@ -116,6 +116,8 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
         ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
         List<Expression> arguments = expressionList.getExpressionList();
 
+        NewObjectExpression expression;
+
         assert javaClass != null;
         if (arguments.size() > 0 || javaClass.hasNoArgumentConstructor()) {
             List<Type> argumentTypes = arguments
@@ -123,10 +125,12 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
                     .map(Expression::getType)
                     .collect(Collectors.toList());
             FunctionTableEntry entry = javaClass.lookupConstructor(argumentTypes);
-            return new NewObjectExpression(javaClass, arguments, entry);
+            expression = new NewObjectExpression(javaClass, arguments, entry);
         } else {
-            return new NewObjectExpression(javaClass);
+            expression = new NewObjectExpression(javaClass);
         }
+
+        return expression;
     }
 
     @Override
@@ -347,6 +351,7 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
         if (!(variableType instanceof JavaClass)) {
             ErrorReporting.reportError(errorMessageIfNotFound, ctx, currentClass.toString());
         }
+        assert variableType instanceof JavaClass;
         JavaClass javaClass = (JavaClass) variableType;
         List<Type> argumentTypes = argumentsList
                 .stream()

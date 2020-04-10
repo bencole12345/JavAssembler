@@ -6,4 +6,9 @@ public abstract class HeapObjectReference implements Type {
         // References are always 32-bits
         return 4;
     }
+
+    @Override
+    public boolean isPointer() {
+        return true;
+    }
 }

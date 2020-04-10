@@ -15,57 +15,50 @@ beforeAll(async () => {
 
 describe('Classes', () => {
   test('Set/get public attribute directly', () => {
-    const reference = wasmInstance.Classes_createInstanceWithoutConstructor();
-    wasmInstance.Classes_setXAttributeDirectly(reference, 10);
-    const result = wasmInstance.Classes_lookupXAttributeDirectly(reference);
+    const result = wasmInstance.Classes_testSetGetPublicAttributeDirectly(10);
     expect(result).toBe(10);
   })
   test('Use setter/getter for public attribute', () => {
-    const reference = wasmInstance.Classes_createInstanceWithoutConstructor();
-    wasmInstance.Classes_callSetX(reference, 10);
-    const result = wasmInstance.Classes_callGetX(reference);
+    const result = wasmInstance.Classes_testUseSetterGetterForPublicAttribute(10);
     expect(result).toBe(10);
   })
   test('Use setter/getter for private attribute', () => {
-    const reference = wasmInstance.Classes_createInstanceWithoutConstructor();
-    wasmInstance.Classes_callSetY(reference, 10);
-    const result = wasmInstance.Classes_callGetY(reference);
+    const result = wasmInstance.Classes_testUseSetterGetterForPrivateAttribute(10);
     expect(result).toBe(10);
   })
   test('Set public attribute using constructor', () => {
-    const reference = wasmInstance.Classes_createInstanceUsingConstructor(5);
-    const result = wasmInstance.Classes_lookupXAttributeDirectly(reference);
+    const result = wasmInstance.Classes_testSetPublicAttributeUsingConstructor(5);
     expect(result).toBe(5);
   })
   test('Mutate public attribute', () => {
-    const reference = wasmInstance.Classes_createInstanceUsingConstructor(1);
-    wasmInstance.Classes_callIncrementX(reference);
-    const result = wasmInstance.Classes_lookupXAttributeDirectly(reference);
+    const result = wasmInstance.Classes_testMutatePublicAttribute(1);
     expect(result).toBe(2);
   })
   test('Mutate private attribute', () => {
-    const reference = wasmInstance.Classes_createInstanceWithoutConstructor();
-    wasmInstance.Classes_callSetY(reference, 1);
-    wasmInstance.Classes_callIncrementY(reference);
-    const result = wasmInstance.Classes_callGetY(reference);
+    const result = wasmInstance.Classes_testMutatePrivateAttribute(1);
     expect(result).toBe(2);
+  })
+  test('More than 32 attributes', () => {
+    const success = wasmInstance.Classes_testMoreThan32Attributes();
+    expect(success).toBeTruthy();
+  })
+  test('Can pass anonymous new object as argument to function', () => {
+    const success = wasmInstance.Classes_testPassAnonymousObjectAsArgument();
+    expect(success).toBeTruthy();
   })
 })
 
 describe('Dynamic polymorphism', () => {
   test('Parent instance uses parent method', () => {
-    const reference = wasmInstance.DynamicPolymorphism_createParentInstance();
-    const result = wasmInstance.DynamicPolymorphism_callIsParentFromParentContext(reference);
+    const result = wasmInstance.DynamicPolymorphism_testParentInParentContext();
     expect(result).toBeTruthy();
   })
   test('Child instance uses child method in parent context', () => {
-    const reference = wasmInstance.DynamicPolymorphism_createChildInstance();
-    const result = wasmInstance.DynamicPolymorphism_callIsParentFromParentContext(reference);
+    const result = wasmInstance.DynamicPolymorphism_testChildInParentContext();
     expect(result).toBeFalsy();
   })
   test('Child instance uses child method in child context', () => {
-    const reference = wasmInstance.DynamicPolymorphism_createChildInstance();
-    const result = wasmInstance.DynamicPolymorphism_callIsParentFromChildContext(reference);
+    const result = wasmInstance.DynamicPolymorphism_testChildInChildContext();
     expect(result).toBeFalsy();
   })
 })

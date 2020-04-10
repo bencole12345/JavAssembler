@@ -29,6 +29,6 @@ public class CodeBlock implements ASTNode {
      * @param containingScope The new VariableScope to contain this code block
      */
     public void bindContainingVariableScope(VariableScope containingScope) {
-        variableScope.bindContainingScope(variableScope);
+        variableScope.bindContainingScope(containingScope);
     }
 }

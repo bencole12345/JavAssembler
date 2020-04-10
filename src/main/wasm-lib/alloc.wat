@@ -1,71 +1,233 @@
-;; Allocates a requested amount of heap space and returns
-;; the address that was allocated.
-(func $alloc
-  
-  ;; The number of bytes to allocate
-  (param $size i32)
+;; Allocates heap space for an object
+(func $alloc_object
+  (param $total_size_bytes i32)
+  (param $size_field i32)
+  (param $vtable_pointer i32)
 
   ;; Returns the address that was allocated
   (result i32)
 
-  ;; Used to track the address that was allocated
-  (local $allocatedAddress i32)
+  (local $allocated_address i32)
 
-  ;; Read the current next free heap address
-  global.get $nextFreeSpace
-  local.set $allocatedAddress
+  ;; If needed, run the garbage collector
+  local.get $total_size_bytes
+  call $determine_gc_needed
+  if
+    call $gc
+  end
 
-  ;; Update the next free address
-  global.get $nextFreeSpace
-  local.get $size
+  ;; Reserve space for the object
+  global.get $heap_last_allocated
+  local.get $total_size_bytes
+  i32.sub
+  local.tee $allocated_address
+  global.set $heap_last_allocated
+
+  ;; Write the flags to the flags field
+  ;; 0b00000001
+  ;;         ^ has_been_copied GC flag
+  ;;          ^ is_object flag
+  local.get $allocated_address
+  i32.const 0x01
+  i32.store8
+
+  ;; Write the size field
+  local.get $allocated_address
+  local.get $size_field
+  i32.store offset=1
+
+  ;; Write the vtable pointer
+  local.get $allocated_address
+  local.get $vtable_pointer
+  i32.store offset=5
+
+  ;; Write zeroes to every attribute
+  local.get $allocated_address
+  i32.const 9
   i32.add
-  global.set $nextFreeSpace
+  local.get $size_field
+  call $write_zeroes
 
   ;; Return the allocated address
-  local.get $allocatedAddress
+  local.get $allocated_address
+)
+(export "alloc_object" (func $alloc_object))
 
+
+;; Allocates heap space for an array
+(func $alloc_array
+  (param $size_field i32)
+  ;; TODO: Pass in the bit for whether the array contains pointers
+  ;; Returns the address that was allocated
+  (result i32)
+  (local $allocated_address i32)
+
+  ;; If needed, run the garbage collector
+  local.get $size_field
+  i32.const 5
+  i32.add
+  call $determine_gc_needed
+  if
+    call $gc
+  end
+
+  ;; Reserve space for the array
+  global.get $heap_last_allocated
+  local.get $size_field
+  i32.const 5
+  i32.add
+  i32.sub
+  local.tee $allocated_address
+  global.set $heap_last_allocated
+
+  ;; Write the flags to the flags field
+  ;; 0b00000100
+  ;;        ^ contains_pointers
+  ;;         ^ has_been_copied GC flag
+  ;;          ^ is_object flag
+  local.get $allocated_address
+  i32.const 0x04
+  i32.store8
+
+  ;; Write the size field
+  local.get $allocated_address
+  local.get $size_field
+  i32.store offset=1
+
+  ;; Write zeroes to every element
+  local.get $allocated_address
+  i32.const 5
+  i32.add
+  local.get $size_field
+  call $write_zeroes
+
+  ;; Return the allocated address
+  local.get $allocated_address
+)
+(export "alloc_array" (func $alloc_array))
+
+
+(func $write_zeroes
+  (param $address i32)
+  (param $length i32)
+  (local $pos i32)
+  (local $end i32)
+
+  local.get $address
+  local.get $length
+  i32.add
+  local.set $end
+
+  local.get $address
+  local.set $pos
+
+  (block (loop
+    local.get $pos
+    local.get $end
+    i32.ge_u
+    br_if 1
+
+    local.get $pos
+    i32.const 0
+    i32.store
+
+    local.get $pos
+    i32.const 4
+    i32.add
+    local.set $pos
+    br 0
+  ))
 )
 
 
-;; Allocates the requested amount of heap space and sets the
-;; vtable pointer. Returns the allocated address.
-(func $alloc_and_set_vtable
-
-  ;; Number of bytes to allocate
-  (param $size i32)
-
-  ;; The vtable value to set
-  (param $vtableAddress i32)
-
-  ;; Returns the address that was allocated
+(func $determine_gc_needed
+  (param $requested_amount i32)
   (result i32)
 
-  ;; Used to track the address that was allocated
-  (local $allocatedAddress i32)
+  ;; Amount the caller has requested
+  local.get $requested_amount
 
-  ;; Read the current next free heap address
-  global.get $nextFreeSpace
-  local.set $allocatedAddress
-
-  ;; Update the next free address
-  global.get $nextFreeSpace
-  local.get $size
+  ;; Add 1024 bytes extra just to be safe
+  i32.const 1024
   i32.add
-  global.set $nextFreeSpace
 
-  ;; Set the vtable pointer
-  local.get $allocatedAddress
-  local.get $vtableAddress
-  i32.store
+  ;; Amount of free space right now
+  global.get $heap_last_allocated
+  global.get $stack_base
+  global.get $stack_pointer
+  i32.add
+  i32.sub
 
-  ;; Return the allocated address
-  local.get $allocatedAddress
+  ;; If it's not enough then we need to run the garbage collector
+  i32.ge_u
 )
 
 
 ;; Resets the memory allocator
 (func $reset_allocator
+  i32.const 0x8000
+  global.set $heap_last_allocated
+  i32.const 0x0000
+  global.set $stack_base
   i32.const 0
-  global.set $nextFreeSpace
+  global.set $stack_frame_start
+  i32.const 0
+  global.set $stack_pointer
+  i32.const 0
+  global.set $curr_heap
 )
 (export "reset_allocator" (func $reset_allocator))
+
+
+(func $set_at_stack_frame_offset
+  (param $value i32)
+  (param $offset i32)
+
+  (local $relative_to_stack_base i32)
+
+  ;; Compute the address relative to stack base
+  global.get $stack_frame_start
+  local.get $offset
+  i32.add
+  local.tee $relative_to_stack_base
+
+  ;; Set the value
+  global.get $stack_base
+  i32.add
+  local.get $value
+  i32.store
+
+  ;; If this is the highest offset we've seen so far, update stack pointer
+  local.get $relative_to_stack_base
+  global.get $stack_pointer
+  i32.ge_u
+  if
+    local.get $relative_to_stack_base
+    i32.const 4
+    i32.add
+    global.set $stack_pointer
+  end
+)
+
+
+(func $write_to_array_index
+  (param $value i32)
+  (param $array_address i32)
+  (param $index i32)
+  (param $element_size i32)
+
+  ;; TODO: Add bounds checking
+  
+  local.get $array_address
+  local.get $index
+  local.get $element_size
+  i32.mul
+  i32.add
+  local.get $value
+  i32.store offset=5
+)
+
+
+(func $read_array_index
+  ;; TODO: Implement this
+)

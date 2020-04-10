@@ -4,11 +4,11 @@ import ast.expressions.*;
 import ast.statements.*;
 import ast.structure.CodeBlock;
 import ast.structure.VariableScope;
-import ast.types.ObjectArray;
 import ast.types.Type;
 import ast.types.VoidType;
 import codegen.CodeEmitter;
 import codegen.CodeGenUtil;
+import codegen.Constants;
 import codegen.WasmType;
 import errors.IncorrectTypeException;
 import util.ClassTable;
@@ -67,7 +67,8 @@ public class StatementGenerator {
 
     private void compileReturnStatement(ReturnStatement returnStatement,
                                         VariableScope scope) {
-        ExpressionGenerator.getInstance().compileExpression(returnStatement.getExpression(), scope);
+        Expression expression = returnStatement.getExpression();
+        ExpressionGenerator.getInstance().compileExpression(expression, scope);
         emitter.emitLine("return");
     }
 
@@ -87,50 +88,53 @@ public class StatementGenerator {
     private void compileLocalVariableAssignment(LocalVariableExpression localVariable,
                                                 Expression value,
                                                 VariableScope scope) {
-        ExpressionGenerator.getInstance().compileExpression(value, scope);
-        int registerNum = scope.lookupRegisterIndexOfVariable(localVariable.getVariableName());
-        emitter.emitLine("local.set " + registerNum);
+        VariableScope.Allocation allocation = scope.getVariableWithName(localVariable.getVariableName());
+        if (allocation instanceof VariableScope.LocalVariableAllocation) {
+            VariableScope.LocalVariableAllocation localVarAllocation = (VariableScope.LocalVariableAllocation) allocation;
+            int localVariableIndex = localVarAllocation.getLocalVariableIndex();
+            ExpressionGenerator.getInstance().compileExpression(value, scope);
+            emitter.emitLine("local.set " + localVariableIndex);
+        } else {
+            VariableScope.StackOffsetAllocation stackOffsetAllocation = (VariableScope.StackOffsetAllocation) allocation;
+            int stackOffset = stackOffsetAllocation.getStackFrameOffset();
+            ExpressionGenerator.getInstance().compileExpression(value, scope);
+            emitter.emitLine("i32.const " + stackOffset);
+            emitter.emitLine("call $set_at_stack_frame_offset");
+        }
     }
 
     private void compileAttributeNameAssignment(AttributeNameExpression attributeNameExpression,
                                                 Expression value,
                                                 VariableScope scope) {
+
         LocalVariableExpression localVariable = attributeNameExpression.getObject();
-        int registerNum = scope.lookupRegisterIndexOfVariable(localVariable.getVariableName());
-        emitter.emitLine("local.get " + registerNum);
-        int offset = attributeNameExpression.getMemoryOffset();
-        emitter.emitLine("i32.const " + offset);
-        emitter.emitLine("i32.add");
-        ExpressionGenerator.getInstance().compileExpression(value, scope);
+        int offset = Constants.OBJECT_HEADER_LENGTH + attributeNameExpression.getMemoryOffset();
         Type attributeType = attributeNameExpression.getType();
         WasmType wasmType = CodeGenUtil.getWasmType(attributeType);
-        emitter.emitLine(wasmType + ".store");
+
+        // Put the object address on the stack
+        ExpressionGenerator.getInstance().compileExpression(localVariable, scope);
+
+        // Put the value to save on the stack
+        ExpressionGenerator.getInstance().compileExpression(value, scope);
+
+        // Save the value
+        emitter.emitLine(wasmType + ".store offset=" + offset);
     }
 
     private void compileArrayIndexAssignment(ArrayIndexExpression arrayIndexExpression,
-                                             Expression value,
+                                             Expression valueExpression,
                                              VariableScope scope) {
 
         Expression arrayExpression = arrayIndexExpression.getArrayExpression();
         Expression indexExpression = arrayIndexExpression.getIndexExpression();
-        Type arrayElementType = ((ObjectArray) arrayExpression.getType()).getElementType();
-        int arrayElementSize = arrayElementType.getStackSize();
-        WasmType valueType = CodeGenUtil.getWasmType(value.getType());
+        WasmType valueType = CodeGenUtil.getWasmType(valueExpression.getType());
 
-        // Put the address of (start of array + header amount + index * element size)
-        // on the stack
+        ExpressionGenerator.getInstance().compileExpression(valueExpression, scope);
         ExpressionGenerator.getInstance().compileExpression(arrayExpression, scope);
-        // TODO: Add the offset for the header at the start of the array
         ExpressionGenerator.getInstance().compileExpression(indexExpression, scope);
-        emitter.emitLine("i32.const " + arrayElementSize);
-        emitter.emitLine("i32.mul");
-        emitter.emitLine("i32.add");
-
-        // Put the value to store there on the stack
-        ExpressionGenerator.getInstance().compileExpression(value, scope);
-
-        // Write to memory
-        emitter.emitLine(valueType + ".store");
+        emitter.emitLine("i32.const " + valueType.getSize());
+        emitter.emitLine("call $write_to_array_index");
     }
 
     private void compileIfStatementChain(IfStatementChain chain,
@@ -215,17 +219,13 @@ public class StatementGenerator {
         ExpressionGenerator.getInstance().compileExpression(notExpression, headerScope);
         emitter.emitLine("br_if 1");
 
+        // Now compile the actual code block
         compileCodeBlock(forLoop.getCodeBlock());
 
-        // We have a problem: we need to compile the updater, eg i++
-        // BUT: if you do this the standard way, it leaves the old value of i
-        // on the stack
-        // And it would be messy to do a pop as we'd have to check that there
-        // is indeed an updater. It's also valid to have an empty expression!
-        // One idea: could we return "how much stuff did we put on the stack"
-        // whenever you compile an expression?
-
-        // TODO: Stop dumping result on the stack
+        // Compile the updater - the part that updates the loop variable. It
+        // doesn't matter if this leaves anything on the stack because we are
+        // about to jump back to the start of the loop, unwinding the stack
+        // anyway.
         ExpressionGenerator.getInstance().compileExpression(forLoop.getUpdater(), headerScope);
 
         // Branch back to the start of the loop

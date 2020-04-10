@@ -1,11 +1,8 @@
 package codegen;
 
 import ast.structure.ClassMethod;
-import ast.structure.MethodParameter;
 import ast.structure.VariableScope;
-import ast.types.AccessModifier;
-import ast.types.Type;
-import ast.types.VoidType;
+import ast.types.*;
 import codegen.generators.ExpressionGenerator;
 import codegen.generators.LiteralGenerator;
 import codegen.generators.StatementGenerator;
@@ -21,11 +18,17 @@ import java.util.stream.Collectors;
 
 public class WasmGenerator {
 
+    private static int emittedMethods = 23;
+    private static boolean debug;
+
     public static void compile(List<ClassMethod> methods,
                                CodeEmitter emitter,
                                FunctionTable functionTable,
                                ClassTable classTable,
-                               VirtualTable virtualTable) {
+                               VirtualTable virtualTable,
+                               boolean debug) {
+
+        WasmGenerator.debug = debug;
 
         // Notify generators of required state
         ExpressionGenerator.getInstance().setCodeEmitter(emitter);
@@ -47,6 +50,10 @@ public class WasmGenerator {
         // Emit hand-coded WebAssembly functions
         WasmLibReader.getGlobalsCode().forEach(emitter::emitLine);
         WasmLibReader.getAllocationCode().forEach(emitter::emitLine);
+        WasmLibReader.getGarbageCollectionCode().forEach(emitter::emitLine);
+        if (debug) {
+            WasmLibReader.getDebugCode().forEach(emitter::emitLine);
+        }
 
         // Now compile each method
         for (ClassMethod method : methods) {
@@ -82,19 +89,17 @@ public class WasmGenerator {
                     + CodeGenUtil.getFunctionNameForOutput(entry, functionTable)
                     + " (func ";
 
-            // Add parameter for the reference to the object
-            typeString += "(param i32)";
-
-            // Add each parameter to the function
+            // Emit each parameter
             String parameters = entry.getParameterTypes()
                     .stream()
+                    .filter(type -> type instanceof PrimitiveType)
                     .map(CodeGenUtil::getWasmType)
                     .filter(Objects::nonNull)
                     .map(WasmType::toString)
                     .map(wasmType -> "(param " + wasmType + ")")
                     .collect(Collectors.joining(" "));
             if (parameters.length() > 0) {
-                typeString += " " + parameters;
+                typeString += parameters + " ";
             }
 
             // Return type
@@ -136,22 +141,25 @@ public class WasmGenerator {
                                       FunctionTable functionTable,
                                       CodeEmitter emitter) {
 
+        // If we're in debug mode then emit the function number so that it can be quickly
+        // looked up from error messages.
+        if (debug) {
+            emitter.emitLine(";; FUNCTION NUMBER: " + emittedMethods++);
+        }
+
         // Emit the function declaration
         String functionName = CodeGenUtil.getFunctionNameForOutput(method, functionTable);
         emitter.emitLine("(func $" + functionName);
         emitter.increaseIndentationLevel();
 
-        // If it's not a static method then pass a reference to the class as the
-        // first parameter.
-        if (!method.isStatic()) {
-            emitter.emitLine("(param $this i32)");
-        }
-
-        // Emit the rest of the parameters
-        for (MethodParameter param : method.getParams()) {
-            WasmType paramType = CodeGenUtil.getWasmType(param.getType());
-            emitter.emitLine("(param " + paramType + ")");
-        }
+        // Declare all the primitive parameters
+        method.getParams()
+                .stream()
+                .filter(param -> param.getType() instanceof PrimitiveType)
+                .forEach(param -> {
+                    WasmType paramType = CodeGenUtil.getWasmType(param.getType());
+                    emitter.emitLine("(param " + paramType + ")");
+                });
 
         // Emit return type, unless it's a void return
         Type returnType = method.getReturnType();
@@ -161,10 +169,14 @@ public class WasmGenerator {
 
         // Declare all local variables
         VariableScope bodyScope = method.getBody().getVariableScope();
-        for (Type type : bodyScope.getAllKnownAllocatedTypes()) {
+        for (Type type : bodyScope.getPrimitiveLocalVariableTypes()) {
             WasmType wasmType = CodeGenUtil.getWasmType(type);
             emitter.emitLine("(local " + wasmType + ")");
         }
+
+        // Save the current next shadow stack offset so that everything can be
+        // popped once this function has finished
+        emitter.emitLine("(local $saved_stack_frame_start i32)");
 
         // Now compile the body of the function
         StatementGenerator.getInstance().compileCodeBlock(method.getBody());

@@ -102,7 +102,7 @@ public class FunctionTable {
      * @param functionName The function to look up
      * @param parameterTypes The types of the function's parameters
      * @return The index of the function in the function table
-     * @throws UndeclaredFunctionException
+     * @throws UndeclaredFunctionException if the function has not been registered
      */
     public FunctionTableEntry lookupFunction(JavaClass containingClass,
                                              String functionName,

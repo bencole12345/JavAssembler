@@ -28,4 +28,9 @@ public class Tuple implements Type {
                 .reduce(Integer::sum);
         return size.isPresent() ? size.get() : 0;
     }
+
+    @Override
+    public boolean isPointer() {
+        return false;
+    }
 }

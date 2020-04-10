@@ -3,11 +3,13 @@ package codegen;
 import ast.literals.IntLiteral;
 import ast.structure.ClassMethod;
 import ast.structure.MethodParameter;
+import ast.types.HeapObjectReference;
 import ast.types.PrimitiveType;
 import ast.types.Type;
 import codegen.generators.LiteralGenerator;
 import errors.InvalidClassNameException;
 import errors.UndeclaredFunctionException;
+import util.ErrorReporting;
 import util.FunctionTable;
 import util.FunctionTableEntry;
 
@@ -23,23 +25,18 @@ public class CodeGenUtil {
      * @return The wasm type it is represented by
      */
     public static WasmType getWasmType(Type type) {
-        if (!(type instanceof PrimitiveType))
+        if (type instanceof HeapObjectReference)
             return WasmType.Int32;
         switch ((PrimitiveType) type) {
-            case Int:
-            case Short:
-            case Char:
-            case Byte:
-            case Boolean:
-                return WasmType.Int32;
-            case Long:
-                return WasmType.Int64;
             case Float:
                 return WasmType.Float32;
             case Double:
                 return WasmType.Float64;
+            case Long:
+                return WasmType.Int64;
+            default:
+                return WasmType.Int32;
         }
-        return null;
     }
 
     /**
@@ -83,8 +80,9 @@ public class CodeGenUtil {
             functionTableEntry = functionTable.lookupFunction(
                     method.getContainingClass(), method.getName(), parameterTypes);
         } catch (InvalidClassNameException | UndeclaredFunctionException e) {
-            e.printStackTrace();
+            ErrorReporting.reportError(e.getMessage());
         }
+        assert functionTableEntry != null;
         return getFunctionNameForOutput(functionTableEntry, functionTable);
     }
 

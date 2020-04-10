@@ -6,10 +6,7 @@ import ast.literals.BooleanLiteral;
 import ast.operations.BinaryOp;
 import ast.statements.*;
 import ast.structure.*;
-import ast.types.AccessModifier;
-import ast.types.JavaClass;
-import ast.types.Type;
-import ast.types.VoidType;
+import ast.types.*;
 import errors.IncorrectTypeException;
 import errors.JavAssemblerException;
 import errors.MultipleVariableDeclarationException;
@@ -67,25 +64,15 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         variableScopeStack.clear();
         VariableScope scopeForParameters = pushNewVariableScope();
 
-        // If it's a non-static method, insert a reference to the object as the
-        // first parameter.
-        if (!isStatic) {
-            try {
+        // Register the parameters
+        try {
+            scopeForParameters.registerParameters(paramsList);
+            if (!isStatic) {
                 scopeForParameters.registerVariable("this", currentClass);
-            } catch (MultipleVariableDeclarationException e) {
-                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
             }
-        }
-
-        // Add all method parameters to the stack
-        for (MethodParameter param : paramsList) {
-            String name = param.getParameterName();
-            Type type = param.getType();
-            try {
-                scopeForParameters.registerVariable(name, type);
-            } catch (MultipleVariableDeclarationException e) {
-                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
-            }
+        } catch (MultipleVariableDeclarationException e) {
+            // TODO: Throw more descriptive message if they tried to declare "this"
+            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
 
         // Now visit the body of the method
@@ -113,22 +100,12 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         variableScopeStack.clear();
         VariableScope scopeForParameters = pushNewVariableScope();
 
-        // Pass 'this' as extra parameter
+        // Register the parameters
         try {
+            scopeForParameters.registerParameters(paramsList);
             scopeForParameters.registerVariable("this", currentClass);
         } catch (MultipleVariableDeclarationException e) {
             ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
-        }
-
-        // Put all the constructor parameters on the stack
-        for (MethodParameter param : paramsList) {
-            String name = param.getParameterName();
-            Type type = param.getType();
-            try {
-                scopeForParameters.registerVariable(name, type);
-            } catch (MultipleVariableDeclarationException e) {
-                ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
-            }
         }
 
         // Visit the body of the method
@@ -139,7 +116,8 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         popVariableScope(false);
 
         // Return the method that was created
-        return new ClassMethod(modifier, isStatic, returnType, methodName, paramsList, body, currentClass);
+        return new ClassMethod(modifier, isStatic, returnType, methodName,
+                paramsList, body, currentClass);
     }
 
     @Override

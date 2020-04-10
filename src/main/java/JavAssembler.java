@@ -21,8 +21,9 @@ public class JavAssembler {
 
         String[] inputFiles = commandLine.getOptionValues("inputs");
         String outputFile = commandLine.getOptionValue("output");
+        boolean debug = commandLine.hasOption("debug");
 
-        Compilation.compileFiles(inputFiles, outputFile);
+        Compilation.compileFiles(inputFiles, outputFile, debug);
     }
 
     private static Options getCommandLineOptions() {
@@ -34,6 +35,8 @@ public class JavAssembler {
         Option output = new Option("o", "output", true, "The wasm file to write to");
         output.setRequired(true);
         options.addOption(output);
+        Option debug = new Option("d", "debug", false, "Include additional debugging functions in the output");
+        options.addOption(debug);
         return options;
     }
 
