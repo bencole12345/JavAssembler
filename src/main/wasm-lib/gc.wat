@@ -100,7 +100,6 @@
     br 0
   ))
 )
-(export "run_gc" (func $gc))
 
 
 (func $_gc_trace_object

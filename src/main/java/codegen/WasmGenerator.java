@@ -18,11 +18,17 @@ import java.util.stream.Collectors;
 
 public class WasmGenerator {
 
+    private static int emittedMethods = 23;
+    private static boolean debug;
+
     public static void compile(List<ClassMethod> methods,
                                CodeEmitter emitter,
                                FunctionTable functionTable,
                                ClassTable classTable,
-                               VirtualTable virtualTable) {
+                               VirtualTable virtualTable,
+                               boolean debug) {
+
+        WasmGenerator.debug = debug;
 
         // Notify generators of required state
         ExpressionGenerator.getInstance().setCodeEmitter(emitter);
@@ -45,6 +51,9 @@ public class WasmGenerator {
         WasmLibReader.getGlobalsCode().forEach(emitter::emitLine);
         WasmLibReader.getAllocationCode().forEach(emitter::emitLine);
         WasmLibReader.getGarbageCollectionCode().forEach(emitter::emitLine);
+        if (debug) {
+            WasmLibReader.getDebugCode().forEach(emitter::emitLine);
+        }
 
         // Now compile each method
         for (ClassMethod method : methods) {
@@ -131,6 +140,12 @@ public class WasmGenerator {
     private static void compileMethod(ClassMethod method,
                                       FunctionTable functionTable,
                                       CodeEmitter emitter) {
+
+        // If we're in debug mode then emit the function number so that it can be quickly
+        // looked up from error messages.
+        if (debug) {
+            emitter.emitLine(";; FUNCTION NUMBER: " + emittedMethods++);
+        }
 
         // Emit the function declaration
         String functionName = CodeGenUtil.getFunctionNameForOutput(method, functionTable);

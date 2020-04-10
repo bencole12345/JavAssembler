@@ -13,7 +13,7 @@ import java.util.List;
 
 public class Compilation {
 
-    public static void compileFiles(String[] fileNames, String outputFileName) throws IOException {
+    public static void compileFiles(String[] fileNames, String outputFileName, boolean debug) throws IOException {
 
         // First use ANTLR to generate a parse tree for every file.
         List<JavaFileParser.FileContext> parseTrees = new ArrayList<>();
@@ -72,7 +72,7 @@ public class Compilation {
 
         // Finally, compile each AST into WebAssembly
         CodeEmitter emitter = new CodeEmitter(outputFileName);
-        WasmGenerator.compile(methodASTs, emitter, functionTable, classTable, virtualTable);
+        WasmGenerator.compile(methodASTs, emitter, functionTable, classTable, virtualTable, debug);
 
     }
 }
