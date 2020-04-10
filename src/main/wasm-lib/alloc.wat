@@ -10,11 +10,11 @@
   (local $allocated_address i32)
 
   ;; If needed, run the garbage collector
-  ;; local.get $total_size_bytes
-  ;; call $determine_gc_needed
-  ;; if
+  local.get $total_size_bytes
+  call $determine_gc_needed
+  if
     call $gc
-  ;; end
+  end
 
   ;; Reserve space for the object
   global.get $heap_last_allocated
@@ -63,13 +63,13 @@
   (local $allocated_address i32)
 
   ;; If needed, run the garbage collector
-  ;; local.get $size_field
-  ;; i32.const 5
-  ;; i32.add
-  ;; call $determine_gc_needed
-  ;; if
-  call $gc
-  ;; end
+  local.get $size_field
+  i32.const 5
+  i32.add
+  call $determine_gc_needed
+  if
+    call $gc
+  end
 
   ;; Reserve space for the array
   global.get $heap_last_allocated
@@ -147,6 +147,10 @@
   ;; Amount the caller has requested
   local.get $requested_amount
 
+  ;; Add 1024 bytes extra just to be safe
+  i32.const 1024
+  i32.add
+
   ;; Amount of free space right now
   global.get $heap_last_allocated
   global.get $stack_base
@@ -155,7 +159,7 @@
   i32.sub
 
   ;; If it's not enough then we need to run the garbage collector
-  i32.le_u
+  i32.ge_u
 )
 
 
