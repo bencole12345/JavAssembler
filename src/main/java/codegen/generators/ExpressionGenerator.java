@@ -5,7 +5,6 @@ import ast.literals.*;
 import ast.operations.BinaryOp;
 import ast.statements.Assignment;
 import ast.structure.VariableScope;
-import ast.types.HeapObjectReference;
 import ast.types.JavaClass;
 import ast.types.PrimitiveType;
 import ast.types.Type;
@@ -324,8 +323,6 @@ public class ExpressionGenerator {
             currentPosition += 4;
         }
 
-        // TODO: Set every attribute to 0 (null)
-
         // If a constructor is used, put its arguments on the stack and call the constructor
         if (newObjectExpression.usesConstructor()) {
             List<Expression> arguments = newObjectExpression.getArguments();
@@ -446,8 +443,6 @@ public class ExpressionGenerator {
         emitter.emitLine("i32.const " + elementSize);
         emitter.emitLine("i32.mul");
         emitter.emitLine("i32.add");
-
-        // TODO: Bounds checks
 
         // Look up the value at this address (accounting for header)
         WasmType type = CodeGenUtil.getWasmType(lookupExpression.getType());

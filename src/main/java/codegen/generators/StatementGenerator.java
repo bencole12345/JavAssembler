@@ -4,7 +4,6 @@ import ast.expressions.*;
 import ast.statements.*;
 import ast.structure.CodeBlock;
 import ast.structure.VariableScope;
-import ast.types.HeapObjectReference;
 import ast.types.Type;
 import ast.types.VoidType;
 import codegen.CodeEmitter;

@@ -351,6 +351,7 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
         if (!(variableType instanceof JavaClass)) {
             ErrorReporting.reportError(errorMessageIfNotFound, ctx, currentClass.toString());
         }
+        assert variableType instanceof JavaClass;
         JavaClass javaClass = (JavaClass) variableType;
         List<Type> argumentTypes = argumentsList
                 .stream()

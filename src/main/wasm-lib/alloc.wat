@@ -222,3 +222,8 @@
   local.get $value
   i32.store offset=5
 )
+
+
+(func $read_array_index
+  ;; TODO: Implement this
+)

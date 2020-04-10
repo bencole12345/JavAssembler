@@ -9,6 +9,7 @@ import ast.types.Type;
 import codegen.generators.LiteralGenerator;
 import errors.InvalidClassNameException;
 import errors.UndeclaredFunctionException;
+import util.ErrorReporting;
 import util.FunctionTable;
 import util.FunctionTableEntry;
 
@@ -79,8 +80,9 @@ public class CodeGenUtil {
             functionTableEntry = functionTable.lookupFunction(
                     method.getContainingClass(), method.getName(), parameterTypes);
         } catch (InvalidClassNameException | UndeclaredFunctionException e) {
-            e.printStackTrace();
+            ErrorReporting.reportError(e.getMessage());
         }
+        assert functionTableEntry != null;
         return getFunctionNameForOutput(functionTableEntry, functionTable);
     }
 

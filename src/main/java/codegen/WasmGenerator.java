@@ -75,8 +75,6 @@ public class WasmGenerator {
             // be called indirectly.
             if (entry.getIsStatic()) continue;
 
-            // TODO: Don't emit the constructor here
-
             // Build up a string for the type for this function.
             String typeString = "(type $func_"
                     + CodeGenUtil.getFunctionNameForOutput(entry, functionTable)
