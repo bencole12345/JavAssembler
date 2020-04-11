@@ -109,7 +109,11 @@ public class ExpressionGenerator {
                 emitter.emitLine(wasmType + ".mul");
                 break;
             case Divide:
-                emitter.emitLine(wasmType + ".div_s");
+                if (primitiveType.isIntegralType()) {
+                    emitter.emitLine(wasmType + ".div_s");
+                } else {
+                    emitter.emitLine(wasmType + ".div");
+                }
                 break;
             case LogicalAnd:
                 emitter.emitLine("i32.and");
