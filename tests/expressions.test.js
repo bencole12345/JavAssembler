@@ -64,6 +64,15 @@ describe('Division', () => {
     const result = wasmInstance.Expressions_divide(a, b);
     expect(result).toBe(divisor);
   })
+  test('Integer divide by zero causes trap', () => {
+    expect(() => {
+      wasmInstance.Expressions_divide(1, 0);
+    }).toThrow();
+  })
+  test('Double divide by zero gives infinity', () => {
+    const result = wasmInstance.Expressions_divideDoubles(1, 0);
+    expect(result).not.toBeFinite();
+  })
 })
 
 describe('Logical operators', () => {

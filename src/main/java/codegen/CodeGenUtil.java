@@ -1,12 +1,10 @@
 package codegen;
 
-import ast.literals.IntLiteral;
 import ast.structure.ClassMethod;
 import ast.structure.MethodParameter;
 import ast.types.HeapObjectReference;
 import ast.types.PrimitiveType;
 import ast.types.Type;
-import codegen.generators.LiteralGenerator;
 import errors.InvalidClassNameException;
 import errors.UndeclaredFunctionException;
 import util.ErrorReporting;
@@ -48,15 +46,29 @@ public class CodeGenUtil {
      * within the range of values that a Java short can take.
      *
      * @param type The type of the value to range-restrict
-     * @param codeEmitter The CodeEmitter to use
+     * @param emitter The CodeEmitter to use
      */
-    public static void emitRangeRestrictionCode(Type type, CodeEmitter codeEmitter) {
-        if (type.getStackSize() != 4 && type.getStackSize() != 8) {
-            int mask = (1 << (type.getStackSize() * 8)) - 1;
-            IntLiteral literal = new IntLiteral(mask);
-            LiteralGenerator.getInstance().compileLiteralValue(literal);
-            codeEmitter.emitLine("i32.and");
+    public static void emitRangeRestrictionCode(Type type, CodeEmitter emitter) {
+        if (type instanceof PrimitiveType) {
+            switch ((PrimitiveType) type) {
+                case Short:
+                    emitter.emitLine("i32.const 16");
+                    emitter.emitLine("i32.shl");
+                    emitter.emitLine("i32.const 16");
+                    emitter.emitLine("i32.shr_s");
+                    break;
+                case Byte:
+                    emitter.emitLine("i32.const 24");
+                    emitter.emitLine("i32.shl");
+                    emitter.emitLine("i32.const 24");
+                    emitter.emitLine("i32.shr_s");
+                    break;
+                case Char:
+                    emitter.emitLine("i32.const 0x0000ffff");
+                    emitter.emitLine("i32.and");
+            }
         }
+
     }
 
     /**

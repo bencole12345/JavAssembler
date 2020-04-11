@@ -96,20 +96,19 @@ public class ExpressionGenerator {
         switch (bopExpression.getOp()) {
             case Add:
                 emitter.emitLine(wasmType + ".add");
-                CodeGenUtil.emitRangeRestrictionCode(expressionType, emitter);
                 break;
             case Subtract:
                 emitter.emitLine(wasmType + ".sub");
-                CodeGenUtil.emitRangeRestrictionCode(expressionType, emitter);
                 break;
             case Multiply:
-                // TODO: This probably won't work, as multiplying can add more bits
-                // eg i32 * i32 = i64
-                // but it'll do for now...
                 emitter.emitLine(wasmType + ".mul");
                 break;
             case Divide:
-                emitter.emitLine(wasmType + ".div_s");
+                if (primitiveType.isIntegralType()) {
+                    emitter.emitLine(wasmType + ".div_s");
+                } else {
+                    emitter.emitLine(wasmType + ".div");
+                }
                 break;
             case LogicalAnd:
                 emitter.emitLine("i32.and");
@@ -151,6 +150,7 @@ public class ExpressionGenerator {
                     emitter.emitLine(wasmType + ".ge");
                 }
         }
+        CodeGenUtil.emitRangeRestrictionCode(expressionType, emitter);
     }
 
     private void compileBinarySelectorExpression(BinarySelectorExpression binarySelectorExpression,

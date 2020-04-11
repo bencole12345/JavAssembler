@@ -16,6 +16,10 @@ public class Expressions {
         return a / b;
     }
 
+    public static double divideDoubles(double a, double b) {
+        return a / b;
+    }
+
     public static boolean and(boolean a, boolean b) {
         return a && b;
     }
