@@ -38,4 +38,10 @@ public class Arrays {
         return array;
     }
 
+    public static int readElementAtIndexInArrayOfSize(int index, int size) {
+        Integer[] array = makeIntegerArray(size);
+        Integer value = array[index];
+        return value.value;
+    }
+
 }

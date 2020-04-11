@@ -2,6 +2,8 @@ package ast.expressions;
 
 import ast.operations.BinaryOp;
 import ast.operations.OpType;
+import ast.types.HeapObjectReference;
+import ast.types.NullType;
 import ast.types.PrimitiveType;
 import ast.types.Type;
 import errors.IncorrectTypeException;
@@ -55,8 +57,8 @@ public class BinaryOperatorExpression implements Expression {
      *
      * @return The shared type of the two operands
      */
-    public PrimitiveType getUnderlyingType() {
-        return (PrimitiveType) left.getType();
+    public Type getUnderlyingType() {
+        return left.getType();
     }
 
     /**
@@ -69,6 +71,24 @@ public class BinaryOperatorExpression implements Expression {
      * @return true if the types are legal; false otherwise
      */
     private boolean typesAreLegal(Type leftType, Type rightType, BinaryOp op) {
+
+        // For equality you can also compare heap references
+        if (op.equals(BinaryOp.EqualTo)) {
+            boolean bothPrimitive = leftType instanceof PrimitiveType
+                    && rightType instanceof PrimitiveType;
+            boolean bothHeapReference = leftType instanceof HeapObjectReference
+                    && rightType instanceof HeapObjectReference;
+            if (bothPrimitive) {
+                return leftType.equals(rightType);
+            } else if (bothHeapReference) {
+                return leftType instanceof NullType
+                        || rightType instanceof NullType
+                        || leftType.isSubtypeOf(rightType)
+                        || rightType.isSubtypeOf(leftType);
+            } else {
+                return false;
+            }
+        }
 
         // We only permit binary operations on primitive types
         // (no overloading!)

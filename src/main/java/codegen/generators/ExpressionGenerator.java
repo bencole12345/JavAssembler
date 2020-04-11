@@ -87,7 +87,11 @@ public class ExpressionGenerator {
                                       VariableScope variableScope) {
         compileExpression(bopExpression.getLeft(), variableScope);
         compileExpression(bopExpression.getRight(), variableScope);
-        PrimitiveType expressionType = bopExpression.getUnderlyingType();
+        Type expressionType = bopExpression.getUnderlyingType();
+        PrimitiveType primitiveType = null;
+        if (expressionType instanceof PrimitiveType) {
+            primitiveType = (PrimitiveType) expressionType;
+        }
         WasmType wasmType = CodeGenUtil.getWasmType(expressionType);
         switch (bopExpression.getOp()) {
             case Add:
@@ -120,28 +124,28 @@ public class ExpressionGenerator {
                 emitter.emitLine(wasmType + ".ne");
                 break;
             case LessThan:
-                if (expressionType.isIntegralType()) {
+                if (primitiveType.isIntegralType()) {
                     emitter.emitLine(wasmType + ".lt_s");
                 } else {
                     emitter.emitLine(wasmType + ".lt");
                 }
                 break;
             case LessThanOrEqualTo:
-                if (expressionType.isIntegralType()) {
+                if (primitiveType.isIntegralType()) {
                     emitter.emitLine(wasmType + ".le_s");
                 } else {
                     emitter.emitLine(wasmType + ".le");
                 }
                 break;
             case GreaterThan:
-                if (expressionType.isIntegralType()) {
+                if (primitiveType.isIntegralType()) {
                     emitter.emitLine(wasmType + ".gt_s");
                 } else {
                     emitter.emitLine(wasmType + ".gt");
                 }
                 break;
             case GreaterThanOrEqualTo:
-                if (expressionType.isIntegralType()) {
+                if (primitiveType.isIntegralType()) {
                     emitter.emitLine(wasmType + ".ge_s");
                 } else {
                     emitter.emitLine(wasmType + ".ge");
@@ -262,6 +266,18 @@ public class ExpressionGenerator {
 
         // Put the address of the object on the stack
         compileExpression(attributeNameExpression.getObject(), scope);
+
+        // Check that it's not null
+        emitter.emitLine("global.set $temp_heap_address");
+        emitter.emitLine("global.get $temp_heap_address");
+        emitter.emitLine("i32.const 0");
+        emitter.emitLine("i32.eq");
+        emitter.emitLine("if");
+        emitter.increaseIndentationLevel();
+        emitter.emitLine("unreachable");
+        emitter.decreaseIndentationLevel();
+        emitter.emitLine("end");
+        emitter.emitLine("global.get $temp_heap_address");
 
         // Look up the value at the offset for the requested attribute
         emitter.emitLine(wasmType + ".load offset=" + attributeOffset);
@@ -435,17 +451,9 @@ public class ExpressionGenerator {
         Type elementType = lookupExpression.getArrayExpression().getType();
         int elementSize = elementType.getStackSize();
 
-        // Find the address of the array
         compileExpression(array, scope);
-
-        // Compute the address of the requested element
         compileExpression(index, scope);
         emitter.emitLine("i32.const " + elementSize);
-        emitter.emitLine("i32.mul");
-        emitter.emitLine("i32.add");
-
-        // Look up the value at this address (accounting for header)
-        WasmType type = CodeGenUtil.getWasmType(lookupExpression.getType());
-        emitter.emitLine(type + ".load offset=" + Constants.ARRAY_HEADER_LENGTH);
+        emitter.emitLine("call $read_array_index");
     }
 }

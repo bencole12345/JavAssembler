@@ -38,6 +38,8 @@ public class LiteralGenerator {
             compileBooleanLiteral((BooleanLiteral) literal);
         } else if (literal instanceof CharLiteral) {
             compileCharLiteral((CharLiteral) literal);
+        } else if (literal instanceof NullLiteral) {
+            compileNullLiteral();
         }
     }
 
@@ -72,5 +74,9 @@ public class LiteralGenerator {
 
     private void compileCharLiteral(CharLiteral literal) {
         emitter.emitLine("i32.const " + literal.getValue());
+    }
+
+    private void compileNullLiteral() {
+        emitter.emitLine("i32.const 0");
     }
 }
