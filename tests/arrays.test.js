@@ -42,5 +42,4 @@ describe('Arrays', () => {
       wasmInstance.Arrays_readElementAtIndexInArrayOfSize(9, 10);
     }).not.toThrow();
   })
-  // TODO: Add 2D arrays test
 })
