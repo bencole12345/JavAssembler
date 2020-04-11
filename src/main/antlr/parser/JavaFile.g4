@@ -208,4 +208,5 @@ literal
     | LONG_LITERAL
     | FLOAT_LITERAL
     | DOUBLE_LITERAL
+    | NULL_LITERAL
     ;

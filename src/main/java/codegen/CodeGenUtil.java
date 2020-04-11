@@ -50,7 +50,7 @@ public class CodeGenUtil {
      * @param type The type of the value to range-restrict
      * @param codeEmitter The CodeEmitter to use
      */
-    public static void emitRangeRestrictionCode(PrimitiveType type, CodeEmitter codeEmitter) {
+    public static void emitRangeRestrictionCode(Type type, CodeEmitter codeEmitter) {
         if (type.getStackSize() != 4 && type.getStackSize() != 8) {
             int mask = (1 << (type.getStackSize() * 8)) - 1;
             IntLiteral literal = new IntLiteral(mask);

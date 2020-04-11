@@ -459,8 +459,10 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
             return new DoubleLiteral(value);
         } else if (ctx.FLOAT_LITERAL() != null) {
             String toParse = ctx.FLOAT_LITERAL().toString();
-            float value = Float.parseFloat(toParse.substring(0, toParse.length()-1));
+            float value = Float.parseFloat(toParse.substring(0, toParse.length() - 1));
             return new FloatLiteral(value);
+        } else if (ctx.NULL_LITERAL() != null) {
+            return new NullLiteral();
         } else {
             return null;
         }
