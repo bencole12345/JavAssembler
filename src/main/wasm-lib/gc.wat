@@ -427,9 +427,13 @@
   (result i32)
   local.get $current_heap
   if (result i32)
-    i32.const 0x8000
+    global.get $memory_pages
+    i32.const 15
+    i32.shl
   else
-    i32.const 0x10000
+    global.get $memory_pages
+    i32.const 16
+    i32.shl
   end
   )
 
@@ -441,7 +445,11 @@
   if (result i32)
     i32.const 0x0004
   else
-    i32.const 0x8004
+    global.get $memory_pages
+    i32.const 15
+    i32.shl
+    i32.const 4
+    i32.add
   end
 )
 
