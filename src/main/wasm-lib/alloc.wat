@@ -305,11 +305,11 @@
   i32.shl
   local.set $delta
 
+  ;; Determine which half of the memory is currently active
   global.get $curr_heap
-  ;; call $silentLog
   if
-    ;; 1 - second half of the heap
-    ;; Need to move the stack
+    ;; 1 - We are currently using the second half
+    ;;  => Need to move the stack
 
     ;; Copy across each word
     i32.const 0
@@ -347,8 +347,8 @@
     global.set $stack_base
 
   else
-    ;; 0 - first half of the memory 
-    ;; Need to move the heap
+    ;; 0 - We are currently using the first half
+    ;;  => Need to move the heap
 
     global.get $heap_last_allocated
     local.set $curr_heap_object
