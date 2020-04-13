@@ -13,4 +13,18 @@ public class GarbageCollection {
         return correct;
     }
 
+    public static boolean testRequestingAdditionalMemory(int size) {
+        boolean correct = true;
+        Integer[] array = new Integer[size];
+        for (int i = 0; i < size; i++) {
+            Integer newInteger = new Integer(i);
+            array[i] = newInteger;
+        }
+        for (int i = 0; i < size; i++) {
+            Integer thisIndex = array[i];
+            correct = correct && (thisIndex.value == i);
+        }
+        return correct;
+    }
+
 }

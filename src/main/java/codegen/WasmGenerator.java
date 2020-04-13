@@ -41,6 +41,11 @@ public class WasmGenerator {
         emitter.emitLine("(module");
         emitter.increaseIndentationLevel();
 
+        // If in debug mode, import the logging function
+        if (debug) {
+            emitter.emitLine("(import \"console\" \"log\" (func $log (param i32)))");
+        }
+
         // Emit the list of function types
         emitFunctionTypes(emitter, functionTable);
 
