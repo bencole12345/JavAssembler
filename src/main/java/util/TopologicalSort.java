@@ -58,7 +58,7 @@ public class TopologicalSort {
 
         // Visit all descendents first
         inStack.add(node);
-        for (T nextNode : edges.get(node))
+        for (T nextNode : edges.getOrDefault(node, new HashSet<>()))
             visit(nextNode, edges, inStack, done, output);
         inStack.remove(node);
         done.add(node);
