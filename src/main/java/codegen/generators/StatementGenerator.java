@@ -119,7 +119,7 @@ public class StatementGenerator {
         ExpressionGenerator.getInstance().compileExpression(value, scope);
 
         // Save the value
-        emitter.emitLine(wasmType + ".store offset=" + offset);
+        emitter.emitLine(wasmType + ".store offset=" + offset + " align=2");
     }
 
     private void compileArrayIndexAssignment(ArrayIndexExpression arrayIndexExpression,
@@ -162,10 +162,7 @@ public class StatementGenerator {
 
     private void compileWhileLoop(WhileLoop whileLoop,
                                   VariableScope scope) {
-        emitter.emitLine("(block");
-        emitter.increaseIndentationLevel();
-
-        emitter.emitLine("(loop");
+        emitter.emitLine("(block (loop");
         emitter.increaseIndentationLevel();
 
         // Test the condition, negate it, and jump out of the loop if the
@@ -189,9 +186,7 @@ public class StatementGenerator {
 
         // End the loop
         emitter.decreaseIndentationLevel();
-        emitter.emitLine(")");
-        emitter.decreaseIndentationLevel();
-        emitter.emitLine(")");
+        emitter.emitLine("))");
     }
 
     private void compileForLoop(ForLoop forLoop) {
@@ -203,9 +198,7 @@ public class StatementGenerator {
         compileStatement(forLoop.getInitialiser(), headerScope);
 
         // Set up the loop
-        emitter.emitLine("(block");
-        emitter.increaseIndentationLevel();
-        emitter.emitLine("(loop");
+        emitter.emitLine("(block (loop");
         emitter.increaseIndentationLevel();
 
         // Test the condition, negate it, and jump out of the loop if the
@@ -233,9 +226,7 @@ public class StatementGenerator {
 
         // End the loop
         emitter.decreaseIndentationLevel();
-        emitter.emitLine(")");
-        emitter.decreaseIndentationLevel();
-        emitter.emitLine(")");
+        emitter.emitLine("))");
     }
 
     private void compileFunctionCallStatement(FunctionCall functionCall, VariableScope scope) {

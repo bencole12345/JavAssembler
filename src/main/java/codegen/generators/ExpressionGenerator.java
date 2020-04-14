@@ -5,6 +5,7 @@ import ast.literals.*;
 import ast.operations.BinaryOp;
 import ast.statements.Assignment;
 import ast.structure.VariableScope;
+import ast.types.HeapObjectReference;
 import ast.types.JavaClass;
 import ast.types.PrimitiveType;
 import ast.types.Type;
@@ -335,7 +336,7 @@ public class ExpressionGenerator {
         for (int pointerInfoWord : pointerInformation) {
             emitter.emitLine("global.get $temp_heap_address");
             emitter.emitLine("i32.const " + pointerInfoWord);
-            emitter.emitLine("i32.store offset=" + currentPosition);
+            emitter.emitLine("i32.store offset=" + currentPosition + " align=2");
             currentPosition += 4;
         }
 
@@ -371,7 +372,7 @@ public class ExpressionGenerator {
                 emitter.emitLine("global.get $stack_pointer");
                 emitter.emitLine("i32.add");
                 compileExpression(expression, scope);
-                emitter.emitLine("i32.store offset=" + offset);
+                emitter.emitLine("i32.store offset=" + offset + " align=2");
                 offset += 4;
             }
         }
@@ -386,14 +387,14 @@ public class ExpressionGenerator {
             emitter.emitLine("global.get $stack_pointer");
             emitter.emitLine("i32.add");
             emitter.emitLine("global.get $temp_heap_address");
-            emitter.emitLine("i32.store offset=" + offset);
+            emitter.emitLine("i32.store offset=" + offset + " align=2");
             offset += 4;
         }
 
         // If this is a method call, put the vtable index on the stack
         if (objectForVtable != null) {
             compileExpression(objectForVtable, scope);
-            emitter.emitLine("i32.load offset=5");
+            emitter.emitLine("i32.load offset=" + Constants.VTABLE_POINTER_POS + " align=2");
             emitter.emitLine("i32.const " + vtableOffset);
             emitter.emitLine("i32.add");
         }
@@ -431,7 +432,9 @@ public class ExpressionGenerator {
         // (eg work it through for an array of short values)
 
         Expression lengthExpression = newArrayExpression.getLengthExpression();
-        int elementSize = newArrayExpression.getElementType().getStackSize();
+        Type elementType = newArrayExpression.getElementType();
+        int elementSize = elementType.getStackSize();
+        int containsPointersBit = elementType instanceof HeapObjectReference ? 1 : 0;
 
         // First evaluate the expression for how long the array should be
         compileExpression(lengthExpression, scope);
@@ -439,6 +442,9 @@ public class ExpressionGenerator {
         // Multiply by element size to get the actual size
         emitter.emitLine("i32.const " + elementSize);
         emitter.emitLine("i32.mul");
+
+        // Pass in bit for whether the array contains pointers
+        emitter.emitLine("i32.const " + containsPointersBit);
 
         // Now allocate the memory, leaving the address on the stack
         emitter.emitLine("call $alloc_array");

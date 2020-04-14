@@ -139,12 +139,14 @@ public class JavaClass extends HeapObjectReference {
 
     public int getHeapSize() {
         // Heap layout:
-        //  flags            (1 byte)
+        //  flags            (4 bytes)
         //  vtable pointer   (4 bytes)
         //  size field       (4 bytes)
         //  attributes       (variable)
         //  pointer_info     (variable)
-        return 9 + nextFreeAssignmentOffset + 4 * getEncodedPointersDescription().size();
+        return Constants.OBJECT_HEADER_LENGTH  // Headers
+                + nextFreeAssignmentOffset     // Attributes
+                + 4 * getEncodedPointersDescription().size();  // Pointer info
     }
 
     /**

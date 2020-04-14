@@ -50,22 +50,22 @@
   ;; 0b00000001
   ;;         ^ has_been_copied GC flag
   ;;          ^ is_object flag
-  i32.const 0x01
-  i32.store8
+  i32.const 0x00000001
+  i32.store
 
   ;; Write the size field
   local.get $allocated_address
   local.get $size_field
-  i32.store offset=1
+  i32.store offset=4 align=2
 
   ;; Write the vtable pointer
   local.get $allocated_address
   local.get $vtable_pointer
-  i32.store offset=5
+  i32.store offset=8 align=2
 
   ;; Write zeroes to every attribute
   local.get $allocated_address
-  i32.const 9
+  i32.const 12
   i32.add
   local.get $size_field
   call $write_zeroes
@@ -79,34 +79,32 @@
 ;; Allocates heap space for an array
 (func $alloc_array
   (param $size_field i32)
-  ;; TODO: Pass in the bit for whether the array contains pointers
-  ;; Returns the address that was allocated
+  (param $contains_pointers i32)
   (result i32)
+
   (local $allocated_address i32)
 
   ;; Reserve space for the array
   local.get $size_field
-  i32.const 5
+  i32.const 8
   i32.add
   call $alloc
   local.tee $allocated_address
 
   ;; Write the flags to the flags field
-  ;; 0b00000100
-  ;;        ^ contains_pointers
-  ;;         ^ has_been_copied GC flag
-  ;;          ^ is_object flag
-  i32.const 0x04
-  i32.store8
+  local.get $contains_pointers
+  i32.const 2
+  i32.shl
+  i32.store
 
   ;; Write the size field
   local.get $allocated_address
   local.get $size_field
-  i32.store offset=1
+  i32.store offset=4 align=2
 
   ;; Write zeroes to every element
   local.get $allocated_address
-  i32.const 5
+  i32.const 8
   i32.add
   local.get $size_field
   call $write_zeroes
@@ -139,7 +137,7 @@
 
     local.get $pos
     i32.const 0
-    i32.store
+    i32.store align=2
 
     local.get $pos
     i32.const 4
@@ -167,7 +165,9 @@
 
 ;; Resets the memory allocator
 (func $reset_allocator
-  i32.const 0x8000
+  global.get $memory_pages
+  i32.const 15
+  i32.shl
   global.set $heap_last_allocated
   i32.const 0x0000
   global.set $stack_base
@@ -223,7 +223,7 @@
 
   ;; Read the array's size field
   local.get $array_address
-  i32.load offset=1
+  i32.load offset=4 align=2
   local.set $size_field
 
   ;; Determine the offset that has been requested
@@ -257,7 +257,7 @@
   i32.mul
   i32.add
   local.get $value
-  i32.store offset=5
+  i32.store offset=8 align=2
 )
 
 
@@ -272,7 +272,7 @@
 
   ;; Read the array's size field
   local.get $array_address
-  i32.load offset=1
+  i32.load offset=4 align=2
   local.set $size_field
 
   ;; Determine the offset that has been requested
@@ -302,7 +302,7 @@
   local.get $array_address
   local.get $requested_offset
   i32.add
-  i32.load offset=5
+  i32.load offset=8 align=2
 )
 
 
@@ -361,10 +361,10 @@
       global.get $stack_base
       local.get $curr_word
       i32.add
-      i32.load
+      i32.load align=2
 
       ;; Write it
-      i32.store
+      i32.store align=2
 
       local.get $curr_word
       i32.const 4
@@ -403,15 +403,15 @@
       ;; Copy across the header
       local.get $heap_to_address
       local.get $curr_heap_object
-      i32.load8_u
-      i32.store8
+      i32.load align=2
+      i32.store align=2
 
       ;; Copy across the size field
       local.get $heap_to_address
       local.get $curr_heap_object
-      i32.load offset=1
+      i32.load offset=4 align=2
       local.tee $size_field
-      i32.store offset=1
+      i32.store offset=4 align=2
 
       ;; Determine whether it's an array or an object
       local.get $curr_heap_object
@@ -422,8 +422,8 @@
         ;; Copy across the vtable pointer
         local.get $heap_to_address
         local.get $curr_heap_object
-        i32.load offset=5
-        i32.store offset=5
+        i32.load offset=8 align=2
+        i32.store offset=8 align=2
 
         ;; Move across each attribute
         i32.const 0
@@ -447,7 +447,7 @@
             local.get $curr_heap_object
             local.get $curr_word
             i32.add
-            i32.load offset=9
+            i32.load offset=12 align=2
             local.tee $value
             i32.eqz
             if (result i32)
@@ -461,11 +461,11 @@
             local.get $curr_heap_object
             local.get $curr_word
             i32.add
-            i32.load offset=9
+            i32.load offset=12 align=2
           end
 
           ;; Write it
-          i32.store offset=9
+          i32.store offset=12 align=2
 
           ;; Move to next word
           local.get $curr_word
@@ -478,7 +478,7 @@
 
         ;; Work out where the pointer info region starts
         local.get $curr_heap_object
-        i32.const 9
+        i32.const 12
         i32.add
         local.get $size_field
         i32.add
@@ -505,10 +505,10 @@
 
           ;; Value to write
           local.get $pointer_info_pos
-          i32.load
+          i32.load align=2
 
           ;; Write it
-          i32.store
+          i32.store align=2
 
           local.get $pointer_info_pos
           i32.const 4
@@ -546,7 +546,7 @@
             local.get $curr_heap_object
             local.get $curr_word
             i32.add
-            i32.load offset=5
+            i32.load offset=8 align=2
             local.get $delta
             i32.add
           else
@@ -554,11 +554,11 @@
             local.get $curr_heap_object
             local.get $curr_word
             i32.add
-            i32.load offset=5
+            i32.load offset=8 align=2
           end
 
           ;; Write it
-          i32.store offset=5
+          i32.store offset=8 align=2
 
           local.get $curr_word
           i32.const 4
@@ -600,12 +600,12 @@
       global.get $stack_base
       local.get $curr_word
       i32.add
-      i32.load
+      i32.load align=2
       local.get $delta
       i32.add
 
       ;; Write it
-      i32.store
+      i32.store align=2
 
       local.get $curr_word
       i32.const 4
