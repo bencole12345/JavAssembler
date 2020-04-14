@@ -110,7 +110,7 @@
 
   ;; Read size field
   local.get $address
-  i32.load offset=1
+  i32.load offset=4 align=2
   local.set $size_field
 
   ;; Determine whether it's an object or an array
@@ -139,11 +139,11 @@
         local.get $address
         local.get $curr_attribute_offset
         i32.add
-        i32.load offset=9
+        i32.load offset=12 align=2
         call $_gc_copy_object
         
         ;; Write its new address to the index we worked out earlier
-        i32.store offset=9
+        i32.store offset=12 align=2
 
       end
 
@@ -178,11 +178,11 @@
         local.get $address
         local.get $curr_attribute_offset
         i32.add
-        i32.load offset=5
+        i32.load offset=8 align=2
         call $_gc_copy_object
 
         ;; Write the new address to the index we left on the stack earlier
-        i32.store offset=5
+        i32.store offset=8 align=2
 
         local.get $curr_attribute_offset
         i32.const 4
@@ -205,7 +205,7 @@
   call $_gc_is_address_marked
   if (result i32)
     local.get $address
-    i32.load offset=1
+    i32.load offset=4 align=2
   else
     local.get $address
     local.get $address
@@ -216,6 +216,7 @@
 
 
 (func $_gc_copy_bytes
+  ;; TODO: Copy words not bytes
   (param $from_address i32)
   (param $size_bytes i32)
 
@@ -272,10 +273,10 @@
   ;; Make sure the "was moved" bit is 0 in the tospace
   local.get $allocated_address
   local.get $allocated_address
-  i32.load8_u
-  i32.const 0xfd
+  i32.load align=2
+  i32.const 0xfffffffd
   i32.and
-  i32.store8
+  i32.store align=2
 
   ;; Return the allocated address
   local.get $allocated_address
@@ -292,17 +293,17 @@
   call $_gc_is_object
   if (result i32)
     local.get $address
-    i32.load offset=1
+    i32.load offset=4 align=2
     local.tee $size_field
     call $num_bytes_to_pointer_info_length
     local.get $size_field
     i32.add
-    i32.const 9
+    i32.const 12
     i32.add
   else
     local.get $address
-    i32.load offset=1
-    i32.const 5
+    i32.load offset=4 align=2
+    i32.const 8
     i32.add
   end
 )
@@ -314,8 +315,8 @@
   (result i32)
 
   local.get $address
-  i32.load8_u
-  i32.const 0x01
+  i32.load align=2
+  i32.const 0x00000001
   i32.and
 )
 
@@ -332,12 +333,12 @@
 
   ;; Read the size field
   local.get $address
-  i32.load offset=1
+  i32.load offset=4 align=2
   local.set $size_field
 
   ;; Work out which word within the pointers section to read
   local.get $offset
-  i32.const 5
+  i32.const 8
   i32.shr_u
   local.set $offset_within_pointers_section
 
@@ -353,7 +354,7 @@
   i32.add
   local.get $offset_within_pointers_section
   i32.add
-  i32.load offset=9
+  i32.load offset=12 align=2
   local.get $bit_to_read
   i32.shr_u
   i32.const 1
@@ -366,8 +367,8 @@
   (result i32)
 
   local.get $address
-  i32.load8_u
-  i32.const 0x02
+  i32.load align=2
+  i32.const 0x00000002
   i32.and
   i32.const 1
   i32.shr_u
@@ -378,7 +379,7 @@
   (param $address i32)
   (result i32)
   local.get $address
-  i32.load offset=1
+  i32.load offset=4 align=2
 )
 
 
@@ -389,15 +390,15 @@
   ;; Write the bit to say it was moved
   local.get $old_address
   local.get $old_address
-  i32.load8_u
-  i32.const 0x02
+  i32.load align=2
+  i32.const 0x00000002
   i32.or
-  i32.store8
+  i32.store align=2
 
   ;; Write the new address
   local.get $old_address
   local.get $new_address
-  i32.store offset=1
+  i32.store offset=4 align=2
 )
 
 
@@ -405,8 +406,8 @@
   (param $address i32)
   (result i32)
   local.get $address
-  i32.load8_u
-  i32.const 0x04
+  i32.load align=2
+  i32.const 0x00000004
   i32.and
   i32.const 2
   i32.shr_u

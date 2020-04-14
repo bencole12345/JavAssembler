@@ -335,7 +335,7 @@ public class ExpressionGenerator {
         for (int pointerInfoWord : pointerInformation) {
             emitter.emitLine("global.get $temp_heap_address");
             emitter.emitLine("i32.const " + pointerInfoWord);
-            emitter.emitLine("i32.store offset=" + currentPosition);
+            emitter.emitLine("i32.store offset=" + currentPosition + " align=2");
             currentPosition += 4;
         }
 
@@ -371,7 +371,7 @@ public class ExpressionGenerator {
                 emitter.emitLine("global.get $stack_pointer");
                 emitter.emitLine("i32.add");
                 compileExpression(expression, scope);
-                emitter.emitLine("i32.store offset=" + offset);
+                emitter.emitLine("i32.store offset=" + offset + " align=2");
                 offset += 4;
             }
         }
@@ -386,14 +386,14 @@ public class ExpressionGenerator {
             emitter.emitLine("global.get $stack_pointer");
             emitter.emitLine("i32.add");
             emitter.emitLine("global.get $temp_heap_address");
-            emitter.emitLine("i32.store offset=" + offset);
+            emitter.emitLine("i32.store offset=" + offset + " align=2");
             offset += 4;
         }
 
         // If this is a method call, put the vtable index on the stack
         if (objectForVtable != null) {
             compileExpression(objectForVtable, scope);
-            emitter.emitLine("i32.load offset=5");
+            emitter.emitLine("i32.load offset=" + Constants.VTABLE_POINTER_POS + " align=2");
             emitter.emitLine("i32.const " + vtableOffset);
             emitter.emitLine("i32.add");
         }
