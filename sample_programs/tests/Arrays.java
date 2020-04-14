@@ -1,6 +1,6 @@
 public class Arrays {
 
-    public static boolean testPrimitiveArrayElementsStoredCorrectly() {
+    public static boolean testIntegerArrayElementsStoredCorrectly() {
         int[] array = new int[3];
         array[0] = 1;
         array[1] = -1;
@@ -11,6 +11,45 @@ public class Arrays {
         return first == 1
                 && second == -1
                 && third == 10;
+    }
+
+    public static boolean testShortArrayElementsStoredCorrectly() {
+        short[] array = new short[3];
+        array[0] = 1s;
+        array[1] = -1s;
+        array[2] = 10s;
+        short first = array[0];
+        short second = array[1];
+        short third = array[2];
+        return first == 1s
+                && second == -1s
+                && third == 10s;
+    }
+
+    public static boolean testFloatArrayElementsStoredCorrectly() {
+        float[] array = new float[3];
+        array[0] = 1.0f;
+        array[1] = -1.0f;
+        array[2] = 10.0f;
+        float first = array[0];
+        float second = array[1];
+        float third = array[2];
+        return first == 1.0f
+                && second == -1.0f
+                && third == 10.0f;
+    }
+
+    public static boolean testDoubleArrayElementsStoredCorrectly() {
+        double[] array = new double[3];
+        array[0] = 1.0;
+        array[1] = -1.0;
+        array[2] = 10.0;
+        double first = array[0];
+        double second = array[1];
+        double third = array[2];
+        return first == 1.0
+                && second == -1.0
+                && third == 10.0;
     }
 
     public static boolean testNonPrimitiveArrayElementsStoredCorrectly() {
