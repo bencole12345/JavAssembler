@@ -20,7 +20,9 @@ dependencies {
     compile group: 'commons-cli', name: 'commons-cli', version: '1.4'
 
     // JUnit 5 for running tests
-    testImplementation('org.junit.jupiter:junit-jupiter:5.6.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.6.2'
+
+    testImplementation 'org.mockito:mockito-core:3.3.3'
 }
 
 generateGrammarSource {
