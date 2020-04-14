@@ -45,6 +45,7 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
      * Helper visitors
      */
     private BopVisitor bopVisitor;
+    private TypeVisitor typeVisitor;
 
     public ExpressionVisitor(FunctionTable functionTable, ClassTable classTable) {
         super();
@@ -52,6 +53,7 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
         this.classTable = classTable;
         currentScope = null;
         bopVisitor = new BopVisitor();
+        typeVisitor = new TypeVisitor(classTable);
     }
 
     /**
@@ -137,13 +139,7 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
     public Expression visitNewArrayExpr(JavaFileParser.NewArrayExprContext ctx) {
 
         // Identify the base element type
-        String identifier = ctx.IDENTIFIER().getText();
-        Type currentType = null;
-        try {
-            currentType = classTable.lookupClass(identifier);
-        } catch (UnknownClassException e) {
-            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
-        }
+        Type currentType = typeVisitor.visit(ctx.type());
 
         // Iterate over each axis of the array
         NewArrayExpression result = null;
