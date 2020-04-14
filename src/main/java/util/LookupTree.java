@@ -5,31 +5,31 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Provides fast lookup of functions through a trie where each edge represents
+ * Provides fast lookup of functions through a tree where each edge represents
  * a type in the function's arguments list.
  *
  * @param <ValueType> The type associated with each node
  * @param <EdgeType> The type associated with each edge
  */
-public class LookupTrie<ValueType, EdgeType> {
+public class LookupTree<ValueType, EdgeType> {
 
     /**
-     * The number of entries in the trie.
+     * The number of entries in the tree.
      */
     private int numEntries;
 
     /**
-     * The root of the trie.
+     * The root of the tree.
      */
-    private TrieNode root;
+    private LookupTreeNode root;
 
-    public LookupTrie() {
+    public LookupTree() {
         numEntries = 0;
-        root = new TrieNode();
+        root = new LookupTreeNode();
     }
 
     /**
-     * Inserts a value into the trie, in the position specified by the passed
+     * Inserts a value into the tree, in the position specified by the passed
      * list of edges.
      *
      * @param edges The sequence of edges to follow
@@ -40,13 +40,13 @@ public class LookupTrie<ValueType, EdgeType> {
     public boolean insert(List<EdgeType> edges, ValueType value) {
 
         // Start at the root
-        TrieNode currentNode = root;
+        LookupTreeNode currentNode = root;
 
         // Walk down the tree
         boolean inserting = false;
         for (EdgeType edge : edges) {
             if (inserting) {
-                TrieNode newNode = new TrieNode();
+                LookupTreeNode newNode = new LookupTreeNode();
                 currentNode.outwardEdges.put(edge, newNode);
                 currentNode = newNode;
             } else {
@@ -55,7 +55,7 @@ public class LookupTrie<ValueType, EdgeType> {
                 } else {
                     inserting = true;
                     // TODO: Figure out whether the next 3 lines can be deleted
-                    TrieNode newNode = new TrieNode();
+                    LookupTreeNode newNode = new LookupTreeNode();
                     currentNode.outwardEdges.put(edge, newNode);
                     currentNode = newNode;
                 }
@@ -77,7 +77,7 @@ public class LookupTrie<ValueType, EdgeType> {
     }
 
     /**
-     * Looks up the value at a particular position in the trie.
+     * Looks up the value at a particular position in the tree.
      *
      * @param edges The path to follow
      * @return The value that was found, or null if no such value exists
@@ -85,7 +85,7 @@ public class LookupTrie<ValueType, EdgeType> {
     public ValueType lookup(List<EdgeType> edges) {
 
         // Start at the root
-        TrieNode currentNode = root;
+        LookupTreeNode currentNode = root;
 
         // Walk down the tree
         for (EdgeType edge : edges) {
@@ -102,25 +102,25 @@ public class LookupTrie<ValueType, EdgeType> {
     }
 
     /**
-     * Returns the number of entries in the trie.
+     * Returns the number of entries in the tree.
      *
-     * @return The number of entries in the trie
+     * @return The number of entries in the tree
      */
     public int getCount() {
         return numEntries;
     }
 
     /**
-     * Represents a single node in the trie.
+     * Represents a single node in the tree.
      *
      * The node is a leaf iff value == null.
      */
-    private class TrieNode {
+    private class LookupTreeNode {
 
         ValueType value;
-        Map<EdgeType, TrieNode> outwardEdges;
+        Map<EdgeType, LookupTreeNode> outwardEdges;
 
-        public TrieNode() {
+        public LookupTreeNode() {
             value = null;
             outwardEdges = new HashMap<>();
         }
