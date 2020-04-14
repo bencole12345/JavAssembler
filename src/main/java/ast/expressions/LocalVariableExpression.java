@@ -12,13 +12,6 @@ public class LocalVariableExpression implements VariableExpression {
     private VariableScope containingScope;
 
     public LocalVariableExpression(String variableName, VariableScope containingScope) {
-        // TODO: Check the variable has been declared; throw exception if not
-        // Note: this should be an exception for "referenced before declaration";
-        // it should be thrown even if the variable is declared later on, that is,
-        // x = 1;
-        // int x;
-        // should not be valid.
-        // (See ASTBuilder.visitStatementList)
         this.variableName = variableName;
         this.containingScope = containingScope;
     }

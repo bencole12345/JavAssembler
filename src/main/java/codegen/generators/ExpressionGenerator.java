@@ -161,8 +161,6 @@ public class ExpressionGenerator {
 
     private void compileNegateExpression(NegateExpression negateExpression,
                                          VariableScope scope) {
-        // TODO: Check we haven't broken the range by negating
-        // (you have one more negative number available than you do positive numbers)
         compileExpression(negateExpression.getExpression(), scope);
         PrimitiveType type = negateExpression.getType();
         WasmType wasmType = CodeGenUtil.getWasmType(type);
@@ -179,8 +177,6 @@ public class ExpressionGenerator {
 
     private void compileVariableIncrementExpression(VariableIncrementExpression expression,
                                                     VariableScope scope) {
-        // TODO: Make sure range is preserved
-        //       (shouldn't be able to ++ a short to get out of the 16-bit range)
         // TODO: Support applying increments to attributes as well as local variables
         String variableName = expression.getLocalVariableExpression().getVariableName();
         VariableScope.LocalVariableAllocation allocation = (VariableScope.LocalVariableAllocation) scope.getVariableWithName(variableName);

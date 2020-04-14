@@ -1,7 +1,8 @@
 package parser;
 
 import errors.SyntaxErrorException;
-import org.antlr.v4.runtime.ANTLRFileStream;
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 
 import java.io.IOException;
@@ -19,9 +20,8 @@ public class ParserWrapper {
      */
     public static JavaFileParser.FileContext parse(String filename)
             throws IOException, SyntaxErrorException {
-        // TODO: Find a not-deprecated way to do this
-        ANTLRFileStream fileStream = new ANTLRFileStream(filename);
-        JavaFileLexer lexer = new JavaFileLexer(fileStream);
+        CharStream charStream = CharStreams.fromFileName(filename);
+        JavaFileLexer lexer = new JavaFileLexer(charStream);
         CommonTokenStream tokenStream = new CommonTokenStream(lexer);
         JavaFileParser parser = new JavaFileParser(tokenStream);
         JavaFileParser.FileContext file = parser.file();

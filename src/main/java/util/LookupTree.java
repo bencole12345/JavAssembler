@@ -54,7 +54,6 @@ public class LookupTree<ValueType, EdgeType> {
                     currentNode = currentNode.outwardEdges.get(edge);
                 } else {
                     inserting = true;
-                    // TODO: Figure out whether the next 3 lines can be deleted
                     LookupTreeNode newNode = new LookupTreeNode();
                     currentNode.outwardEdges.put(edge, newNode);
                     currentNode = newNode;

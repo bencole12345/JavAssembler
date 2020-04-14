@@ -87,9 +87,6 @@ expr
     | expr logicalOrBop expr                            # LogicalOrBopExpr
     | expr QUESTION_MARK expr COLON expr                # BinarySelectorExpr
     | expr (LSQBRACKET expr RSQBRACKET)+                # ArrayLookupExpr
-    // TODO: See if I can change variableName -> expr
-    // At the moment it's not possible to do things like
-    // myArray[0].x, have to do T temp = myArray[0]; temp.x
     | variableName DOT IDENTIFIER
             LPAREN functionArgs RPAREN                  # MethodCallExpr
     | variableName DOT variableName                     # AttributeLookupExpr
