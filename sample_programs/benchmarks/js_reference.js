@@ -23,3 +23,13 @@ module.exports.linkedListInsertTraverse = function(numValues) {
     const result = list.popFirstElement();
   }
 }
+
+module.exports.traverseArray = function(size) {
+  let array = [];
+  for (let i = 0; i < size; i++) {
+    array.push(i);
+  }
+  for (let i = 0; i < size; i++) {
+    const temp = array[i];
+  }
+}

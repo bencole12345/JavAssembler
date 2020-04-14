@@ -78,7 +78,7 @@ expr
     | MINUS expr                                        # NegateExpr
     | NOT expr                                          # NotExpr
     | NEW IDENTIFIER LPAREN functionArgs RPAREN         # NewObjectExpr
-    | NEW IDENTIFIER (LSQBRACKET expr RSQBRACKET)+      # NewArrayExpr
+    | NEW type (LSQBRACKET expr RSQBRACKET)+            # NewArrayExpr
     | variableIncrementExpr                             # IncrementExpr
     | expr multiplicativeBop expr                       # MultiplicativeBopExpr
     | expr additiveBop expr                             # AdditiveBopExpr

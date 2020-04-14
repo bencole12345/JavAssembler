@@ -8,7 +8,7 @@ import errors.IncorrectTypeException;
 
 public class NewArrayExpression implements Expression {
 
-    private HeapObjectReference elementType;
+    private Type elementType;
     private Expression lengthExpression;
     private ObjectArray arrayType;
 
@@ -17,16 +17,12 @@ public class NewArrayExpression implements Expression {
             String message = "Invalid type: array length must be an integer.";
             throw new IncorrectTypeException(message);
         }
-        if (!(elementType instanceof HeapObjectReference)) {
-            String message = "Invalid type: cannot have array of primitive types.";
-            throw new IncorrectTypeException(message);
-        }
-        this.elementType = (HeapObjectReference) elementType;
+        this.elementType = elementType;
         this.lengthExpression = lengthExpression;
         arrayType = new ObjectArray(elementType);
     }
 
-    public HeapObjectReference getElementType() {
+    public Type getElementType() {
         return elementType;
     }
 

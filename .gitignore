@@ -57,3 +57,4 @@ node_modules
 
 # Ignore the build .wat files
 sample_programs_compiled
+src/main/antlr/parser/.antlr
