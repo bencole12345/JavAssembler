@@ -218,7 +218,38 @@
   (param $index i32)
   (param $element_size i32)
 
-  ;; TODO: Add bounds checking
+  (local $size_field i32)
+  (local $requested_offset i32)
+
+  ;; Read the array's size field
+  local.get $array_address
+  i32.load offset=1
+  local.set $size_field
+
+  ;; Determine the offset that has been requested
+  local.get $index
+  local.get $element_size
+  i32.mul
+  local.tee $requested_offset
+
+  ;; Check it's >= 0
+  i32.const 0
+  i32.lt_s
+  if
+    ;; Trap
+    unreachable
+  end
+
+  ;; Check it's <= size_field
+  local.get $requested_offset
+  local.get $size_field
+  i32.ge_s
+  if
+    ;; Trap
+    unreachable
+  end
+
+  ;; It's in the right range so we can safely write the value
   
   local.get $array_address
   local.get $index
