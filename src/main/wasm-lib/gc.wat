@@ -216,7 +216,6 @@
 
 
 (func $_gc_copy_bytes
-  ;; TODO: Copy words not bytes
   (param $from_address i32)
   (param $size_bytes i32)
 
@@ -224,7 +223,7 @@
   (result i32)
 
   (local $allocated_address i32)
-  (local $curr_byte i32)
+  (local $curr_word i32)
 
   ;; If it's a null pointer then don't copy anything, just return null
   local.get $from_address
@@ -241,27 +240,27 @@
   local.tee $allocated_address
   global.set $heap_last_allocated
 
-  ;; Do the copy, one byte at a time
+  ;; Do the copy, one word at a time
   (block (loop
-    local.get $curr_byte
+    local.get $curr_word
     local.get $size_bytes
     i32.ge_s
     br_if 1
 
     ;; Copy the byte across
     local.get $allocated_address
-    local.get $curr_byte
+    local.get $curr_word
     i32.add
     local.get $from_address
-    local.get $curr_byte
+    local.get $curr_word
     i32.add
-    i32.load8_u
-    i32.store8
+    i32.load align=2
+    i32.store align=2
 
-    local.get $curr_byte
-    i32.const 1
+    local.get $curr_word
+    i32.const 4
     i32.add
-    local.set $curr_byte
+    local.set $curr_word
     br 0
   ))
 
