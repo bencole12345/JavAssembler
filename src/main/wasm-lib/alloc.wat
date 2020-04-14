@@ -79,9 +79,9 @@
 ;; Allocates heap space for an array
 (func $alloc_array
   (param $size_field i32)
-  ;; TODO: Pass in the bit for whether the array contains pointers
-  ;; Returns the address that was allocated
+  (param $contains_pointers i32)
   (result i32)
+
   (local $allocated_address i32)
 
   ;; Reserve space for the array
@@ -92,11 +92,9 @@
   local.tee $allocated_address
 
   ;; Write the flags to the flags field
-  ;; 0b00000100
-  ;;        ^ contains_pointers
-  ;;         ^ has_been_copied GC flag
-  ;;          ^ is_object flag
-  i32.const 0x00000004
+  local.get $contains_pointers
+  i32.const 2
+  i32.shl
   i32.store
 
   ;; Write the size field

@@ -5,6 +5,7 @@ import ast.literals.*;
 import ast.operations.BinaryOp;
 import ast.statements.Assignment;
 import ast.structure.VariableScope;
+import ast.types.HeapObjectReference;
 import ast.types.JavaClass;
 import ast.types.PrimitiveType;
 import ast.types.Type;
@@ -431,7 +432,9 @@ public class ExpressionGenerator {
         // (eg work it through for an array of short values)
 
         Expression lengthExpression = newArrayExpression.getLengthExpression();
-        int elementSize = newArrayExpression.getElementType().getStackSize();
+        Type elementType = newArrayExpression.getElementType();
+        int elementSize = elementType.getStackSize();
+        int containsPointersBit = elementType instanceof HeapObjectReference ? 1 : 0;
 
         // First evaluate the expression for how long the array should be
         compileExpression(lengthExpression, scope);
@@ -439,6 +442,9 @@ public class ExpressionGenerator {
         // Multiply by element size to get the actual size
         emitter.emitLine("i32.const " + elementSize);
         emitter.emitLine("i32.mul");
+
+        // Pass in bit for whether the array contains pointers
+        emitter.emitLine("i32.const " + containsPointersBit);
 
         // Now allocate the memory, leaving the address on the stack
         emitter.emitLine("call $alloc_array");
