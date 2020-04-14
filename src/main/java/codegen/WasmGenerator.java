@@ -55,6 +55,7 @@ public class WasmGenerator {
         // Emit hand-coded WebAssembly functions
         WasmLibReader.getGlobalsCode().forEach(emitter::emitLine);
         WasmLibReader.getAllocationCode().forEach(emitter::emitLine);
+        WasmLibReader.getArraysCode().forEach(emitter::emitLine);
         WasmLibReader.getGarbageCollectionCode().forEach(emitter::emitLine);
         if (debug) {
             WasmLibReader.getDebugCode().forEach(emitter::emitLine);

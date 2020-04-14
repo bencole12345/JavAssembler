@@ -22,6 +22,10 @@ public class WasmLibReader {
         return readCleanedWasmCode("alloc.wat");
     }
 
+    public static Stream<String> getArraysCode() {
+        return readCleanedWasmCode("arrays.wat");
+    }
+
     public static Stream<String> getGarbageCollectionCode() {
         return readCleanedWasmCode("gc.wat");
     }

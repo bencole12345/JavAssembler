@@ -5,10 +5,7 @@ import ast.literals.*;
 import ast.operations.BinaryOp;
 import ast.statements.Assignment;
 import ast.structure.VariableScope;
-import ast.types.HeapObjectReference;
-import ast.types.JavaClass;
-import ast.types.PrimitiveType;
-import ast.types.Type;
+import ast.types.*;
 import codegen.CodeEmitter;
 import codegen.CodeGenUtil;
 import codegen.Constants;
@@ -427,13 +424,9 @@ public class ExpressionGenerator {
 
     public void compileNewArrayExpression(NewArrayExpression newArrayExpression,
                                           VariableScope scope) {
-
-        // TODO: Use WebAssembly type's size to determine array length
-        // (eg work it through for an array of short values)
-
         Expression lengthExpression = newArrayExpression.getLengthExpression();
         Type elementType = newArrayExpression.getElementType();
-        int elementSize = elementType.getStackSize();
+        int elementSize = CodeGenUtil.getWasmType(elementType).getSize();
         int containsPointersBit = elementType instanceof HeapObjectReference ? 1 : 0;
 
         // First evaluate the expression for how long the array should be
@@ -454,12 +447,12 @@ public class ExpressionGenerator {
                                               VariableScope scope) {
         Expression array = lookupExpression.getArrayExpression();
         Expression index = lookupExpression.getIndexExpression();
-        Type elementType = lookupExpression.getArrayExpression().getType();
-        int elementSize = elementType.getStackSize();
+        ObjectArray arrayType = (ObjectArray) lookupExpression.getArrayExpression().getType();
+        Type elementType = arrayType.getElementType();
+        WasmType wasmType = CodeGenUtil.getWasmType(elementType);
 
         compileExpression(array, scope);
         compileExpression(index, scope);
-        emitter.emitLine("i32.const " + elementSize);
-        emitter.emitLine("call $read_array_index");
+        emitter.emitLine("call $array_read_" + wasmType);
     }
 }
