@@ -20,7 +20,12 @@ $ java -jar build/libs/JavAssembler-fat-1.0.jar -i sample_programs/benchmarks/Be
 ```
 
 ## Tests and Benchmarks
-There are four scripts provided to simplify the task of running the tests and benchmarks. You must have NodeJS and the `npm` package manager installed. To run the scripts:
+There are four scripts provided to simplify the task of running the tests and benchmarks. Before using the scripts, you must have installed:
+
+- [NodeJS](https://nodejs.org/en/) and the `npm` package manager
+- [Emscripten](https://emscripten.org/) (C/C++ to WebAssembly compiler) with the command `em++` available on your PATH
+
+To run the scripts:
 
 ```bash
 # Compile JavAssembler
@@ -42,4 +47,4 @@ $ npm test
 $ npm run benchmark
 ```
 
-The JavaScript tests use Jest and can be found in `tests/`. The benchmarks use `benchmark.js` and can be found in `scripts/run_benchmarks.js`. Both of these rely on Java files in `sample_programs/`.
+The JavaScript tests can be found in the `tests` directory. The benchmarks can be found in `scripts/run_benchmarks.js`.

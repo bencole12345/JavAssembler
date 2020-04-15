@@ -1,4 +1,4 @@
-const LinkedList = require('./util_js/linked_list.js');``
+const LinkedList = require('./linked_list.js');``
 
 module.exports.sumSquares = function(n) {
   let sum = 0;
