@@ -1,6 +1,8 @@
 #!/bin/bash
 
 JAR_LOCATION=build/libs/JavAssembler-fat-1.0.jar
+TESTS_DIR=sample_programs/tests
+BENCHMARKS_DIR=sample_programs/benchmarks
 
 # Make sure JavAssembler has been compiled
 if [ ! -f $JAR_LOCATION ]
@@ -19,29 +21,41 @@ fi
 # Compile the tests
 echo "Compiling tests..."
 java -jar $JAR_LOCATION -i \
-    sample_programs/tests/Arrays.java \
-    sample_programs/tests/Child.java \
-    sample_programs/tests/Classes.java \
-    sample_programs/tests/ClassWith33Attributes.java \
-    sample_programs/tests/DynamicPolymorphism.java sample_programs/tests/ExampleClass.java \
-    sample_programs/tests/Expressions.java \
-    sample_programs/tests/Functions.java \
-    sample_programs/tests/FunctionsExternal.java \
-    sample_programs/tests/Integer.java sample_programs/tests/LanguageConstructs.java \
-    sample_programs/tests/Parent.java \
-    sample_programs/tests/GarbageCollection.java \
-    sample_programs/tests/NullTest.java \
-    sample_programs/tests/TypeRanges.java \
+    $TESTS_DIR/Arrays.java \
+    $TESTS_DIR/Child.java \
+    $TESTS_DIR/Classes.java \
+    $TESTS_DIR/ClassWith33Attributes.java \
+    $TESTS_DIR/DynamicPolymorphism.java \
+    $TESTS_DIR/ExampleClass.java \
+    $TESTS_DIR/Expressions.java \
+    $TESTS_DIR/Functions.java \
+    $TESTS_DIR/FunctionsExternal.java \
+    $TESTS_DIR/Integer.java \
+    $TESTS_DIR/LanguageConstructs.java \
+    $TESTS_DIR/Parent.java \
+    $TESTS_DIR/GarbageCollection.java \
+    $TESTS_DIR/NullTest.java \
+    $TESTS_DIR/TypeRanges.java \
     -o sample_programs_compiled/tests.wat
 echo "Generated sample_programs_compiled/tests.wat"
 
-# Compile the benchmarks
-echo "Compiling benchmarks..."
+# Compile the JavAssembler benchmarks
+echo "Compiling JavAssembler benchmarks..."
 java -jar $JAR_LOCATION -i \
-    sample_programs/benchmarks/Benchmarks.java \
-    sample_programs/benchmarks/util/LinkedList.java \
-    sample_programs/benchmarks/util/LinkedListNode.java \
-    -o sample_programs_compiled/benchmarks.wat
-echo "Generated sample_programs_compiled/benchmarks.wat"
+    $BENCHMARKS_DIR/java/Benchmarks.java \
+    $BENCHMARKS_DIR/java/LinkedList.java \
+    $BENCHMARKS_DIR/java/LinkedListNode.java \
+    -o sample_programs_compiled/javassembler_benchmarks.wat
+echo "Generated sample_programs_compiled/javassembler_benchmarks.wat"
+
+# Compile the C++ benchmarks
+echo "Compiling C++ benchmarks..."
+em++ $BENCHMARKS_DIR/cpp/linked_list.cpp \
+    $BENCHMARKS_DIR/cpp/benchmarks.cpp \
+    -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]' \
+    -s ALLOW_MEMORY_GROWTH=1 \
+    -o sample_programs_compiled/cpp_benchmarks.js
+echo "Generated sample_programs_compiled/cpp_benchmarks.js"
+echo "Generated sample_programs_compiled/cpp_benchmarks.wasm"
 
 echo "Done!"
