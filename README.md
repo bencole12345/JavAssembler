@@ -7,9 +7,7 @@ To compile JavAssembler, you can use the Gradle task
 ```
 $ ./gradlew buildFatJar
 ```
-This requires that you have `javac` installed. Equivalently, you can use `npm run compileJavAssembler`.
-
-The resulting Jar file will be located at `build/libs/JavAssembler-fat-1.0.jar`.
+This requires that you have a Java compiler installed. The resulting Jar file will be located at `build/libs/JavAssembler-fat-1.0.jar`.
 
 ## How to Run JavAssembler
 The format for running JavAssembler is
@@ -23,14 +21,25 @@ $ java -jar build/libs/JavAssembler-fat-1.0.jar -i sample_programs/benchmarks/Be
 
 ## Tests and Benchmarks
 There are four scripts provided to simplify the task of running the tests and benchmarks. You must have NodeJS and the `npm` package manager installed. To run the scripts:
+
 ```bash
+# Compile JavAssembler
+$ ./gradlew buildFatJar
+
+# Run unit tests
+$ ./gradlew test
+
+# Install JavaScript dependencies
 $ npm install
-$ npm run compileJavAssembler
+
+# Use JavAssembler to compile the tests and benchmarks (requires ./gradlew buildFatJar)
 $ npm run compileExamples
+
+# Run the JavaScript tests (requires compileExamples)
 $ npm test
+
+# Run the benchmarks (requires compileExamples)
 $ npm run benchmark
 ```
 
-The `test` and `benchmark` scripts assume that the WebAssembly files (`.wat`) have already been built, so please run `compileJavAssembler` followed by `compileExamples` first.
-
-The tests use Jest, a JavaScript testing library. The tests themselves can be found in `tests/`. The benchmarks use `benchmark.js`, a JavaScript benchmarking library. You can find the benchmarks in `scripts/run_benchmarks.js`. Both of these rely on Java files in `sample_programs/`.
+The JavaScript tests use Jest and can be found in `tests/`. The benchmarks use `benchmark.js` and can be found in `scripts/run_benchmarks.js`. Both of these rely on Java files in `sample_programs/`.
