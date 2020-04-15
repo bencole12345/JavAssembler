@@ -21,9 +21,9 @@ public class FunctionTable {
     /**
      * Contains the map from
      *      class -> function name ->
-     *      (parameter types list -> function table entry) trie
+     *      (parameter types list -> function table entry) tree
      */
-    private Map<JavaClass, Map<String, LookupTrie<FunctionTableEntry, Type>>> classesToStaticFunctionsMap;
+    private Map<JavaClass, Map<String, LookupTree<FunctionTableEntry, Type>>> classesToStaticFunctionsMap;
 
     /**
      * Tracks the next index in the table that we are free to assign.
@@ -110,29 +110,29 @@ public class FunctionTable {
             throws UndeclaredFunctionException, InvalidClassNameException {
 
         if (classesToStaticFunctionsMap == null) {
-            classesToStaticFunctionsMap = buildStaticFunctionLookupTrie();
+            classesToStaticFunctionsMap = buildStaticFunctionLookupTree();
         }
 
         // Look up the map for the correct class
-        Map<String, LookupTrie<FunctionTableEntry, Type>> functionNameMap =
+        Map<String, LookupTree<FunctionTableEntry, Type>> functionNameMap =
                 classesToStaticFunctionsMap.getOrDefault(containingClass, null);
         if (functionNameMap == null) {
             String message = "Invalid class name " + containingClass;
             throw new InvalidClassNameException(message);
         }
 
-        // Look up the trie for the name within that class
-        LookupTrie<FunctionTableEntry, Type> trie =
+        // Look up the tree for the name within that class
+        LookupTree<FunctionTableEntry, Type> lookupTree =
                 functionNameMap.getOrDefault(functionName, null);
 
         // Throw an exception if there's no entry with that function name
         String errorMessage = "No function defined in class " + containingClass
                 + " with signature " + ErrorReporting.getFunctionSignatureOutput(functionName, parameterTypes);
-        if (trie == null)
+        if (lookupTree == null)
             throw new UndeclaredFunctionException(errorMessage);
 
-        // Call the lookup method on that trie
-        FunctionTableEntry entry = trie.lookup(parameterTypes);
+        // Call the lookup method on that tree
+        FunctionTableEntry entry = lookupTree.lookup(parameterTypes);
 
         // Throw an exception if there's no entry with those types as parameters
         if (entry == null)
@@ -141,18 +141,18 @@ public class FunctionTable {
         return entry;
     }
 
-    private Map<JavaClass, Map<String, LookupTrie<FunctionTableEntry, Type>>> buildStaticFunctionLookupTrie() {
-        Map<JavaClass, Map<String, LookupTrie<FunctionTableEntry, Type>>> map = new HashMap<>();
+    private Map<JavaClass, Map<String, LookupTree<FunctionTableEntry, Type>>> buildStaticFunctionLookupTree() {
+        Map<JavaClass, Map<String, LookupTree<FunctionTableEntry, Type>>> map = new HashMap<>();
         for (FunctionTableEntry entry : functions) {
             if (!map.containsKey(entry.getContainingClass())) {
                 map.put(entry.getContainingClass(), new HashMap<>());
             }
-            Map<String, LookupTrie<FunctionTableEntry, Type>> nameMap = map.get(entry.getContainingClass());
+            Map<String, LookupTree<FunctionTableEntry, Type>> nameMap = map.get(entry.getContainingClass());
             if (!nameMap.containsKey(entry.getFunctionName())) {
-                nameMap.put(entry.getFunctionName(), new LookupTrie<>());
+                nameMap.put(entry.getFunctionName(), new LookupTree<>());
             }
-            LookupTrie<FunctionTableEntry, Type> trie = nameMap.get(entry.getFunctionName());
-            boolean success = trie.insert(entry.getParameterTypes(), entry);
+            LookupTree<FunctionTableEntry, Type> lookupTree = nameMap.get(entry.getFunctionName());
+            boolean success = lookupTree.insert(entry.getParameterTypes(), entry);
             if (!success) {
                 String signature = entry.getQualifiedSignature();
                 String errorMessage = "Duplicate functions with signature " + signature;

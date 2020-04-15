@@ -2,6 +2,18 @@ lexer grammar JavaFileTokens;
 
 // TODO: Handle comments
 // TODO: Handle string literals
+// TODO: Fix the fact that '2-1' parses to ['2', '-1'] (it sees -1 as a SIGNED_INTEGER)
+
+fragment Digits: [0-9]+ ;
+fragment SignedInteger: ('-')? Digits ;
+
+FLOAT_LITERAL: SignedInteger '.' Digits 'f' ;
+DOUBLE_LITERAL: SignedInteger '.' Digits ;
+SHORT_LITERAL: SignedInteger 's' ;
+LONG_LITERAL: SignedInteger ('l'|'L') ;
+INT_LITERAL: SignedInteger ;
+BOOLEAN_LITERAL: 'true' | 'false' ;
+NULL_LITERAL: 'null' ;
 
 EQUALS: '=' ;
 PLUS: '+' ;
@@ -64,22 +76,6 @@ CHAR: 'char' ;
 BOOLEAN: 'boolean' ;
 FLOAT: 'float' ;
 DOUBLE: 'double' ;
-
-fragment TRUE: 'true' ;
-fragment FALSE: 'false' ;
-
-fragment DIGITS: [0-9]+ ;
-// TODO: Fix the fact that '2-1' parses to ['2', '-1'] (it sees -1 as a SIGNED_INTEGER)
-fragment SIGNED_INTEGER: MINUS? DIGITS ;
-fragment DECIMAL: DIGITS DOT DIGITS ;
-
-SHORT_LITERAL: SIGNED_INTEGER 's' ;
-LONG_LITERAL: SIGNED_INTEGER ('l'|'L') ;
-INT_LITERAL: SIGNED_INTEGER ;
-FLOAT_LITERAL: DECIMAL 'f' ;
-DOUBLE_LITERAL: DECIMAL ;
-BOOLEAN_LITERAL: TRUE | FALSE ;
-NULL_LITERAL: 'null' ;
 
 IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]* ;
 

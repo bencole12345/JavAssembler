@@ -7,7 +7,7 @@ import errors.IllegalPrivateAccessException;
 import errors.InvalidAttributeException;
 import util.ClassTable;
 import util.FunctionTableEntry;
-import util.LookupTrie;
+import util.LookupTree;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -63,20 +63,20 @@ public class JavaClass extends HeapObjectReference {
      * up the virtual table index of a method, given its name and type
      * signature.
      */
-    private Map<String, LookupTrie<Integer, Type>> vtableIndexLookupTrieMap;
+    private Map<String, LookupTree<Integer, Type>> vtableIndexLookupTreeMap;
 
     /**
-     * A lookup trie for the class constructor
+     * A lookup tree for the class constructor
      */
-    private LookupTrie<FunctionTableEntry, Type> constructorLookupTrie;
+    private LookupTree<FunctionTableEntry, Type> constructorLookupTree;
 
     public JavaClass(String name, List<ClassAttribute> attributes, JavaClass parent)
             throws DuplicateClassAttributeException {
         this.name = name;
         this.parent = parent;
-        vtableIndexLookupTrieMap = new HashMap<>();
+        vtableIndexLookupTreeMap = new HashMap<>();
         virtualTable = new ArrayList<>();
-        constructorLookupTrie = new LookupTrie<>();
+        constructorLookupTree = new LookupTree<>();
         if (parent == null) {
             nextFreeAssignmentOffset = 0;
             allocatedAttributes = new ArrayList<>();
@@ -291,10 +291,10 @@ public class JavaClass extends HeapObjectReference {
         String methodName = functionTableEntry.getFunctionName();
         List<Type> parameterTypes = functionTableEntry.getParameterTypes();
 
-        // Look up the trie for this class, creating it if necessary
-        if (!vtableIndexLookupTrieMap.containsKey(methodName))
-            vtableIndexLookupTrieMap.put(methodName, new LookupTrie<>());
-        LookupTrie<Integer, Type> vtableIndexLookupTrie = vtableIndexLookupTrieMap.get(methodName);
+        // Look up the tree for this class, creating it if necessary
+        if (!vtableIndexLookupTreeMap.containsKey(methodName))
+            vtableIndexLookupTreeMap.put(methodName, new LookupTree<>());
+        LookupTree<Integer, Type> vtableIndexLookupTree = vtableIndexLookupTreeMap.get(methodName);
 
         // Attempt to find the vtable index from the parent class. If the parent
         // already has an entry for a method with this signature then this must
@@ -317,9 +317,9 @@ public class JavaClass extends HeapObjectReference {
             virtualTable.set(vtableIndex, functionTableEntry);
         }
 
-        // Update the lookup trie so that we can quickly look up this method
+        // Update the lookup tree so that we can quickly look up this method
         // in the future.
-        boolean success = vtableIndexLookupTrie.insert(parameterTypes, vtableIndex);
+        boolean success = vtableIndexLookupTree.insert(parameterTypes, vtableIndex);
         if (!success) {
             String signature = functionTableEntry.getQualifiedSignature();
             String message = "Multiple declarations for method with signature "
@@ -337,9 +337,9 @@ public class JavaClass extends HeapObjectReference {
      */
     public FunctionTableEntry lookupMethod(String name, List<Type> parameterTypes) {
         FunctionTableEntry entry = null;
-        if (vtableIndexLookupTrieMap.containsKey(name)) {
-            LookupTrie<Integer, Type> trie = vtableIndexLookupTrieMap.get(name);
-            Integer vtableIndex = trie.lookup(parameterTypes);
+        if (vtableIndexLookupTreeMap.containsKey(name)) {
+            LookupTree<Integer, Type> lookupTree = vtableIndexLookupTreeMap.get(name);
+            Integer vtableIndex = lookupTree.lookup(parameterTypes);
             if (vtableIndex != null) {
                 entry = virtualTable.get(vtableIndex);
             }
@@ -362,7 +362,7 @@ public class JavaClass extends HeapObjectReference {
     public void registerNewConstructor(FunctionTableEntry functionTableEntry)
             throws DuplicateFunctionSignatureException {
         List<Type> parameterTypes = functionTableEntry.getParameterTypes();
-        boolean success = constructorLookupTrie.insert(parameterTypes, functionTableEntry);
+        boolean success = constructorLookupTree.insert(parameterTypes, functionTableEntry);
         if (!success) {
             String signature = functionTableEntry.getQualifiedSignature();
             String message = "Duplicate constructors in class " + name
@@ -379,7 +379,7 @@ public class JavaClass extends HeapObjectReference {
      * @return The function table entry of the relevant constructor method
      */
     public FunctionTableEntry lookupConstructor(List<Type> parameterTypes) {
-        return constructorLookupTrie.lookup(parameterTypes);
+        return constructorLookupTree.lookup(parameterTypes);
     }
 
     /**
@@ -419,11 +419,11 @@ public class JavaClass extends HeapObjectReference {
      *      does not exist
      */
     public Integer getVirtualTableIndex(String name, List<Type> parameterTypes) {
-        LookupTrie<Integer, Type> functionLookupTrie =
-                vtableIndexLookupTrieMap.getOrDefault(name, null);
-        if (functionLookupTrie == null)
+        LookupTree<Integer, Type> functionLookupTree =
+                vtableIndexLookupTreeMap.getOrDefault(name, null);
+        if (functionLookupTree == null)
             return null;
-        Integer vtableIndex = functionLookupTrie.lookup(parameterTypes);
+        Integer vtableIndex = functionLookupTree.lookup(parameterTypes);
         if (vtableIndex == null && parent != null)
             return parent.getVirtualTableIndex(name, parameterTypes);
         return vtableIndex;
@@ -437,7 +437,7 @@ public class JavaClass extends HeapObjectReference {
      */
     public boolean hasNoArgumentConstructor() {
         List<Type> emptyList = new ArrayList<>();
-        return (constructorLookupTrie.lookup(emptyList) != null);
+        return (constructorLookupTree.lookup(emptyList) != null);
     }
 
     /**

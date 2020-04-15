@@ -133,8 +133,7 @@ public class StatementGenerator {
         ExpressionGenerator.getInstance().compileExpression(valueExpression, scope);
         ExpressionGenerator.getInstance().compileExpression(arrayExpression, scope);
         ExpressionGenerator.getInstance().compileExpression(indexExpression, scope);
-        emitter.emitLine("i32.const " + valueType.getSize());
-        emitter.emitLine("call $write_to_array_index");
+        emitter.emitLine("call $array_write_" + valueType);
     }
 
     private void compileIfStatementChain(IfStatementChain chain,

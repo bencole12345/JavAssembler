@@ -12,13 +12,17 @@ repositories {
 }
 
 dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.12'
 
     // ANTLR for parsing the source file
     antlr 'org.antlr:antlr4:4.7'
 
     // commons-cli for parsing command line arguments
     compile group: 'commons-cli', name: 'commons-cli', version: '1.4'
+
+    // JUnit 5 for running tests
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.6.2'
+
+    testImplementation 'org.mockito:mockito-core:3.3.3'
 }
 
 generateGrammarSource {
@@ -32,4 +36,8 @@ task buildFatJar(type: Jar) {
     baseName = 'JavAssembler-fat'
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
+}
+
+test {
+    useJUnitPlatform()
 }

@@ -66,7 +66,6 @@ public enum PrimitiveType implements Type {
 
     @Override
     public boolean isSubtypeOf(Type other) {
-        // TODO: Consider supporting type coercion
         return this.equals(other);
     }
 

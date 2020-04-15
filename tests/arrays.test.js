@@ -14,8 +14,20 @@ beforeAll(async () => {
 })
 
 describe('Arrays', () => {
-  test('Primitive array elements are stored correctly', () => {
-    const success = wasmInstance.Arrays_testPrimitiveArrayElementsStoredCorrectly();
+  test('Integer array elements are stored correctly', () => {
+    const success = wasmInstance.Arrays_testIntegerArrayElementsStoredCorrectly();
+    expect(success).toBeTruthy();
+  })
+  test('Short array elements are stored correctly', () => {
+    const success = wasmInstance.Arrays_testShortArrayElementsStoredCorrectly();
+    expect(success).toBeTruthy();
+  })
+  test('Float array elements are stored correctly', () => {
+    const success = wasmInstance.Arrays_testFloatArrayElementsStoredCorrectly();
+    expect(success).toBeTruthy();
+  })
+  test('Double array elements are stored correctly', () => {
+    const success = wasmInstance.Arrays_testDoubleArrayElementsStoredCorrectly();
     expect(success).toBeTruthy();
   })
   test('Non-primitive array elements are stored correctly', () => {
