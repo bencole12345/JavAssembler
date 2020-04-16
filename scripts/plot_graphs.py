@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-COLOR1 = '#252a36'
-COLOR2 = '#68c8c6'
-COLOR3 = '#ff6166'
-COLOR4 = '#fcdf50'
+COLOR1 = '#68c8c6'
+COLOR2 = '#ff6166'
+COLOR3 = '#fcdf50'
+COLOR4 = '#252a36'
 
 
 data_csv = pd.read_csv('benchmarking_results/benchmarking_results.csv')
