@@ -123,7 +123,6 @@ suite.add('Recursion: C++: 5000', function() {
 
 suite.add('Linked list traversal: JavAssembler: 1000', function() {
   wasmInstance.Benchmarks_linkedListInsertTraverse(1000);
-  // wasmInstance.reset_call_stack();
 })
 
 suite.add('Linked list traversal: JavaScript: 1000', function() {
@@ -136,7 +135,6 @@ suite.add('Linked list traversal: C++: 1000', function() {
 
 suite.add('Linked list traversal: JavAssembler: 10000', function () {
   wasmInstance.Benchmarks_linkedListInsertTraverse(10000);
-  // wasmInstance.reset_call_stack();
 })
 
 suite.add('Linked list traversal: JavaScript: 10000', function () {
@@ -149,7 +147,6 @@ suite.add('Linked list traversal: C++: 10000', function() {
 
 suite.add('Linked list traversal: JavAssembler: 20000', function () {
   wasmInstance.Benchmarks_linkedListInsertTraverse(20000);
-  // wasmInstance.reset_call_stack();
 })
 
 suite.add('Linked list traversal: JavaScript: 20000', function () {
@@ -162,7 +159,6 @@ suite.add('Linked list traversal: C++: 20000', function () {
 
 suite.add('Array traversal: JavAssembler: 1000', function() {
   wasmInstance.Benchmarks_traverseArray(1000);
-  // wasmInstance.reset_call_stack();
 })
 
 suite.add('Array traversal: JavaScript: 1000', function() {
@@ -175,7 +171,6 @@ suite.add('Array traversal: C++: 1000', function() {
 
 suite.add('Array traversal: JavAssembler: 10000', function() {
   wasmInstance.Benchmarks_traverseArray(10000);
-  // wasmInstance.reset_call_stack();
 })
 
 suite.add('Array traversal: JavaScript: 10000', function() {
@@ -188,7 +183,6 @@ suite.add('Array traversal: C++: 10000', function() {
 
 suite.add('Array traversal: JavAssembler: 20000', function() {
   wasmInstance.Benchmarks_traverseArray(20000);
-  // wasmInstance.reset_call_stack();
 })
 
 suite.add('Array traversal: JavaScript: 20000', function() {

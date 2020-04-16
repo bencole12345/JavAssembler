@@ -2,12 +2,6 @@
 
 #include "linked_list.h"
 
-// LinkedList::LinkedList()
-// {
-//     size = 0;
-//     first = nullptr;
-//     last = nullptr;
-// }
 
 void LinkedList::append(int value)
 {
