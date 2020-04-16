@@ -39,6 +39,8 @@ bin/*
 # ANTLR
 # -----
 *.tokens
+gen
+src/main/gen
 
 # Generated outputs
 # -----------------

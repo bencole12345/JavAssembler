@@ -10,7 +10,21 @@ private:
     LinkedListNode *first;
     LinkedListNode *last;
 public:
-    LinkedList();
+    LinkedList()
+    {
+        size = 0;
+        first = NULL;
+        last = NULL;
+    }
+    ~LinkedList()
+    {
+        LinkedListNode* curr;
+        while (curr != NULL) {
+            LinkedListNode* next = curr->next;
+            delete curr;
+            curr = next;
+        }
+    }
     void append(int value);
     int popFirstElement();
 };

@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const wabt = require('wabt')();
 const Benchmark = require('benchmark');
+const CSVWriter = require('csv-writer');
 const jsReference = require('../sample_programs/benchmarks/javascript/benchmarks');
 const cppModule = require('../sample_programs_compiled/cpp_benchmarks');
 const cppReference = {
@@ -11,112 +12,185 @@ const cppReference = {
   traverseArray: cppModule.cwrap('traverseArray', null, ['number'])
 };
 
+const CSV_FILE = 'benchmarking_results/benchmarking_results.csv';
+
+const csvWriter = CSVWriter.createObjectCsvWriter({
+  path: CSV_FILE,
+  header: [
+    { id: 'benchmark', title: 'Benchmark' },
+    { id: 'environment', title: 'Environment' },
+    { id: 'size', title: 'Size' },
+    { id: 'mean', title: 'Mean (ms)' },
+    { id: 'deviation', title: 'Standard Deviation (ms)' }
+  ]
+});
+
+let results = [];
+
 let suite = new Benchmark.Suite;
 
 suite.on('cycle', function(event) {
   console.log(String(event.target));
   console.log('         mean: ' + event.target.stats.mean);
   console.log('    deviation: ' + event.target.stats.deviation)
+  const name = event.target.name;
+  [benchmark, environment, size] = name.split(':').map(x => x.trim());
+  results.push({
+    benchmark: benchmark,
+    environment: environment,
+    size: size,
+    mean: event.target.stats.mean * 1000,  // in ms
+    deviation: event.target.stats.deviation * 1000  // in ms
+  });
 })
 
-suite.add('JavAssembler sum of first 1000 squares', function() {
+suite.on('complete', function(event) {
+  csvWriter.writeRecords(results);
+  console.log('Wrote ' + CSV_FILE);
+})
+
+suite.add('Sum of squares: JavAssembler: 1000', function() {
   wasmInstance.Benchmarks_sumSquares(1000);
 })
 
-suite.add('JavaScript sum of first 1000 squares', function() {
+suite.add('Sum of squares: JavaScript: 1000', function() {
   jsReference.sumSquares(1000);
 })
 
-suite.add('C++ sum of first 1000 squares', function() {
+suite.add('Sum of squares: C++: 1000', function() {
   cppReference.sumSquares(1000);
 })
 
-suite.add('JavAssembler sum of first 10000 squares', function() {
+suite.add('Sum of squares: JavAssembler: 10000', function() {
   wasmInstance.Benchmarks_sumSquares(10000);
 })
 
-suite.add('JavaScript sum of first 10000 squares', function() {
+suite.add('Sum of squares: JavaScript: 10000', function() {
   jsReference.sumSquares(10000);
 })
 
-suite.add('C++ sum of first 10000 squares', function() {
+suite.add('Sum of squares: C++: 10000', function() {
   cppReference.sumSquares(10000);
 })
 
-suite.add('JavAssembler recurse 1000 times', function() {
+suite.add('Sum of squares: JavAssembler: 50000', function () {
+  wasmInstance.Benchmarks_sumSquares(50000);
+})
+
+suite.add('Sum of squares: JavaScript: 50000', function () {
+  jsReference.sumSquares(50000);
+})
+
+suite.add('Sum of squares: C++: 50000', function () {
+  cppReference.sumSquares(50000);
+})
+
+suite.add('Recursion: JavAssembler: 100', function() {
+  wasmInstance.Benchmarks_recurse(100);
+})
+
+suite.add('Recursion: JavaScript: 100', function() {
+  jsReference.recurse(100);
+})
+
+suite.add('Recursion: C++: 100', function() {
+  cppReference.recurse(100);
+})
+
+suite.add('Recursion: JavAssembler: 1000', function () {
   wasmInstance.Benchmarks_recurse(1000);
 })
 
-suite.add('JavaScript recurse 1000 times', function() {
+suite.add('Recursion: JavaScript: 1000', function () {
   jsReference.recurse(1000);
 })
 
-suite.add('C++ recurse 1000 times', function() {
+suite.add('Recursion: C++: 1000', function () {
   cppReference.recurse(1000);
 })
 
-suite.add('JavAssembler recurse 10000 times', function () {
-  wasmInstance.Benchmarks_recurse(10000);
+suite.add('Recursion: JavAssembler: 5000', function () {
+  wasmInstance.Benchmarks_recurse(5000);
 })
 
-suite.add('JavaScript recurse 10000 times', function() {
-  jsReference.recurse(10000);
+suite.add('Recursion: JavaScript: 5000', function() {
+  jsReference.recurse(5000);
 })
 
-suite.add('C++ recurse 10000 times', function() {
-  cppReference.recurse(10000);
+suite.add('Recursion: C++: 5000', function() {
+  cppReference.recurse(5000);
 })
 
-suite.add('JavAssembler insert and traverse 1000 linked list nodes', function() {
-  wasmInstance.reset_allocator();
+suite.add('Linked list traversal: JavAssembler: 1000', function() {
   wasmInstance.Benchmarks_linkedListInsertTraverse(1000);
 })
 
-suite.add('JavaScript insert and traverse 1000 linked list nodes', function() {
+suite.add('Linked list traversal: JavaScript: 1000', function() {
   jsReference.linkedListInsertTraverse(1000);
 })
 
-suite.add('C++ insert and traverse 1000 linked list nodes', function() {
+suite.add('Linked list traversal: C++: 1000', function() {
   cppReference.linkedListInsertTraverse(1000);
 })
 
-suite.add('JavAssembler traverse array of length 1000', function() {
-  wasmInstance.reset_allocator();
-  wasmInstance.Benchmarks_traverseArray(1000);
+suite.add('Linked list traversal: JavAssembler: 10000', function () {
+  wasmInstance.Benchmarks_linkedListInsertTraverse(10000);
 })
 
-suite.add('JavaScript traverse array of length 1000', function() {
-  jsReference.traverseArray(1000);
+suite.add('Linked list traversal: JavaScript: 10000', function () {
+  jsReference.linkedListInsertTraverse(10000);
 })
 
-suite.add('C++ insert and traverse 10000 linked list nodes', function() {
+suite.add('Linked list traversal: C++: 10000', function() {
   cppReference.linkedListInsertTraverse(10000);
 })
 
-suite.add('JavAssembler traverse array of length 10000', function() {
-  wasmInstance.reset_allocator();
+suite.add('Linked list traversal: JavAssembler: 20000', function () {
+  wasmInstance.Benchmarks_linkedListInsertTraverse(20000);
+})
+
+suite.add('Linked list traversal: JavaScript: 20000', function () {
+  jsReference.linkedListInsertTraverse(20000);
+})
+
+suite.add('Linked list traversal: C++: 20000', function () {
+  cppReference.linkedListInsertTraverse(20000);
+})
+
+suite.add('Array traversal: JavAssembler: 1000', function() {
+  wasmInstance.Benchmarks_traverseArray(1000);
+})
+
+suite.add('Array traversal: JavaScript: 1000', function() {
+  jsReference.traverseArray(1000);
+})
+
+suite.add('Array traversal: C++: 1000', function() {
+  cppReference.traverseArray(1000);
+})
+
+suite.add('Array traversal: JavAssembler: 10000', function() {
   wasmInstance.Benchmarks_traverseArray(10000);
 })
 
-suite.add('JavaScript traverse array of length 10000', function() {
+suite.add('Array traversal: JavaScript: 10000', function() {
   jsReference.traverseArray(10000);
 })
 
-suite.add('C++ traverse array of length 10000', function() {
+suite.add('Array traversal: C++: 10000', function() {
   cppReference.traverseArray(10000);
 })
 
-suite.add('JavAssembler traverse array of length 100000', function() {
-  wasmInstance.reset_allocator();
-  wasmInstance.Benchmarks_traverseArray(100000);
+suite.add('Array traversal: JavAssembler: 20000', function() {
+  wasmInstance.Benchmarks_traverseArray(20000);
 })
 
-suite.add('JavaScript traverse array of length 100000', function() {
-  jsReference.traverseArray(100000);
+suite.add('Array traversal: JavaScript: 20000', function() {
+  jsReference.traverseArray(20000);
 })
 
-suite.add('C++ traverse array of length 100000', function() {
-  cppReference.traverseArray(100000);
+suite.add('Array traversal: C++: 20000', function() {
+  cppReference.traverseArray(20000);
 })
 
 const watPath = path.resolve(__dirname, '..', 'sample_programs_compiled', 'javassembler_benchmarks.wat');
@@ -129,7 +203,7 @@ function runBenchmarks() {
   WebAssembly.compile(buffer).then(themodule => {
     WebAssembly.instantiate(themodule).then(instance => {
       wasmInstance = instance.exports;
-      jsReference.linkedListInsertTraverse(1000);
+      wasmInstance.Benchmarks_traverseArray(50000);
       suite.run();
     })
   })

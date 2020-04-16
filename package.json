@@ -6,9 +6,10 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "benchmark": "node scripts/run_benchmarks.js",
+    "benchmark": "bash scripts/run_benchmarks.sh",
     "compileJavAssembler": "./gradlew buildFatJar",
-    "compileExamples": "bash scripts/compile_examples.sh"
+    "compileExamples": "bash scripts/compile_examples.sh",
+    "generateGraphs": "bash scripts/generate_graphs.sh"
   },
   "repository": {
     "type": "git",
@@ -27,6 +28,8 @@
   "homepage": "https://github.com/bencole12345/JavAssembler#readme",
   "devDependencies": {
     "benchmark": "^2.1.4",
+    "csv": "^5.3.2",
+    "csv-writer": "^1.6.0",
     "jest": "^25.1.0",
     "jest-extended": "^0.11.5",
     "wabt": "^1.0.13"
