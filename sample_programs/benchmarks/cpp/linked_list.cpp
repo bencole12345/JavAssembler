@@ -1,19 +1,19 @@
-#define nullptr 0
+#define NULL 0
 
 #include "linked_list.h"
 
-LinkedList::LinkedList()
-{
-    size = 0;
-    first = nullptr;
-    last = nullptr;
-}
+// LinkedList::LinkedList()
+// {
+//     size = 0;
+//     first = nullptr;
+//     last = nullptr;
+// }
 
 void LinkedList::append(int value)
 {
     LinkedListNode *newNode = new LinkedListNode();
     newNode->value = value;
-    newNode->next = nullptr;
+    newNode->next = NULL;
     if (size == 0)
     {
         first = newNode;
