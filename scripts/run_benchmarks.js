@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 const wabt = require('wabt')();
 const Benchmark = require('benchmark');
 const CSVWriter = require('csv-writer');
@@ -10,6 +11,22 @@ const cppReference = {
   recurse: cppModule.cwrap('recurse', null, ['number']),
   linkedListInsertTraverse: cppModule.cwrap('linkedListInsertTraverse', null, ['number']),
   traverseArray: cppModule.cwrap('traverseArray', null, ['number'])
+};
+const jvmReference = {
+  sumSquares: function(n) {
+    // console.log('running');
+    // console.log(execSync('java -classpath ./sample_programs_compiled/ JVMSumSquaresBenchmark ' + n).toString());
+    execSync('java -classpath ./sample_programs_compiled/ JVMSumSquaresBenchmarkPreloaded');
+  },
+  recurse: function(depth) {
+    execSync('java -classpath . sample_programs_compiled.JVMRecursionBenchmark ' + depth);
+  },
+  linkedListInsertTraverse: function(size) {
+    execSync('java -classpath . sample_programs_compiled.JVMLinkedListBenchmark ' + size);
+  },
+  traverseArray: function(size) {
+    execSync('java -classpath . sample_programs_compiled.JVMArrayBenchmark ' + size);
+  }
 };
 
 const CSV_FILE = 'benchmarking_results/benchmarking_results.csv';
@@ -61,6 +78,10 @@ suite.add('Sum of squares: C++: 1000', function() {
   cppReference.sumSquares(1000);
 })
 
+suite.add('Sum of squares: JVM: 1000', function() {
+  jvmReference.sumSquares(1000);
+})
+
 suite.add('Sum of squares: JavAssembler: 10000', function() {
   wasmInstance.Benchmarks_sumSquares(10000);
 })
@@ -73,6 +94,10 @@ suite.add('Sum of squares: C++: 10000', function() {
   cppReference.sumSquares(10000);
 })
 
+suite.add('Sum of squares: JVM: 10000', function () {
+  jvmReference.sumSquares(10000);
+})
+
 suite.add('Sum of squares: JavAssembler: 50000', function () {
   wasmInstance.Benchmarks_sumSquares(50000);
 })
@@ -83,6 +108,10 @@ suite.add('Sum of squares: JavaScript: 50000', function () {
 
 suite.add('Sum of squares: C++: 50000', function () {
   cppReference.sumSquares(50000);
+})
+
+suite.add('Sum of squares: JVM: 50000', function () {
+  jvmReference.sumSquares(50000);
 })
 
 suite.add('Recursion: JavAssembler: 100', function() {
@@ -203,7 +232,7 @@ function runBenchmarks() {
   WebAssembly.compile(buffer).then(themodule => {
     WebAssembly.instantiate(themodule).then(instance => {
       wasmInstance = instance.exports;
-      wasmInstance.Benchmarks_traverseArray(50000);
+      jvmReference.sumSquares(10000);
       suite.run();
     })
   })
