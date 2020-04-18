@@ -1,0 +1,40 @@
+Benchmark,Environment,Size,Mean (ms),Standard Deviation (ms)
+Sum of squares,JavAssembler,1000,0.001049,0.000317
+Sum of squares,JavaScript,1000,0.001053,0.000226
+Sum of squares,C++,1000,0.000834,0.000423
+Sum of squares,JavAssembler,10000,0.008515,0.000174
+Sum of squares,JavaScript,10000,0.011381,0.000304
+Sum of squares,C++,10000,0.005822,0.000132
+Sum of squares,JavAssembler,50000,0.042118,0.001072
+Sum of squares,JavaScript,50000,0.05631,0.000593
+Sum of squares,C++,50000,0.028491,0.000615
+Recursion,JavAssembler,100,0.000443,0.000011
+Recursion,JavaScript,100,0.00047,0.000016
+Recursion,C++,100,0.000569,0.000014
+Recursion,JavAssembler,1000,0.004916,0.000142
+Recursion,JavaScript,1000,0.004887,0.000189
+Recursion,C++,1000,0.005015,0.000698
+Recursion,JavAssembler,5000,0.029529,0.001605
+Recursion,JavaScript,5000,0.026869,0.000736
+Recursion,C++,5000,0.025551,0.000897
+Linked list traversal,JavAssembler,1000,0.060407,0.001707
+Linked list traversal,JavaScript,1000,0.008518,0.00046
+Linked list traversal,C++,1000,0.045671,0.002241
+Linked list traversal,JavAssembler,10000,0.603376,0.019181
+Linked list traversal,JavaScript,10000,0.097731,0.007885
+Linked list traversal,C++,10000,0.451093,0.009589
+Linked list traversal,JavAssembler,20000,1.200958,0.034301
+Linked list traversal,JavaScript,20000,0.215071,0.009854
+Linked list traversal,C++,20000,0.9025,0.025806
+Array traversal,JavAssembler,1000,0.008702,0.000149
+Array traversal,JavaScript,1000,0.005309,0.00025
+Array traversal,C++,1000,0.002428,0.000080
+Array traversal,JavAssembler (no bounds checking),1000,0.004719667018953233,0.002134112720404496
+Array traversal,JavAssembler,10000,0.088255,0.001632
+Array traversal,JavaScript,10000,0.050906,0.00496
+Array traversal,C++,10000,0.020441,0.001211
+Array traversal,JavAssembler (no bounds checking),10000,0.040593122898232414,0.0014852811433340755
+Array traversal,JavAssembler,20000,0.183881,0.003764
+Array traversal,JavaScript,20000,0.213393,0.018982
+Array traversal,C++,20000,0.040325,0.001195
+Array traversal,JavAssembler (no bounds checking),20000,0.09117350864219662,0.01167025281726357

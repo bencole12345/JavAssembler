@@ -157,7 +157,7 @@ suite.add('Linked list traversal: C++: 20000', function () {
   cppReference.linkedListInsertTraverse(20000);
 })
 
-suite.add('Array traversal: JavAssembler: 1000', function() {
+suite.add('Array traversal: JavAssembler (no bounds checking): 1000', function() {
   wasmInstance.Benchmarks_traverseArray(1000);
 })
 
@@ -169,7 +169,7 @@ suite.add('Array traversal: C++: 1000', function() {
   cppReference.traverseArray(1000);
 })
 
-suite.add('Array traversal: JavAssembler: 10000', function() {
+suite.add('Array traversal: JavAssembler (no bounds checking): 10000', function() {
   wasmInstance.Benchmarks_traverseArray(10000);
 })
 
@@ -181,7 +181,7 @@ suite.add('Array traversal: C++: 10000', function() {
   cppReference.traverseArray(10000);
 })
 
-suite.add('Array traversal: JavAssembler: 20000', function() {
+suite.add('Array traversal: JavAssembler (no bounds checking): 20000', function() {
   wasmInstance.Benchmarks_traverseArray(20000);
 })
 

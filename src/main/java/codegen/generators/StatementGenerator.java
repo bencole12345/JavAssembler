@@ -130,10 +130,18 @@ public class StatementGenerator {
         Expression indexExpression = arrayIndexExpression.getIndexExpression();
         WasmType valueType = CodeGenUtil.getWasmType(valueExpression.getType());
 
-        ExpressionGenerator.getInstance().compileExpression(valueExpression, scope);
+//        ExpressionGenerator.getInstance().compileExpression(valueExpression, scope);
+//        ExpressionGenerator.getInstance().compileExpression(arrayExpression, scope);
+//        ExpressionGenerator.getInstance().compileExpression(indexExpression, scope);
+//        emitter.emitLine("call $array_write_" + valueType);
+
         ExpressionGenerator.getInstance().compileExpression(arrayExpression, scope);
         ExpressionGenerator.getInstance().compileExpression(indexExpression, scope);
-        emitter.emitLine("call $array_write_" + valueType);
+        emitter.emitLine("i32.const 2");
+        emitter.emitLine("i32.shl");
+        emitter.emitLine("i32.add");
+        ExpressionGenerator.getInstance().compileExpression(valueExpression, scope);
+        emitter.emitLine("i32.store offset=8 align=2");
     }
 
     private void compileIfStatementChain(IfStatementChain chain,

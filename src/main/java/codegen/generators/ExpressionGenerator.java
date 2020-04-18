@@ -447,8 +447,14 @@ public class ExpressionGenerator {
         Type elementType = arrayType.getElementType();
         WasmType wasmType = CodeGenUtil.getWasmType(elementType);
 
+//        compileExpression(array, scope);
+//        compileExpression(index, scope);
+//        emitter.emitLine("call $array_read_" + wasmType);
         compileExpression(array, scope);
         compileExpression(index, scope);
-        emitter.emitLine("call $array_read_" + wasmType);
+        emitter.emitLine("i32.const 2");
+        emitter.emitLine("i32.shl");
+        emitter.emitLine("i32.add");
+        emitter.emitLine("i32.load offset=8 align=2");
     }
 }
