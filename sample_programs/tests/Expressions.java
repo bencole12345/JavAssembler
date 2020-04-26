@@ -1,22 +1,34 @@
 public class Expressions {
 
-    public static int add(int a, int b) {
+    public static int integerAdd(int a, int b) {
         return a + b;
     }
 
-    public static int subtract(int a, int b) {
+    public static int integerSubtract(int a, int b) {
         return a - b;
     }
 
-    public static int multiply(int a, int b) {
+    public static int integerMultiply(int a, int b) {
         return a * b;
     }
 
-    public static int divide(int a, int b) {
+    public static int integerDivide(int a, int b) {
         return a / b;
     }
 
-    public static double divideDoubles(double a, double b) {
+    public static float floatingPointAdd(float a, float b) {
+        return a + b;
+    }
+
+    public static float floatingPointSubtract(float a, float b) {
+        return a - b;
+    }
+
+    public static float floatingPointMultiply(float a, float b) {
+        return a * b;
+    }
+
+    public static float floatingPointDivide(float a, float b) {
         return a / b;
     }
 
