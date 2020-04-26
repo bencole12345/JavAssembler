@@ -36,6 +36,8 @@ java -jar $JAR_LOCATION -i \
     $TESTS_DIR/GarbageCollection.java \
     $TESTS_DIR/NullTest.java \
     $TESTS_DIR/TypeRanges.java \
+    $TESTS_DIR/LinkedList.java \
+    $TESTS_DIR/LinkedListNode.java \
     -o sample_programs_compiled/tests.wat
 echo "Generated sample_programs_compiled/tests.wat"
 
