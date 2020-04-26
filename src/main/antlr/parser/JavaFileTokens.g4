@@ -1,9 +1,5 @@
 lexer grammar JavaFileTokens;
 
-// TODO: Handle comments
-// TODO: Handle string literals
-// TODO: Fix the fact that '2-1' parses to ['2', '-1'] (it sees -1 as a SIGNED_INTEGER)
-
 fragment Digits: [0-9]+ ;
 fragment SignedInteger: ('-')? Digits ;
 
@@ -79,4 +75,5 @@ DOUBLE: 'double' ;
 
 IDENTIFIER: [a-zA-Z_][a-zA-Z_0-9]* ;
 
+COMMENT: '//' ~[\r\n]* -> skip ;
 WS: [ \t\r\n]+ -> skip ;
