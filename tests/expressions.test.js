@@ -20,9 +20,19 @@ describe('Addition', () => {
     [1, 0, 1],
     [0, 1, 1],
     [1, -1, 0]
-  ])('%f + %f = %f', (a, b, sum) => {
-    const result = wasmInstance.Expressions_add(a, b);
+  ])('Integer addition: %f + %f = %f', (a, b, sum) => {
+    const result = wasmInstance.Expressions_integerAdd(a, b);
     expect(result).toBe(sum);
+  })
+  test.each([
+    [1.0, 2.0, 3.0],
+    [2.0, 1.0, 3.0],
+    [1.0, 0.0, 1.0],
+    [0.0, 1.0, 1.0],
+    [1.0, -1.0, 0.0]
+  ])('Floating-point addition: %f + %f is approximately %f', (a, b, sum) => {
+    const result = wasmInstance.Expressions_floatingPointAdd(a, b);
+    expect(result).toBeCloseTo(sum);
   })
 })
 
@@ -32,9 +42,18 @@ describe('Subtraction', () => {
     [3, 1, 2],
     [1, 0, 1],
     [0, 1, -1]
-  ])('%f + %f = %f', (a, b, difference) => {
-    const result = wasmInstance.Expressions_subtract(a, b);
+  ])('Integer subtraction: %f - %f = %f', (a, b, difference) => {
+    const result = wasmInstance.Expressions_integerSubtract(a, b);
     expect(result).toBe(difference);
+  })
+  test.each([
+    [3.0, 2.0, 1.0],
+    [3.0, 1.0, 2.0],
+    [1.0, 0.0, 1.0],
+    [0.0, 1.0, -1.0]
+  ])('Floating-point subtraction: %f - %f = %f', (a, b, difference) => {
+    const result = wasmInstance.Expressions_floatingPointSubtract(a, b);
+    expect(result).toBeCloseTo(difference);
   })
 })
 
@@ -46,9 +65,21 @@ describe('Multiplication', () => {
     [3, 2, 6],
     [12, -1, -12],
     [-2, 6, -12]
-  ])('%f * %f = %f', (a, b, product) => {
-    const result = wasmInstance.Expressions_multiply(a, b);
+  ])('Integer multiplication: %f * %f = %f', (a, b, product) => {
+    const result = wasmInstance.Expressions_integerMultiply(a, b);
     expect(result).toBe(product);
+  })
+  test.each([
+    [1.0, 0.0, 0.0],
+    [0.0, 1.0, 0.0],
+    [2.0, 3.0, 6.0],
+    [3.0, 2.0, 6.0],
+    [12.0, -1.0, -12.0],
+    [-2.0, 6.0, -12.0],
+    [1.41421356237, 1.41421356237, 2]
+  ])('Integer multiplication: %f * %f = %f', (a, b, product) => {
+    const result = wasmInstance.Expressions_floatingPointMultiply(a, b);
+    expect(result).toBeCloseTo(product);
   })
 })
 
@@ -60,8 +91,8 @@ describe('Division', () => {
     [2, 3, 0],
     [12, 3, 4],
     [-12, 3, -4]
-  ])('%f / %f = %f', (a, b, divisor) => {
-    const result = wasmInstance.Expressions_divide(a, b);
+  ])('Integer division: %f / %f = %f', (a, b, divisor) => {
+    const result = wasmInstance.Expressions_integerDivide(a, b);
     expect(result).toBe(divisor);
   })
   test('Integer divide by zero causes trap', () => {
@@ -69,8 +100,19 @@ describe('Division', () => {
       wasmInstance.Expressions_divide(1, 0);
     }).toThrow();
   })
-  test('Double divide by zero gives infinity', () => {
-    const result = wasmInstance.Expressions_divideDoubles(1, 0);
+  test.each([
+    [1.0, 1.0, 1.0],
+    [3.0, 1.0, 3.0],
+    [1.0, 3.0, 0.333333333333],
+    [2.0, 3.0, 0.666666666666],
+    [12.0, 3.0, 4.0],
+    [-12.0, 3.0, -4.0]
+  ])('Floating-point division: %f / %f = %f', (a, b, divisor) => {
+    const result = wasmInstance.Expressions_floatingPointDivide(a, b);
+    expect(result).toBeCloseTo(divisor);
+  })
+  test('Floating-point divide by zero gives infinity', () => {
+    const result = wasmInstance.Expressions_floatingPointDivide(1, 0);
     expect(result).not.toBeFinite();
   })
 })
