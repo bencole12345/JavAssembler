@@ -28,77 +28,83 @@
   local.set $currently_traced_to
 
   ;; Move each stack-accessible object
-  (block (loop
-    local.get $curr_stack_offset
-    global.get $stack_pointer
-    i32.ge_u
-    br_if 1
+  block
+    loop
+      local.get $curr_stack_offset
+      global.get $stack_pointer
+      i32.ge_u
+      br_if 1
 
-    ;; Look up the current item
-    global.get $stack_base
-    local.get $curr_stack_offset
-    i32.add
-    i32.load
-    local.tee $fromspace_object_address
+      ;; Look up the current item
+      global.get $stack_base
+      local.get $curr_stack_offset
+      i32.add
+      i32.load
+      local.tee $fromspace_object_address
 
-    ;; Copy it across, saving its new address
-    call $_gc_copy_object
-    local.set $tospace_allocated_address
+      ;; Copy it across, saving its new address
+      call $_gc_copy_object
+      local.set $tospace_allocated_address
 
-    ;; Write pointer to new stack
-    local.get $tospace_stack_base
-    local.get $curr_stack_offset
-    i32.add
-    local.get $tospace_allocated_address
-    i32.store
+      ;; Write pointer to new stack
+      local.get $tospace_stack_base
+      local.get $curr_stack_offset
+      i32.add
+      local.get $tospace_allocated_address
+      i32.store
 
-    ;; Move to the next stack position
-    local.get $curr_stack_offset
-    i32.const 4
-    i32.add
-    local.set $curr_stack_offset
-    br 0
-  ))
+      ;; Move to the next stack position
+      local.get $curr_stack_offset
+      i32.const 4
+      i32.add
+      local.set $curr_stack_offset
+      br 0
+    end
+  end
 
   ;; Set the new shadow stack base
   local.get $tospace_stack_base
   global.set $stack_base
 
-  (block (loop
-    global.get $heap_last_allocated
-    local.get $currently_traced_to
-    i32.ge_u
-    br_if 1
-
-    global.get $heap_last_allocated
-    local.set $start_of_current_group
-
-    ;; Trace each object in the current group
-    global.get $heap_last_allocated
-    local.set $current_object_being_traced
-    (block (loop
-      local.get $current_object_being_traced
+  block
+    loop
+      global.get $heap_last_allocated
       local.get $currently_traced_to
       i32.ge_u
       br_if 1
 
-      ;; Trace this item
-      local.get $current_object_being_traced
-      call $_gc_trace_object
+      global.get $heap_last_allocated
+      local.set $start_of_current_group
 
-      ;; Move to the next object in the current block
-      local.get $current_object_being_traced
-      call $_gc_determine_size
-      local.get $current_object_being_traced
-      i32.add
+      ;; Trace each object in the current group
+      global.get $heap_last_allocated
       local.set $current_object_being_traced
-      br 0
-    ))
+      block
+        loop
+          local.get $current_object_being_traced
+          local.get $currently_traced_to
+          i32.ge_u
+          br_if 1
 
-    local.get $start_of_current_group
-    local.set $currently_traced_to
-    br 0
-  ))
+          ;; Trace this item
+          local.get $current_object_being_traced
+          call $_gc_trace_object
+
+          ;; Move to the next object in the current block
+          local.get $current_object_being_traced
+          call $_gc_determine_size
+          local.get $current_object_being_traced
+          i32.add
+          local.set $current_object_being_traced
+          br 0
+        end
+      end
+
+      local.get $start_of_current_group
+      local.set $currently_traced_to
+      br 0
+    end
+  end
 )
 
 
@@ -119,42 +125,42 @@
   if
     ;; It's an object!
 
-    (block (loop
-      local.get $curr_attribute_offset
-      local.get $size_field
-      i32.ge_u
-      br_if 1
+    block
+      loop
+        local.get $curr_attribute_offset
+        local.get $size_field
+        i32.ge_u
+        br_if 1
 
-      local.get $address
-      local.get $curr_attribute_offset
-      call $_gc_is_pointer
-      if
-
-        ;; Leave the index on the stack
         local.get $address
         local.get $curr_attribute_offset
-        i32.add
+        call $_gc_is_pointer
+        if
 
-        ;; Copy the object pointed to
-        local.get $address
+          ;; Leave the index on the stack
+          local.get $address
+          local.get $curr_attribute_offset
+          i32.add
+
+          ;; Copy the object pointed to
+          local.get $address
+          local.get $curr_attribute_offset
+          i32.add
+          i32.load offset=12 align=2
+          call $_gc_copy_object
+          
+          ;; Write its new address to the index we worked out earlier
+          i32.store offset=12 align=2
+
+        end
+
         local.get $curr_attribute_offset
+        i32.const 4
         i32.add
-        i32.load offset=12 align=2
-        call $_gc_copy_object
-        
-        ;; Write its new address to the index we worked out earlier
-        i32.store offset=12 align=2
-
+        local.set $curr_attribute_offset
+        br 0
       end
-
-      local.get $curr_attribute_offset
-      i32.const 4
-      i32.add
-      local.set $curr_attribute_offset
-      br 0
-    ))
-
-
+    end
 
   else
     ;; It's an array!
@@ -163,33 +169,35 @@
     local.get $address
     call $_gc_array_contains_pointers
     if
-      (block (loop
-        local.get $curr_attribute_offset
-        local.get $size_field
-        i32.ge_u
-        br_if 1
+      block
+        loop
+          local.get $curr_attribute_offset
+          local.get $size_field
+          i32.ge_u
+          br_if 1
 
-        ;; Leave the index on the stack
-        local.get $address
-        local.get $curr_attribute_offset
-        i32.add
+          ;; Leave the index on the stack
+          local.get $address
+          local.get $curr_attribute_offset
+          i32.add
 
-        ;; Copy the object pointed to
-        local.get $address
-        local.get $curr_attribute_offset
-        i32.add
-        i32.load offset=8 align=2
-        call $_gc_copy_object
+          ;; Copy the object pointed to
+          local.get $address
+          local.get $curr_attribute_offset
+          i32.add
+          i32.load offset=8 align=2
+          call $_gc_copy_object
 
-        ;; Write the new address to the index we left on the stack earlier
-        i32.store offset=8 align=2
+          ;; Write the new address to the index we left on the stack earlier
+          i32.store offset=8 align=2
 
-        local.get $curr_attribute_offset
-        i32.const 4
-        i32.add
-        local.set $curr_attribute_offset
-        br 0
-      ))
+          local.get $curr_attribute_offset
+          i32.const 4
+          i32.add
+          local.set $curr_attribute_offset
+          br 0
+        end
+      end
     end
   end
 )
@@ -241,28 +249,30 @@
   global.set $heap_last_allocated
 
   ;; Do the copy, one word at a time
-  (block (loop
-    local.get $curr_word
-    local.get $size_bytes
-    i32.ge_s
-    br_if 1
+  block
+    loop
+      local.get $curr_word
+      local.get $size_bytes
+      i32.ge_s
+      br_if 1
 
-    ;; Copy the byte across
-    local.get $allocated_address
-    local.get $curr_word
-    i32.add
-    local.get $from_address
-    local.get $curr_word
-    i32.add
-    i32.load align=2
-    i32.store align=2
+      ;; Copy the byte across
+      local.get $allocated_address
+      local.get $curr_word
+      i32.add
+      local.get $from_address
+      local.get $curr_word
+      i32.add
+      i32.load align=2
+      i32.store align=2
 
-    local.get $curr_word
-    i32.const 4
-    i32.add
-    local.set $curr_word
-    br 0
-  ))
+      local.get $curr_word
+      i32.const 4
+      i32.add
+      local.set $curr_word
+      br 0
+    end
+  end
 
   ;; Write the new pointer to the old object's size field
   local.get $from_address

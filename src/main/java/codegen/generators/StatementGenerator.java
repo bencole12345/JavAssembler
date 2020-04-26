@@ -161,7 +161,9 @@ public class StatementGenerator {
 
     private void compileWhileLoop(WhileLoop whileLoop,
                                   VariableScope scope) {
-        emitter.emitLine("(block (loop");
+        emitter.emitLine("block");
+        emitter.increaseIndentationLevel();
+        emitter.emitLine("loop");
         emitter.increaseIndentationLevel();
 
         // Test the condition, negate it, and jump out of the loop if the
@@ -185,7 +187,9 @@ public class StatementGenerator {
 
         // End the loop
         emitter.decreaseIndentationLevel();
-        emitter.emitLine("))");
+        emitter.emitLine("end");
+        emitter.decreaseIndentationLevel();
+        emitter.emitLine("end");
     }
 
     private void compileForLoop(ForLoop forLoop) {
@@ -197,7 +201,9 @@ public class StatementGenerator {
         compileStatement(forLoop.getInitialiser(), headerScope);
 
         // Set up the loop
-        emitter.emitLine("(block (loop");
+        emitter.emitLine("block");
+        emitter.increaseIndentationLevel();
+        emitter.emitLine("loop");
         emitter.increaseIndentationLevel();
 
         // Test the condition, negate it, and jump out of the loop if the
@@ -225,7 +231,9 @@ public class StatementGenerator {
 
         // End the loop
         emitter.decreaseIndentationLevel();
-        emitter.emitLine("))");
+        emitter.emitLine("end");
+        emitter.decreaseIndentationLevel();
+        emitter.emitLine("end");
     }
 
     private void compileFunctionCallStatement(FunctionCall functionCall, VariableScope scope) {

@@ -11,15 +11,17 @@
   
   ;; If there's still not enough free space then repeatedly request
   ;; more until there is
-  (block (loop
-    local.get $size_bytes
-    call $not_enough_free_space
-    i32.const 1
-    i32.xor
-    br_if 1
-    call $request_more_memory
-    br 0
-  ))
+  block
+    loop
+      local.get $size_bytes
+      call $not_enough_free_space
+      i32.const 1
+      i32.xor
+      br_if 1
+      call $request_more_memory
+      br 0
+    end
+  end
 
   ;; Allocate the space
   global.get $heap_last_allocated
@@ -129,22 +131,24 @@
   local.get $address
   local.set $pos
 
-  (block (loop
-    local.get $pos
-    local.get $end
-    i32.ge_u
-    br_if 1
+  block
+    loop
+      local.get $pos
+      local.get $end
+      i32.ge_u
+      br_if 1
 
-    local.get $pos
-    i32.const 0
-    i32.store align=2
+      local.get $pos
+      i32.const 0
+      i32.store align=2
 
-    local.get $pos
-    i32.const 4
-    i32.add
-    local.set $pos
-    br 0
-  ))
+      local.get $pos
+      i32.const 4
+      i32.add
+      local.set $pos
+      br 0
+    end
+  end
 )
 
 
@@ -251,33 +255,35 @@
     ;; Copy across each word
     i32.const 0
     local.set $curr_word
-    (block (loop
-      local.get $curr_word
-      ;; Check we're not off by 4 here - what is the stack pointer relative to?
-      global.get $stack_pointer
-      i32.ge_u
-      br_if 1
+    block
+      loop
+        local.get $curr_word
+        ;; Check we're not off by 4 here - what is the stack pointer relative to?
+        global.get $stack_pointer
+        i32.ge_u
+        br_if 1
 
-      ;; Address to write to
-      i32.const 4
-      local.get $curr_word
-      i32.add
+        ;; Address to write to
+        i32.const 4
+        local.get $curr_word
+        i32.add
 
-      ;; Value to write
-      global.get $stack_base
-      local.get $curr_word
-      i32.add
-      i32.load align=2
+        ;; Value to write
+        global.get $stack_base
+        local.get $curr_word
+        i32.add
+        i32.load align=2
 
-      ;; Write it
-      i32.store align=2
+        ;; Write it
+        i32.store align=2
 
-      local.get $curr_word
-      i32.const 4
-      i32.add
-      local.set $curr_word
-      br 0
-    ))
+        local.get $curr_word
+        i32.const 4
+        i32.add
+        local.set $curr_word
+        br 0
+      end
+    end
 
     ;; Update new stack base
     i32.const 0x0004
@@ -294,194 +300,202 @@
     local.set $heap_end
 
     ;; Copy over each object
-    (block (loop
-      local.get $curr_heap_object
-      local.get $heap_end
-      i32.ge_u
-      br_if 1
+    block
+      loop
+        local.get $curr_heap_object
+        local.get $heap_end
+        i32.ge_u
+        br_if 1
 
-      ;; Work out the new destination
-      local.get $curr_heap_object
-      local.get $delta
-      i32.add
-      local.set $heap_to_address
+        ;; Work out the new destination
+        local.get $curr_heap_object
+        local.get $delta
+        i32.add
+        local.set $heap_to_address
 
-      ;; Copy across the header
-      local.get $heap_to_address
-      local.get $curr_heap_object
-      i32.load align=2
-      i32.store align=2
-
-      ;; Copy across the size field
-      local.get $heap_to_address
-      local.get $curr_heap_object
-      i32.load offset=4 align=2
-      local.tee $size_field
-      i32.store offset=4 align=2
-
-      ;; Determine whether it's an array or an object
-      local.get $curr_heap_object
-      call $_gc_is_object
-      if
-        ;; Object
-        
-        ;; Copy across the vtable pointer
+        ;; Copy across the header
         local.get $heap_to_address
         local.get $curr_heap_object
-        i32.load offset=8 align=2
-        i32.store offset=8 align=2
+        i32.load align=2
+        i32.store align=2
 
-        ;; Move across each attribute
-        i32.const 0
-        local.set $curr_word
-        (block (loop
-          local.get $curr_word
-          local.get $size_field
-          i32.ge_u
-          br_if 1
+        ;; Copy across the size field
+        local.get $heap_to_address
+        local.get $curr_heap_object
+        i32.load offset=4 align=2
+        local.tee $size_field
+        i32.store offset=4 align=2
 
-          ;; Address to write to
+        ;; Determine whether it's an array or an object
+        local.get $curr_heap_object
+        call $_gc_is_object
+        if
+          ;; Object
+          
+          ;; Copy across the vtable pointer
           local.get $heap_to_address
-          local.get $curr_word
-          i32.add
-
-          ;; Value to write
           local.get $curr_heap_object
-          local.get $curr_word
-          call $_gc_is_pointer
-          if (result i32)
-            local.get $curr_heap_object
-            local.get $curr_word
-            i32.add
-            i32.load offset=12 align=2
-            local.tee $value
-            i32.eqz
-            if (result i32)
-              local.get $value
-            else
-              local.get $value
-              local.get $delta
-              i32.add
-            end
-          else
-            local.get $curr_heap_object
-            local.get $curr_word
-            i32.add
-            i32.load offset=12 align=2
-          end
-
-          ;; Write it
-          i32.store offset=12 align=2
-
-          ;; Move to next word
-          local.get $curr_word
-          i32.const 4
-          i32.add
-          local.set $curr_word
-        ))
-
-        ;; Copy pointer info bits
-
-        ;; Work out where the pointer info region starts
-        local.get $curr_heap_object
-        i32.const 12
-        i32.add
-        local.get $size_field
-        i32.add
-        local.set $pointer_info_pos
-
-        ;; Work out where the pointer info region ends
-        local.get $pointer_info_pos
-        local.get $size_field
-        call $num_bytes_to_pointer_info_length
-        i32.add
-        local.set $object_end
-
-        ;; Copy the pointer info, one word at a time
-        (block (loop
-          local.get $pointer_info_pos
-          local.get $object_end
-          i32.ge_u
-          br_if 1
-
-          ;; Address to write to
-          local.get $pointer_info_pos
-          local.get $delta
-          i32.add
-
-          ;; Value to write
-          local.get $pointer_info_pos
-          i32.load align=2
-
-          ;; Write it
-          i32.store align=2
-
-          local.get $pointer_info_pos
-          i32.const 4
-          i32.add
-          local.set $pointer_info_pos
-          br 0
-        ))
-
-      else
-        ;; Array
-
-        local.get $curr_heap_object
-        call $_gc_array_contains_pointers
-        local.set $array_contains_pointers
-
-        i32.const 0
-        local.set $curr_word
-        (block (loop
-          local.get $curr_word
-          local.get $size_field
-          i32.ge_u
-          br_if 1
-
-          ;; Address to write to
-          local.get $curr_heap_object
-          local.get $curr_word
-          i32.add
-          local.get $delta
-          i32.add
-
-          ;; Value to write
-          local.get $array_contains_pointers
-          if (result i32)
-            ;; Need to adjust the pointer
-            local.get $curr_heap_object
-            local.get $curr_word
-            i32.add
-            i32.load offset=8 align=2
-            local.get $delta
-            i32.add
-          else
-            ;; It's primitive so don't change it
-            local.get $curr_heap_object
-            local.get $curr_word
-            i32.add
-            i32.load offset=8 align=2
-          end
-
-          ;; Write it
+          i32.load offset=8 align=2
           i32.store offset=8 align=2
 
-          local.get $curr_word
-          i32.const 4
-          i32.add
+          ;; Move across each attribute
+          i32.const 0
           local.set $curr_word
-          br 0
-        ))
-      end
+          block
+            loop
+              local.get $curr_word
+              local.get $size_field
+              i32.ge_u
+              br_if 1
 
-      ;; Move to the next heap object and restart
-      local.get $curr_heap_object
-      local.get $curr_heap_object
-      call $_gc_determine_size
-      i32.add
-      local.set $curr_heap_object
-      br 0
-    ))
+              ;; Address to write to
+              local.get $heap_to_address
+              local.get $curr_word
+              i32.add
+
+              ;; Value to write
+              local.get $curr_heap_object
+              local.get $curr_word
+              call $_gc_is_pointer
+              if (result i32)
+                local.get $curr_heap_object
+                local.get $curr_word
+                i32.add
+                i32.load offset=12 align=2
+                local.tee $value
+                i32.eqz
+                if (result i32)
+                  local.get $value
+                else
+                  local.get $value
+                  local.get $delta
+                  i32.add
+                end
+              else
+                local.get $curr_heap_object
+                local.get $curr_word
+                i32.add
+                i32.load offset=12 align=2
+              end
+
+              ;; Write it
+              i32.store offset=12 align=2
+
+              ;; Move to next word
+              local.get $curr_word
+              i32.const 4
+              i32.add
+              local.set $curr_word
+            end
+          end
+
+          ;; Copy pointer info bits
+
+          ;; Work out where the pointer info region starts
+          local.get $curr_heap_object
+          i32.const 12
+          i32.add
+          local.get $size_field
+          i32.add
+          local.set $pointer_info_pos
+
+          ;; Work out where the pointer info region ends
+          local.get $pointer_info_pos
+          local.get $size_field
+          call $num_bytes_to_pointer_info_length
+          i32.add
+          local.set $object_end
+
+          ;; Copy the pointer info, one word at a time
+          block
+            loop
+              local.get $pointer_info_pos
+              local.get $object_end
+              i32.ge_u
+              br_if 1
+
+              ;; Address to write to
+              local.get $pointer_info_pos
+              local.get $delta
+              i32.add
+
+              ;; Value to write
+              local.get $pointer_info_pos
+              i32.load align=2
+
+              ;; Write it
+              i32.store align=2
+
+              local.get $pointer_info_pos
+              i32.const 4
+              i32.add
+              local.set $pointer_info_pos
+              br 0
+            end
+          end
+
+        else
+          ;; Array
+
+          local.get $curr_heap_object
+          call $_gc_array_contains_pointers
+          local.set $array_contains_pointers
+
+          i32.const 0
+          local.set $curr_word
+          block
+            loop
+              local.get $curr_word
+              local.get $size_field
+              i32.ge_u
+              br_if 1
+
+              ;; Address to write to
+              local.get $curr_heap_object
+              local.get $curr_word
+              i32.add
+              local.get $delta
+              i32.add
+
+              ;; Value to write
+              local.get $array_contains_pointers
+              if (result i32)
+                ;; Need to adjust the pointer
+                local.get $curr_heap_object
+                local.get $curr_word
+                i32.add
+                i32.load offset=8 align=2
+                local.get $delta
+                i32.add
+              else
+                ;; It's primitive so don't change it
+                local.get $curr_heap_object
+                local.get $curr_word
+                i32.add
+                i32.load offset=8 align=2
+              end
+
+              ;; Write it
+              i32.store offset=8 align=2
+
+              local.get $curr_word
+              i32.const 4
+              i32.add
+              local.set $curr_word
+              br 0
+            end
+          end
+        end
+
+        ;; Move to the next heap object and restart
+        local.get $curr_heap_object
+        local.get $curr_heap_object
+        call $_gc_determine_size
+        i32.add
+        local.set $curr_heap_object
+        br 0
+      end
+    end
 
     global.get $heap_last_allocated
     local.get $delta
@@ -491,35 +505,36 @@
     ;; Correct every pointer in the stack
     i32.const 0
     local.set $curr_word
-    (block (loop
-      local.get $curr_word
-      global.get $stack_pointer
-      i32.ge_u
-      br_if 1
+    block
+      loop
+        local.get $curr_word
+        global.get $stack_pointer
+        i32.ge_u
+        br_if 1
 
-      ;; Address to write to
-      i32.const 4
-      local.get $curr_word
-      i32.add
+        ;; Address to write to
+        i32.const 4
+        local.get $curr_word
+        i32.add
 
-      ;; Value to write
-      global.get $stack_base
-      local.get $curr_word
-      i32.add
-      i32.load align=2
-      local.get $delta
-      i32.add
+        ;; Value to write
+        global.get $stack_base
+        local.get $curr_word
+        i32.add
+        i32.load align=2
+        local.get $delta
+        i32.add
 
-      ;; Write it
-      i32.store align=2
+        ;; Write it
+        i32.store align=2
 
-      local.get $curr_word
-      i32.const 4
-      i32.add
-      local.set $curr_word
-      br 0
-    ))
-
+        local.get $curr_word
+        i32.const 4
+        i32.add
+        local.set $curr_word
+        br 0
+      end
+    end
   end
 
   ;; In all cases we are now using heap 0
