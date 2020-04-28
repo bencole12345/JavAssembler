@@ -14,9 +14,12 @@ beforeAll(async () => {
 })
 
 describe('Garbage collection', () => {
-  test('Repeatedly allocate memory', () => {
+  test('Reuse memory without requesting more from JavaScript host', () => {
+    const sizeBefore = wasmInstance.memory.buffer.byteLength;
     const success = wasmInstance.GarbageCollection_testGarbageCollection(100000);
     expect(success).toBeTruthy();
+    const sizeAfter = wasmInstance.memory.buffer.byteLength;
+    expect(sizeAfter).toBe(sizeBefore);
   })
   test('Request more memory from JavaScript host', () => {
     const success = wasmInstance.GarbageCollection_testRequestingAdditionalMemory(100000);
