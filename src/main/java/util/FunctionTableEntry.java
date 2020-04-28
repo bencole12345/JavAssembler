@@ -1,6 +1,7 @@
 package util;
 
 import ast.types.AccessModifier;
+import ast.types.GenericJavaClass;
 import ast.types.JavaClass;
 import ast.types.Type;
 
@@ -60,6 +61,10 @@ public class FunctionTableEntry {
         return parameterTypes;
     }
 
+    public AccessModifier getAccessModifier() {
+        return accessModifier;
+    }
+
     /**
      * Determines whether the method referenced by this table entry can be
      * executed from the given context.
@@ -79,7 +84,9 @@ public class FunctionTableEntry {
     }
 
     public String getQualifiedName() {
-        return containingClass + "::" + functionName;
+        GenericJavaClass genericClass = containingClass.getGenericClass();
+        JavaClass classToUse = (genericClass == null) ? containingClass : genericClass;
+        return classToUse + "::" + functionName;
     }
 
     public String getQualifiedSignature() {

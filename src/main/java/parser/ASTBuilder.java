@@ -34,8 +34,8 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         currentClass = null;
         variableScopeStack = new Stack<>();
 
-        expressionVisitor = new ExpressionVisitor(functionTable, classTable);
         typeVisitor = new TypeVisitor(classTable);
+        expressionVisitor = new ExpressionVisitor(functionTable, classTable, typeVisitor);
         accessModifierVisitor = new AccessModifierVisitor();
     }
 
@@ -43,6 +43,12 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
         this.currentClass = containingClass;
         expressionVisitor.setCurrentClass(currentClass);
         typeVisitor.setCurrentClass(containingClass);
+        if (containingClass instanceof GenericJavaClass) {
+            GenericJavaClass genericTypedClass = (GenericJavaClass) containingClass;
+            typeVisitor.setGenericTypesIndexMap(genericTypedClass.getGenericTypesIndexMap());
+        } else {
+            typeVisitor.unsetGenericTypesMap();
+        }
         if (subroutine.isMethod()) {
             return visitMethodDefinition(subroutine.getMethodDefinition());
         } else {

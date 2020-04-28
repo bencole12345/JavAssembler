@@ -1,17 +1,17 @@
 package parser;
 
-import ast.types.AccessModifier;
-import ast.types.JavaClass;
-import ast.types.Type;
-import ast.types.VoidType;
+import ast.types.*;
 import errors.DuplicateClassAttributeException;
 import errors.DuplicateClassDefinitionException;
 import errors.DuplicateFunctionSignatureException;
 import errors.UnknownClassException;
+import org.antlr.v4.runtime.tree.TerminalNode;
 import util.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
@@ -32,6 +32,15 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
     private String currentClassName;
 
     /**
+     * Records the index of each generic type.
+     *
+     * For example, if the class were
+     *   public class MyClass<T, U> { ... }
+     * then the map would be { T -> 0, U -> 1 }.
+     */
+    private Map<String, Integer> genericTypesIndexMap;
+
+    /**
      * The attributes we have seen so far for the current class
      */
     private List<JavaClass.ClassAttribute> classAttributes;
@@ -46,7 +55,6 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
      *
      * We also keep a list of the containing class of each method.
      */
-//    private List<JavaFileParser.MethodDefinitionContext> methodParseTrees;
     private List<SubroutineToCompile> subroutines;
     private List<JavaClass> containingClasses;
 
@@ -59,6 +67,7 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
     public FunctionAndClassTableBuilder() {
         classTable = new ClassTable();
         functionTable = new FunctionTable();
+        genericTypesIndexMap = new HashMap<>();
         classAttributes = new ArrayList<>();
         methodsAndConstructorsInCurrentClass = new ArrayList<>();
         typeVisitor = new TypeVisitor();
@@ -72,6 +81,13 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
 
         // Read class name
         currentClassName = ctx.className.getText();
+
+        // Process generic type parameters
+        genericTypesIndexMap.clear();
+        if (ctx.classGenericTypesList() != null) {
+            visit(ctx.classGenericTypesList());
+        }
+        typeVisitor.setGenericTypesIndexMap(genericTypesIndexMap);
 
         // Empty the lists of attributes and methods ready for the new class
         classAttributes.clear();
@@ -90,14 +106,30 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
             }
         }
 
+        // Determine whether we have to treat this as a generic class or not
+        boolean isGenericClass = !genericTypesIndexMap.isEmpty();
+
         JavaClass currentClass = null;
         try {
-            currentClass = new JavaClass(currentClassName, classAttributes, parent);
+            if (isGenericClass) {
+                currentClass = new GenericJavaClass(
+                        currentClassName,
+                        classAttributes,
+                        parent,
+                        ctx.classGenericTypesList()
+                                .IDENTIFIER()
+                                .stream()
+                                .map(Object::toString)
+                                .collect(Collectors.toList())
+                );
+            } else {
+                currentClass = new JavaClass(currentClassName, classAttributes, parent);
+            }
         } catch (DuplicateClassAttributeException e) {
             ErrorReporting.reportError(e.getMessage());
         }
-
         assert currentClass != null;
+
         for (MethodOrConstructorSignature signature : methodsAndConstructorsInCurrentClass) {
             if (signature.isMethod()) {
                 MethodSignature methodSignature = signature.getMethodSignature();
@@ -114,7 +146,9 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
                 // class that owns it.
                 if (!methodSignature.isStatic) {
                     try {
-                        currentClass.registerNewMethod(entry);
+                        List<Type> parameterTypes = methodSignature.parameterTypes;
+                        Type returnType = methodSignature.returnType;
+                        currentClass.registerNewMethod(parameterTypes, returnType, entry);
                     } catch (DuplicateFunctionSignatureException e) {
                         ErrorReporting.reportError(e.getMessage());
                     }
@@ -133,7 +167,8 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
                 );
 
                 try {
-                    currentClass.registerNewConstructor(entry);
+                    List<Type> parameterTypes = constructorSignature.parameterTypes;
+                    currentClass.registerNewConstructor(parameterTypes, entry);
                 } catch (DuplicateFunctionSignatureException e) {
                     ErrorReporting.reportError(e.getMessage());
                 }
@@ -150,6 +185,16 @@ public class FunctionAndClassTableBuilder extends JavaFileBaseVisitor<Void> {
             ErrorReporting.reportError(e.getMessage());
         }
 
+        typeVisitor.unsetGenericTypesMap();
+        return null;
+    }
+
+    @Override
+    public Void visitClassGenericTypesList(JavaFileParser.ClassGenericTypesListContext ctx) {
+        int index = 0;
+        for (TerminalNode node : ctx.IDENTIFIER()) {
+            genericTypesIndexMap.put(node.toString(), index++);
+        }
         return null;
     }
 

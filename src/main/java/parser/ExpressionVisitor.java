@@ -47,13 +47,13 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
     private BopVisitor bopVisitor;
     private TypeVisitor typeVisitor;
 
-    public ExpressionVisitor(FunctionTable functionTable, ClassTable classTable) {
+    public ExpressionVisitor(FunctionTable functionTable, ClassTable classTable, TypeVisitor typeVisitor) {
         super();
         this.functionTable = functionTable;
         this.classTable = classTable;
         currentScope = null;
         bopVisitor = new BopVisitor();
-        typeVisitor = new TypeVisitor(classTable);
+        this.typeVisitor = typeVisitor;
     }
 
     /**
@@ -108,19 +108,11 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
 
     @Override
     public Expression visitNewObjectExpr(JavaFileParser.NewObjectExprContext ctx) {
-        String className = ctx.IDENTIFIER().toString();
-        JavaClass javaClass = null;
-        try {
-            javaClass = classTable.lookupClass(className);
-        } catch (UnknownClassException e) {
-            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
-        }
+        JavaClass javaClass = (JavaClass) typeVisitor.visit(ctx.objectType());
         ExpressionList expressionList = (ExpressionList) visit(ctx.functionArgs());
         List<Expression> arguments = expressionList.getExpressionList();
 
         NewObjectExpression expression;
-
-        assert javaClass != null;
         if (arguments.size() > 0 || javaClass.hasNoArgumentConstructor()) {
             List<Type> argumentTypes = arguments
                     .stream()
@@ -335,7 +327,7 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
                                        List<Expression> argumentsList,
                                        JavaFileParser.QualifiedFunctionCallContext ctx) {
         LocalVariableExpression localVariable = new LocalVariableExpression(localVariableName, currentScope);
-        Type variableType = localVariable.getType();
+        JavaClass javaClass = (JavaClass) localVariable.getType();
         List<String> variableTypeStrings = argumentsList
                 .stream()
                 .map(Expression::getType)
@@ -343,20 +335,19 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
                 .collect(Collectors.toList());
         String errorMessageIfNotFound = "Method " + methodName + "("
                 + String.join(", ", variableTypeStrings) + ")"
-                + " is not defined in static context " + variableType;
-        if (!(variableType instanceof JavaClass)) {
-            ErrorReporting.reportError(errorMessageIfNotFound, ctx, currentClass.toString());
-        }
-        assert variableType instanceof JavaClass;
-        JavaClass javaClass = (JavaClass) variableType;
+                + " is not defined in static context " + javaClass;
+
         List<Type> argumentTypes = argumentsList
                 .stream()
                 .map(Expression::getType)
                 .collect(Collectors.toList());
+
         Integer vtableIndex = javaClass.getVirtualTableIndex(methodName, argumentTypes);
         if (vtableIndex == null) {
             ErrorReporting.reportError(errorMessageIfNotFound, ctx, currentClass.toString());
         }
+        assert vtableIndex != null;
+
         Type returnType = javaClass.getReturnTypeOfMethodAtIndex(vtableIndex);
 
         // Look up static method signature

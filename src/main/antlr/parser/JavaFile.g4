@@ -18,8 +18,13 @@ imports
 classDefinition
     : accessModifier?
             CLASS className=IDENTIFIER
+            classGenericTypesList?
             (EXTENDS parentClassName=IDENTIFIER)?
             LBRACE classItem* RBRACE
+    ;
+
+classGenericTypesList
+    : LESS_THAN IDENTIFIER (COMMA IDENTIFIER)* GREATER_THAN
     ;
 
 classItem
@@ -77,7 +82,7 @@ expr
     | LPAREN expr RPAREN                                # ParenthesesExpr
     | MINUS expr                                        # NegateExpr
     | NOT expr                                          # NotExpr
-    | NEW IDENTIFIER LPAREN functionArgs RPAREN         # NewObjectExpr
+    | NEW objectType LPAREN functionArgs RPAREN         # NewObjectExpr
     | NEW type (LSQBRACKET expr RSQBRACKET)+            # NewArrayExpr
     | variableIncrementExpr                             # IncrementExpr
     | expr multiplicativeBop expr                       # MultiplicativeBopExpr
@@ -192,10 +197,14 @@ accessModifier
     ;
 
 type
-    : type LSQBRACKET RSQBRACKET                                       # ArrayType
-    | VOID                                                             # VoidType
-    | primitiveType=(INT|SHORT|LONG|BYTE|CHAR|BOOLEAN|FLOAT|DOUBLE)    # PrimitiveType
-    | nonPrimitiveType=IDENTIFIER                                      # NonPrimitiveType
+    : type LSQBRACKET RSQBRACKET                                        # ArrayType
+    | VOID                                                              # VoidType
+    | primitiveType=(INT|SHORT|LONG|BYTE|CHAR|BOOLEAN|FLOAT|DOUBLE)     # PrimitiveType
+    | objectType                                                        # NonPrimitive
+    ;
+
+objectType
+    : IDENTIFIER (LESS_THAN objectType (COMMA objectType)* GREATER_THAN)?
     ;
 
 literal

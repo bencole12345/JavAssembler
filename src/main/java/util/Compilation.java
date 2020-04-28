@@ -1,6 +1,7 @@
 package util;
 
 import ast.structure.ClassMethod;
+import ast.types.GenericClassInstantiationCache;
 import ast.types.JavaClass;
 import codegen.CodeEmitter;
 import codegen.WasmGenerator;
@@ -51,6 +52,8 @@ public class Compilation {
 
         // Now build a function table
         FunctionTable functionTable = functionAndClassTableBuilder.getFunctionTable();
+        GenericClassInstantiationCache.getInstance().setFunctionTable(functionTable);
+        GenericClassInstantiationCache.getInstance().setClassTable(classTable);
         functionTable.validateAllTypes(classTable);
 
         // Convert the parse tree of each method into an AST
