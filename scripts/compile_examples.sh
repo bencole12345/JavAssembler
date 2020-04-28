@@ -38,6 +38,8 @@ java -jar $JAR_LOCATION -i \
     $TESTS_DIR/TypeRanges.java \
     $TESTS_DIR/LinkedList.java \
     $TESTS_DIR/LinkedListNode.java \
+    $TESTS_DIR/GenericContainer.java \
+    $TESTS_DIR/GenericTypes.java \
     -o sample_programs_compiled/tests.wat
 echo "Generated sample_programs_compiled/tests.wat"
 
