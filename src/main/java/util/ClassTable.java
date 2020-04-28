@@ -1,25 +1,21 @@
 package util;
 
-import ast.types.JavaClass;
-import ast.types.ObjectArray;
-import ast.types.Type;
-import ast.types.UnvalidatedJavaClassReference;
+import ast.types.*;
 import errors.DuplicateClassDefinitionException;
 import errors.UnknownClassException;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ClassTable {
 
     private List<JavaClass> classes;
     private Map<String, JavaClass> classesNameMap;
+    private Map<GenericJavaClass, Set<JavaClass>> instantiations;
 
     public ClassTable() {
         classes = new ArrayList<>();
         classesNameMap = new HashMap<>();
+        instantiations = new HashMap<>();
     }
 
     public void registerClass(String name, JavaClass javaClass) throws DuplicateClassDefinitionException {
@@ -29,6 +25,14 @@ public class ClassTable {
         }
         classes.add(javaClass);
         classesNameMap.put(name, javaClass);
+    }
+
+    public void registerInstantiation(GenericJavaClass genericClass, JavaClass instantiation) {
+        if (!instantiations.containsKey(genericClass)) {
+            instantiations.put(genericClass, new HashSet<>());
+        }
+        Set<JavaClass> set = instantiations.get(genericClass);
+        set.add(instantiation);
     }
 
     public JavaClass lookupClass(String name) throws UnknownClassException {
@@ -80,6 +84,11 @@ public class ClassTable {
             List<Integer> virtualTable = javaClass.getVirtualTable();
             int startIndex = table.size();
             startIndexMap.put(javaClass, startIndex);
+            if (javaClass instanceof GenericJavaClass) {
+                for (JavaClass instantiation : instantiations.get(javaClass)) {
+                    startIndexMap.put(instantiation, startIndex);
+                }
+            }
             table.addAll(virtualTable);
         }
         return new VirtualTable(table, startIndexMap);

@@ -112,7 +112,12 @@ public class CodeGenUtil {
     public static String getFunctionNameForOutput(FunctionTableEntry entry,
                                                   FunctionTable functionTable) {
         String delimiter = "_";
-        String className = entry.getContainingClass().toString();
+        String className;
+        if (entry.getContainingClass().getGenericClass() != null) {
+            className = entry.getContainingClass().getGenericClass().toString();
+        } else {
+            className = entry.getContainingClass().toString();
+        }
         String functionName = entry.getFunctionName();
         String namespacedName = className + delimiter + functionName;
         List<Type> parameterTypes = entry.getParameterTypes();

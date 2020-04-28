@@ -1,5 +1,7 @@
 package ast.types;
 
+import java.util.List;
+
 /**
  * Used to indicate a reference to a class that has not yet been checked.
  *
@@ -15,13 +17,32 @@ public class UnvalidatedJavaClassReference extends HeapObjectReference {
      */
     private String className;
 
+    /**
+     * The type arguments that were supplied
+     */
+    private List<HeapObjectReference> typeArguments;
+
     public UnvalidatedJavaClassReference(String className) {
         this.className = className;
+        typeArguments = null;
+    }
+
+    public void setTypeArguments(List<HeapObjectReference> typeArguments) {
+        this.typeArguments = typeArguments;
+    }
+
+    public List<HeapObjectReference> getTypeArguments() {
+        return typeArguments;
+    }
+
+    public boolean hasTypeArguments() {
+        return typeArguments != null && !typeArguments.isEmpty();
     }
 
     @Override
     public boolean isSubtypeOf(Type other) {
         // Should never be called
+        assert false;
         return false;
     }
 

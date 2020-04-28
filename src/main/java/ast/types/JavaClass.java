@@ -20,7 +20,7 @@ public class JavaClass extends HeapObjectReference {
     /**
      * The name of the class
      */
-    private String name;
+    protected String name;
 
     /**
      * A list of all attributes defined in this class only (not including any
@@ -42,10 +42,10 @@ public class JavaClass extends HeapObjectReference {
      * This is used for looking up public attributes and methods defined in
      * parent classes.
      */
-    private JavaClass parent;
+    protected JavaClass parent;
 
     /**
-     * Tracks how much memory has been allocated in this class.
+     * Tracks how much memory has been allocated in this class.￿
      *
      * This will be used by any subclasses so that they can safely allocate
      * memory for additional state they have without overwriting any attributes
@@ -56,7 +56,7 @@ public class JavaClass extends HeapObjectReference {
     /**
      * The virtual table for this class.
      */
-    private List<FunctionTableEntry> virtualTable;
+    protected List<FunctionTableEntry> virtualTable;
 
     /**
      * A map of strings (function names) to tries used for efficiently looking
@@ -69,6 +69,14 @@ public class JavaClass extends HeapObjectReference {
      * A lookup tree for the class constructor
      */
     private LookupTree<FunctionTableEntry, Type> constructorLookupTree;
+
+    /**
+     * The generic class from which this was realised.
+     *
+     * If this is not a realisation of a generic class then this attribute
+     * will be null.
+     */
+    private GenericJavaClass genericClass;
 
     public JavaClass(String name, List<ClassAttribute> attributes, JavaClass parent)
             throws DuplicateClassAttributeException {
@@ -112,7 +120,19 @@ public class JavaClass extends HeapObjectReference {
             allocatedAttributes.add(allocatedAttribute);
             attributesMap.put(attributeName, allocatedAttribute);
             nextFreeAssignmentOffset += allocatedAttribute.getSize();
+
+            // No generic class
+            genericClass = null;
         }
+    }
+
+    public JavaClass(String name,
+                     List<ClassAttribute> attributes,
+                     JavaClass parent,
+                     GenericJavaClass genericClass)
+            throws DuplicateClassAttributeException {
+        this(name, attributes, parent);
+        this.genericClass = genericClass;
     }
 
     @Override
@@ -281,15 +301,18 @@ public class JavaClass extends HeapObjectReference {
     /**
      * Adds a new method to the virtual table for this class.
      *
+     * @param parameterTypes The types of the parameters to the method
+     * @param returnType The return type of the method
      * @param functionTableEntry The function table entry to register as a
      *                           method of this class
      */
-    public void registerNewMethod(FunctionTableEntry functionTableEntry)
+    public void registerNewMethod(List<Type> parameterTypes,
+                                  Type returnType,
+                                  FunctionTableEntry functionTableEntry)
             throws DuplicateFunctionSignatureException {
 
         // Extract information about the method
         String methodName = functionTableEntry.getFunctionName();
-        List<Type> parameterTypes = functionTableEntry.getParameterTypes();
 
         // Look up the tree for this class, creating it if necessary
         if (!vtableIndexLookupTreeMap.containsKey(methodName))
@@ -357,11 +380,12 @@ public class JavaClass extends HeapObjectReference {
     /**
      * Registers a constructor of this class.
      *
+     * @param parameterTypes The types of the arguments to the constructor
      * @param functionTableEntry The entry in the function table
      */
-    public void registerNewConstructor(FunctionTableEntry functionTableEntry)
+    public void registerNewConstructor(List<Type> parameterTypes,
+                                       FunctionTableEntry functionTableEntry)
             throws DuplicateFunctionSignatureException {
-        List<Type> parameterTypes = functionTableEntry.getParameterTypes();
         boolean success = constructorLookupTree.insert(parameterTypes, functionTableEntry);
         if (!success) {
             String signature = functionTableEntry.getQualifiedSignature();
@@ -438,6 +462,19 @@ public class JavaClass extends HeapObjectReference {
     public boolean hasNoArgumentConstructor() {
         List<Type> emptyList = new ArrayList<>();
         return (constructorLookupTree.lookup(emptyList) != null);
+    }
+
+    /**
+     * Returns the generic class of which this is an instantiation.
+     *
+     * If this instance is not an instantiation of a generic class, then this
+     * method will return null.
+     *
+     * @return The generic class of which this is an instantiation, or null if
+     *         this is not an instance of a generic class.
+     */
+    public GenericJavaClass getGenericClass() {
+        return genericClass;
     }
 
     /**
