@@ -2,7 +2,10 @@ package codegen;
 
 import ast.structure.ClassMethod;
 import ast.structure.VariableScope;
-import ast.types.*;
+import ast.types.AccessModifier;
+import ast.types.PrimitiveType;
+import ast.types.Type;
+import ast.types.VoidType;
 import codegen.generators.ExpressionGenerator;
 import codegen.generators.LiteralGenerator;
 import codegen.generators.StatementGenerator;
@@ -18,7 +21,7 @@ import java.util.stream.Collectors;
 
 public class WasmGenerator {
 
-    private static int emittedMethods = 23;
+    private static int emittedMethods = 30;
     private static boolean debug;
 
     public static void compile(List<ClassMethod> methods,
