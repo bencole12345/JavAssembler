@@ -21,7 +21,6 @@ public class AttributeNameExpression implements VariableExpression {
         }
         JavaClass javaClass = (JavaClass) object.getType();
 
-        // TODO: Test whether it's okay to access a private method from here
         this.attribute = javaClass.lookupAttribute(attributeName, false);
         this.object = object;
     }

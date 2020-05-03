@@ -240,20 +240,6 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
     }
 
     @Override
-    public Expression visitBinarySelectorExpr(JavaFileParser.BinarySelectorExprContext ctx) {
-        Expression condition = visit(ctx.expr(0));
-        Expression trueExpression = visit(ctx.expr(1));
-        Expression falseExpression = visit(ctx.expr(2));
-        BinarySelectorExpression expression = null;
-        try {
-            expression = new BinarySelectorExpression(condition, trueExpression, falseExpression);
-        } catch (IncorrectTypeException e) {
-            ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
-        }
-        return expression;
-    }
-
-    @Override
     public Expression visitArrayLookupExpr(JavaFileParser.ArrayLookupExprContext ctx) {
 
         // Start with the array itself
@@ -425,7 +411,6 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
 
     @Override
     public LiteralValue visitLiteral(JavaFileParser.LiteralContext ctx) {
-        // TODO: Implement the rest of these
         if (ctx.BOOLEAN_LITERAL() != null) {
             boolean value = Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().toString());
             return new BooleanLiteral(value);
@@ -434,6 +419,14 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
             // Need to remove the 's' from the end
             short value = Short.parseShort(toParse.substring(0, toParse.length()-1));
             return new ShortLiteral(value);
+        } else if (ctx.BYTE_LITERAL() != null) {
+            String toParse = ctx.BYTE_LITERAL().toString();
+            byte value = Byte.parseByte(toParse.substring(0, toParse.length()-1));
+            return new ByteLiteral(value);
+        } else if (ctx.CHAR_LITERAL() != null) {
+            String toParse = ctx.CHAR_LITERAL().toString();
+            char value = (char) Integer.parseInt(toParse.substring(0, toParse.length()-1));
+            return new CharLiteral(value);
         } else if (ctx.INT_LITERAL() != null) {
             int value = Integer.parseInt(ctx.INT_LITERAL().toString());
             return new IntLiteral(value);
