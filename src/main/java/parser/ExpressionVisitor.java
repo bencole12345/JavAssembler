@@ -5,8 +5,8 @@ import ast.literals.*;
 import ast.operations.BinaryOp;
 import ast.operations.IncrementOp;
 import ast.structure.VariableScope;
+import ast.types.ItemArray;
 import ast.types.JavaClass;
-import ast.types.ObjectArray;
 import ast.types.Type;
 import errors.*;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -142,7 +142,7 @@ public class ExpressionVisitor extends JavaFileBaseVisitor<Expression> {
             } catch (IncorrectTypeException e) {
                 ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
             }
-            currentType = new ObjectArray(currentType);
+            currentType = new ItemArray(currentType);
         }
 
         return result;

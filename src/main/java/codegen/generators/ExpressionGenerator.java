@@ -443,7 +443,7 @@ public class ExpressionGenerator {
                                               VariableScope scope) {
         Expression array = lookupExpression.getArrayExpression();
         Expression index = lookupExpression.getIndexExpression();
-        ObjectArray arrayType = (ObjectArray) lookupExpression.getArrayExpression().getType();
+        ItemArray arrayType = (ItemArray) lookupExpression.getArrayExpression().getType();
         Type elementType = arrayType.getElementType();
         WasmType wasmType = CodeGenUtil.getWasmType(elementType);
 

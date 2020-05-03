@@ -1,7 +1,6 @@
 package ast.expressions;
 
-import ast.types.HeapObjectReference;
-import ast.types.ObjectArray;
+import ast.types.ItemArray;
 import ast.types.PrimitiveType;
 import ast.types.Type;
 import errors.IncorrectTypeException;
@@ -10,7 +9,7 @@ public class NewArrayExpression implements Expression {
 
     private Type elementType;
     private Expression lengthExpression;
-    private ObjectArray arrayType;
+    private ItemArray arrayType;
 
     public NewArrayExpression(Type elementType, Expression lengthExpression) throws IncorrectTypeException {
         if (!lengthExpression.getType().equals(PrimitiveType.Int)) {
@@ -19,7 +18,7 @@ public class NewArrayExpression implements Expression {
         }
         this.elementType = elementType;
         this.lengthExpression = lengthExpression;
-        arrayType = new ObjectArray(elementType);
+        arrayType = new ItemArray(elementType);
     }
 
     public Type getElementType() {
