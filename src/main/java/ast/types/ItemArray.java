@@ -2,14 +2,14 @@ package ast.types;
 
 import java.util.Objects;
 
-public class ObjectArray extends HeapObjectReference {
+public class ItemArray extends HeapObjectReference {
 
     /**
      * The type of each element.
      */
     private Type elementType;
 
-    public ObjectArray(Type elementType) {
+    public ItemArray(Type elementType) {
         this.elementType = elementType;
     }
 
@@ -19,11 +19,9 @@ public class ObjectArray extends HeapObjectReference {
 
     @Override
     public boolean isSubtypeOf(Type other) {
-        // TODO: Implement correct covariant array subtyping
-        // and check types on write
-        if (!(other instanceof ObjectArray))
+        if (!(other instanceof ItemArray))
             return false;
-        ObjectArray otherArray = (ObjectArray) other;
+        ItemArray otherArray = (ItemArray) other;
         return elementType.equals(otherArray.elementType);
     }
 
@@ -36,7 +34,7 @@ public class ObjectArray extends HeapObjectReference {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ObjectArray that = (ObjectArray) o;
+        ItemArray that = (ItemArray) o;
         return elementType.equals(that.elementType);
     }
 

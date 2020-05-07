@@ -63,11 +63,11 @@ public class ClassTable {
             } catch (UnknownClassException e) {
                 ErrorReporting.reportError(e.getMessage());
             }
-        } else if (toValidate instanceof ObjectArray) {
-            ObjectArray array = (ObjectArray) toValidate;
+        } else if (toValidate instanceof ItemArray) {
+            ItemArray array = (ItemArray) toValidate;
             Type elementType = array.getElementType();
             Type validatedElementType = validateType(elementType);
-            validated = new ObjectArray(validatedElementType);
+            validated = new ItemArray(validatedElementType);
         }
         return validated;
     }

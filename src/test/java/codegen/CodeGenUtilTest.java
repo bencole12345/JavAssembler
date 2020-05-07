@@ -1,7 +1,7 @@
 package codegen;
 
+import ast.types.ItemArray;
 import ast.types.JavaClass;
-import ast.types.ObjectArray;
 import ast.types.PrimitiveType;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -67,7 +67,7 @@ class CodeGenUtilTest {
 
     @Test
     void wasmTypeArray() {
-        ObjectArray mocked = Mockito.mock(ObjectArray.class);
+        ItemArray mocked = Mockito.mock(ItemArray.class);
         WasmType wasmType = CodeGenUtil.getWasmType(mocked);
         assertEquals(WasmType.Int32, wasmType);
     }

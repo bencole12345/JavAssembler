@@ -54,8 +54,6 @@ public class ExpressionGenerator {
     public void compileExpression(Expression expression, VariableScope scope) {
         if (expression instanceof BinaryOperatorExpression) {
             compileBopExpression((BinaryOperatorExpression) expression, scope);
-        } else if (expression instanceof BinarySelectorExpression) {
-            compileBinarySelectorExpression((BinarySelectorExpression) expression, scope);
         } else if (expression instanceof LocalVariableExpression) {
             compileLocalVariableNameExpression((LocalVariableExpression) expression, scope);
         } else if (expression instanceof AttributeNameExpression) {
@@ -151,14 +149,6 @@ public class ExpressionGenerator {
         CodeGenUtil.emitRangeRestrictionCode(expressionType, emitter);
     }
 
-    private void compileBinarySelectorExpression(BinarySelectorExpression binarySelectorExpression,
-                                                 VariableScope variableScope) {
-        // TODO: Use the if with type construction seen in the table at
-        //  https://webassembly.org/docs/text-format/
-
-        // EVEN BETTER: See https://webassembly.github.io/spec/core/syntax/instructions.html#parametric-instructions
-    }
-
     private void compileNegateExpression(NegateExpression negateExpression,
                                          VariableScope scope) {
         compileExpression(negateExpression.getExpression(), scope);
@@ -177,14 +167,12 @@ public class ExpressionGenerator {
 
     private void compileVariableIncrementExpression(VariableIncrementExpression expression,
                                                     VariableScope scope) {
-        // TODO: Support applying increments to attributes as well as local variables
         String variableName = expression.getLocalVariableExpression().getVariableName();
         VariableScope.LocalVariableAllocation allocation = (VariableScope.LocalVariableAllocation) scope.getVariableWithName(variableName);
         int registerNumber = allocation.getLocalVariableIndex();
         Expression varNameExpr = expression.getLocalVariableExpression();
         Expression one;
         PrimitiveType variableType = (PrimitiveType) expression.getLocalVariableExpression().getType();
-        // TODO: Support the rest of the primitives
         switch (variableType) {
             case Short:
                 one = new ShortLiteral((short) 1);
@@ -443,7 +431,7 @@ public class ExpressionGenerator {
                                               VariableScope scope) {
         Expression array = lookupExpression.getArrayExpression();
         Expression index = lookupExpression.getIndexExpression();
-        ObjectArray arrayType = (ObjectArray) lookupExpression.getArrayExpression().getType();
+        ItemArray arrayType = (ItemArray) lookupExpression.getArrayExpression().getType();
         Type elementType = arrayType.getElementType();
         WasmType wasmType = CodeGenUtil.getWasmType(elementType);
 

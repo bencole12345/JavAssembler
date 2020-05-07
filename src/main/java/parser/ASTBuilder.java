@@ -77,7 +77,6 @@ public class ASTBuilder extends JavaFileBaseVisitor<ASTNode> {
                 scopeForParameters.registerVariable("this", currentClass);
             }
         } catch (MultipleVariableDeclarationException e) {
-            // TODO: Throw more descriptive message if they tried to declare "this"
             ErrorReporting.reportError(e.getMessage(), ctx, currentClass.toString());
         }
 

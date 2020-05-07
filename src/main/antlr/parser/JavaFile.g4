@@ -90,7 +90,6 @@ expr
     | expr comparisonBop expr                           # ComparisonBopExpr
     | expr logicalAndBop expr                           # LogicalAndBopExpr
     | expr logicalOrBop expr                            # LogicalOrBopExpr
-    | expr QUESTION_MARK expr COLON expr                # BinarySelectorExpr
     | expr (LSQBRACKET expr RSQBRACKET)+                # ArrayLookupExpr
     | variableName DOT IDENTIFIER
             LPAREN functionArgs RPAREN                  # MethodCallExpr
@@ -211,6 +210,8 @@ literal
     : BOOLEAN_LITERAL
     | FLOAT_LITERAL
     | DOUBLE_LITERAL
+    | BYTE_LITERAL
+    | CHAR_LITERAL
     | SHORT_LITERAL
     | LONG_LITERAL
     | INT_LITERAL
