@@ -1,6 +1,6 @@
 # JavAssembler
 
-This is the official repository for my Cambridge Computer Science Tripos Part II project. JavAssembler is a compiler from Java to WebAssembly.
+This is the official repository for my Cambridge Computer Science Tripos Part II project. JavAssembler is a compiler from Java to WebAssembly. You can read the dissertation in the file `Dissertation.pdf`.
 
 ## How to Compile JavAssembler
 To compile JavAssembler, you can use the Gradle task
