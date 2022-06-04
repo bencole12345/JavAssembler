@@ -113,7 +113,7 @@ describe('Division', () => {
   })
   test('Floating-point divide by zero gives infinity', () => {
     const result = wasmInstance.Expressions_floatingPointDivide(1, 0);
-    expect(result).not.toBeFinite();
+    expect(result).toBe(Infinity);
   })
 })
 

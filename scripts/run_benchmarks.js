@@ -1,10 +1,18 @@
-const fs = require('fs');
-const path = require('path');
-const wabt = require('wabt')();
-const Benchmark = require('benchmark');
-const CSVWriter = require('csv-writer');
-const jsReference = require('../sample_programs/benchmarks/javascript/benchmarks');
-const cppModule = require('../sample_programs_compiled/cpp_benchmarks');
+// const fs = require('fs');
+import fs from 'fs';
+// const path = require('path');
+import path from 'path';
+// const wabt = require('wabt')();
+import wabt_ from 'wabt';
+const wabt = wabt_();
+// const Benchmark = require('benchmark');
+import Benchmark from 'benchmark';
+// const CSVWriter = require('csv-writer');
+import CSVWriter from 'csv-writer';
+// const jsReference = require('../sample_programs/benchmarks/javascript/benchmarks');
+import jsReference from '../sample_programs/benchmarks/javascript/benchmarks.js';
+// const cppModule = require('../sample_programs_compiled/cpp_benchmarks');
+import cppModule from '../sample_programs_compiled/cpp_benchmarks.js';
 const cppReference = {
   sumSquares: cppModule.cwrap('sumSquares', 'number', ['number']),
   recurse: cppModule.cwrap('recurse', null, ['number']),

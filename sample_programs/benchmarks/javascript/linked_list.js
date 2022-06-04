@@ -4,7 +4,7 @@ class LinkedListNode {
   }
 }
 
-class LinkedList {
+export class LinkedList {
   constructor() {
     this.size = 0;
   }
@@ -30,5 +30,3 @@ class LinkedList {
     return value;
   }
 }
-
-module.exports = LinkedList;

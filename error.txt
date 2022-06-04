@@ -1,0 +1,111 @@
+node scripts/run_benchmarks.js
+Sum of squares: JavAssembler: 1000 x 960,467 ops/sec ±8.87% (83 runs sampled)
+         mean: 0.000001041160358997021
+    deviation: 4.2929191945142973e-7
+Sum of squares: JavaScript: 1000 x 1,358,554 ops/sec ±8.11% (76 runs sampled)
+         mean: 7.360765270814453e-7
+    deviation: 2.6547734800664194e-7
+Sum of squares: C++: 1000 x 276,303 ops/sec ±16.37% (62 runs sampled)
+         mean: 0.000003619212958606137
+    deviation: 0.0000023806086545839974
+Sum of squares: JavAssembler: 10000 x 79,457 ops/sec ±10.06% (66 runs sampled)
+         mean: 0.000012585349356087959
+    deviation: 0.000005247734701480816
+Sum of squares: JavaScript: 10000 x 77,723 ops/sec ±3.97% (82 runs sampled)
+         mean: 0.000012866240922093488
+    deviation: 0.000002362819717800329
+Sum of squares: C++: 10000 x 44,261 ops/sec ±5.28% (86 runs sampled)
+         mean: 0.000022593490452532572
+    deviation: 0.00000564352827254619
+Sum of squares: JavAssembler: 50000 x 22,898 ops/sec ±2.14% (92 runs sampled)
+         mean: 0.00004367166406015211
+    deviation: 0.00000456578433686073
+Sum of squares: JavaScript: 50000 x 14,042 ops/sec ±6.31% (77 runs sampled)
+         mean: 0.00007121470226202987
+    deviation: 0.000020120639191112356
+Sum of squares: C++: 50000 x 9,184 ops/sec ±2.81% (89 runs sampled)
+         mean: 0.00010889003261388167
+    deviation: 0.00001471717065752465
+Recursion: JavAssembler: 100 x 1,511,908 ops/sec ±15.62% (68 runs sampled)
+         mean: 6.61415961708015e-7
+    deviation: 4.34542075871984e-7
+Recursion: JavaScript: 100 x 1,841,013 ops/sec ±6.77% (79 runs sampled)
+         mean: 5.43179299372841e-7
+    deviation: 1.667125352614452e-7
+Recursion: C++: 100 x 1,418,887 ops/sec ±4.00% (88 runs sampled)
+         mean: 7.047778375355153e-7
+    deviation: 1.3495944318249444e-7
+Recursion: JavAssembler: 1000 x 198,307 ops/sec ±1.47% (92 runs sampled)
+         mean: 0.000005042686335225822
+    deviation: 3.633833425404675e-7
+Recursion: JavaScript: 1000 x 220,382 ops/sec ±0.31% (96 runs sampled)
+         mean: 0.0000045375855450566
+    deviation: 6.969318822636293e-8
+Recursion: C++: 1000 x 162,463 ops/sec ±2.31% (91 runs sampled)
+         mean: 0.000006155236410496817
+    deviation: 6.911271949505108e-7
+Recursion: JavAssembler: 5000 x 27,949 ops/sec ±3.88% (79 runs sampled)
+         mean: 0.00003577975905119754
+    deviation: 0.000006296234290134454
+Recursion: JavaScript: 5000 x 32,914 ops/sec ±10.54% (81 runs sampled)
+         mean: 0.0000303817872828693
+    deviation: 0.000014697984874081196
+Recursion: C++: 5000 x 27,214 ops/sec ±2.92% (82 runs sampled)
+         mean: 0.00003674610315747988
+    deviation: 0.000004960609647082454
+Linked list traversal: JavAssembler: 1000 x 13,468 ops/sec ±11.18% (74 runs sampled)
+         mean: 0.00007424883795507102
+    deviation: 0.00003642557239736903
+Linked list traversal: JavaScript: 1000 x 65,111 ops/sec ±13.54% (63 runs sampled)
+         mean: 0.000015358483354799475
+    deviation: 0.000008420556262514513
+Linked list traversal: C++: 1000 x 21,452 ops/sec ±6.31% (75 runs sampled)
+         mean: 0.00004661590178319175
+    deviation: 0.00001299927054100231
+Linked list traversal: JavAssembler: 10000 x 1,519 ops/sec ±9.14% (85 runs sampled)
+         mean: 0.0006584831733957219
+    deviation: 0.0002830864412749437
+Linked list traversal: JavaScript: 10000 x 8,417 ops/sec ±3.55% (78 runs sampled)
+         mean: 0.000118807192750561
+    deviation: 0.000019019565253627723
+Linked list traversal: C++: 10000 x 2,654 ops/sec ±0.15% (98 runs sampled)
+         mean: 0.0003767516226774291
+    deviation: 0.0000029386614032067207
+Linked list traversal: JavAssembler: 20000 x 819 ops/sec ±1.84% (89 runs sampled)
+         mean: 0.001221572363857678
+    deviation: 0.0001080864406923091
+Linked list traversal: JavaScript: 20000 x 4,351 ops/sec ±0.82% (84 runs sampled)
+         mean: 0.00022981449949633704
+    deviation: 0.000008773903124916395
+Linked list traversal: C++: 20000 x 1,254 ops/sec ±1.95% (92 runs sampled)
+         mean: 0.0007975773285204415
+    deviation: 0.00007626856594530102
+Array traversal: JavAssembler: 1000 x 116,232 ops/sec ±1.72% (85 runs sampled)
+         mean: 0.000008603494761093732
+    deviation: 6.976466038297065e-7
+Array traversal: JavaScript: 1000 x 191,312 ops/sec ±1.13% (95 runs sampled)
+         mean: 0.000005227065133845307
+    deviation: 2.9365996876925297e-7
+Array traversal: C++: 1000 x 204,412 ops/sec ±0.20% (98 runs sampled)
+         mean: 0.000004892079534268715
+    deviation: 4.9038553967985017e-8
+Array traversal: JavAssembler: 10000 x 11,998 ops/sec ±0.07% (98 runs sampled)
+         mean: 0.00008335049076930984
+    deviation: 3.027584443129859e-7
+Array traversal: JavaScript: 10000 x 20,008 ops/sec ±2.52% (89 runs sampled)
+         mean: 0.00004997985284920328
+    deviation: 0.0000060514183359262275
+Array traversal: C++: 10000 x 20,812 ops/sec ±1.16% (93 runs sampled)
+         mean: 0.00004804877305995145
+    deviation: 0.000002735802675271818
+Array traversal: JavAssembler: 20000 x 5,099 ops/sec ±4.98% (86 runs sampled)
+         mean: 0.00019609934314190783
+    deviation: 0.00004618502003044245
+Array traversal: JavaScript: 20000 x 4,530 ops/sec ±2.65% (83 runs sampled)
+         mean: 0.00022077245323125
+    deviation: 0.000027159780741758985
+Array traversal: C++: 20000 x 9,940 ops/sec ±1.78% (91 runs sampled)
+         mean: 0.00010060018852718602
+    deviation: 0.000008729128873646867
+Wrote benchmarking_results/benchmarking_results.csv
+Error: ENOENT: no such file or directory, open 'benchmarking_results/benchmarking_results.csv'
